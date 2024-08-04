@@ -1,3 +1,4 @@
+
 #include "toolfunctions.h"
 
 ToolFunctions::ToolFunctions() {}

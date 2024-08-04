@@ -218,14 +218,21 @@
       <item>
        <widget class="QPushButton" name="categoryLearnButton">
         <property name="text">
-         <string>开始学习(类别)</string>
+         <string>开始学习(表项)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="speedLearnButton">
+        <property name="text">
+         <string>开始学习(标签,不重复)</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="categoryToLearnButton">
         <property name="text">
-         <string>开始学习(类别,待学习)</string>
+         <string>开始学习(表项,待学习)</string>
         </property>
        </widget>
       </item>

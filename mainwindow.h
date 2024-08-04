@@ -15,7 +15,7 @@
 #include "answereditdialog.h"
 #include "settimedialog.h"
 #include "htmltableadddialog.h"
-
+#include "questiontageditdialog.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -79,6 +79,12 @@ private slots:
 
     void on_questionTagButton_clicked();
 
+    void on_tagTableView_activated(const QModelIndex &index);
+
+    void on_tagTableView_clicked(const QModelIndex &index);
+
+    void on_speedLearnButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 
@@ -88,11 +94,15 @@ private:
     QSqlRelationalTableModel *questionTableModel;
     bool is_questionTextEdit_editable = false;
 
+    QSqlTableModel *tagTableModel;
+    int currentSection;
+
     QuestionMoveDialog *questionMoveDialog;
     AnswerEditDialog *answerEditDialog;
     LearningDialog *learningDialog;
     SetTimeDialog *setTimeDialog;
     HtmlTableAddDialog *htmlTableAddDialog;
+    QuestionTagEditDialog *questionTagEditDialog;
 
 };
 #endif // MAINWINDOW_H

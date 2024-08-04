@@ -8,9 +8,18 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     , ui(new Ui::LearningDialog)
 {
     ui->setupUi(this);
+
+    //init timer
     timer = new QTimer(this);
     timer->setInterval(10);
     connect(timer,&QTimer::timeout,this,&LearningDialog::timerHandler);
+
+    //init total timer
+    totalTimer = new QTimer(this);
+    totalTimer->setInterval(10);
+    connect(totalTimer,&QTimer::timeout,this,&LearningDialog::totalTimerHandler);
+
+
     font = new QFont("Microsoft YaHei",9);
     fm = new QFontMetrics(*font);
     time.setHMS(0,0,0);
@@ -73,13 +82,19 @@ void LearningDialog::clear_question_display()
     }
 }
 
-void LearningDialog::set_itmes_table(QString filter)
+void LearningDialog::set_items_table(QString filter)
 {
+    totalTime = QTime::fromMSecsSinceStartOfDay(0);
     tableModel->setFilter(filter);
+    totalCount = 0;
+    correctCount = 0;
+    if(isSpeedLearn)
+        ui->comboBox->setCurrentIndex(1);
+    clear_question_display();
 }
 
 void LearningDialog::set_question(int id)
-{
+{    
     currentId = id;
     ui->idLabel->setText(QString("id:%1").arg(currentId));
 
@@ -133,6 +148,11 @@ void LearningDialog::set_question(int id)
     layout->addItem(verticalSpacer,array.count()+1,0,1,3);
 
     layout->itemAt(0)->widget()->setFocus();
+
+    //start totalTimer
+    if(!totalTimer->isActive())
+        totalTimer->start();
+
     //start timer
     start_timer();
 }
@@ -145,9 +165,12 @@ bool LearningDialog::is_submited()
 void LearningDialog::on_pushButton_clicked()
 {
     stop_timer();
-    if(tableModel->rowCount() == 0)
-        return;
 
+    if(tableModel->rowCount() == 0)
+    {
+        totalTimer->stop();
+        return;
+    }
     if(currentId == -1)
         return;
 
@@ -174,7 +197,6 @@ void LearningDialog::on_pushButton_clicked()
 
         ui->tableView->selectRow(newRow);
         set_question(ui->tableView->currentIndex().siblingAtColumn(0).data().toInt());
-
 
         submited = false;
         return;
@@ -232,13 +254,32 @@ void LearningDialog::on_pushButton_clicked()
 
     questionSql->update_question_state(currentId,time);
     checkLabel->show();
-
     oldRow = ui->tableView->currentIndex().row();
-    set_itmes_table(tableModel->filter());
-    if(oldRow >= tableModel->rowCount())
-        oldRow = tableModel->rowCount() - 1;
-    ui->tableView->selectRow(oldRow);
 
+    //set accuracy label
+    totalCount++;
+    if(!wrong)
+        correctCount++;
+    QString acc = QString::number(double(correctCount)/totalCount*100,'f',2);
+    QString newAccuracyText = QString("正确率(%1\%):%2/%3").arg(acc).arg(correctCount).arg(totalCount);
+    ui->accuracyLabel->setText(newAccuracyText);
+
+    //set new filter
+    if(isSpeedLearn)
+    {
+        if(!wrong)
+        {
+            QString condString = QString("%1 AND questions.id != %2").arg(tableModel->filter()).arg(currentId);
+            tableModel->setFilter(condString);
+            qDebug() << condString;
+        }
+    }
+
+    //update old row
+    tableModel->select();
+    if(oldRow >= tableModel->rowCount())
+        oldRow = 0;
+    ui->tableView->selectRow(oldRow);
 }
 
 void LearningDialog::timerHandler()
@@ -248,6 +289,12 @@ void LearningDialog::timerHandler()
     {
         timeLabel->setText(time.toString("mm:ss.zzz").chopped(1));
     }
+}
+
+void LearningDialog::totalTimerHandler()
+{
+    totalTime = totalTime.addMSecs(10);
+    ui->totalTimeLabel->setText(totalTime.toString("hh:mm:ss.zzz").chopped(1));
 }
 
 void LearningDialog::start_timer()
@@ -266,8 +313,13 @@ void LearningDialog::stop_timer()
 void LearningDialog::on_LearningDialog_finished(int result)
 {
     stop_timer();
+    totalTimer->stop();
     submited = true;
     currentId = -1;
+    if(tableModel->rowCount() != 0)
+    {
+        totalTime = QTime::fromString("23:59:59.99");
+    }
 }
 
 QTime LearningDialog::getTime() const
@@ -302,4 +354,14 @@ void LearningDialog::on_comboBox_currentTextChanged(const QString &arg1)
     }
     ui->tableView->clearSelection();
     clear_question_display();
+}
+
+void LearningDialog::setIsSpeedLearn(bool newIsSpeedLearn)
+{
+    isSpeedLearn = newIsSpeedLearn;
+}
+
+QTime LearningDialog::getTotalTime() const
+{
+    return totalTime;
 }

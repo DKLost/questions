@@ -30,23 +30,30 @@ public:
     ~LearningDialog();
 
     void set_answer(QJsonArray array);
-    void start_timer();
+
 
     void set_category(int categoryId, bool learnALl);
     void set_question(int id);
 
+    void start_timer();
     void stop_timer();
+
     void clear_question_display();
 
     QTime getTime() const;
     bool is_submited();
 
     void set_tableHeader();
-    void set_itmes_table(QString filter);
+    void set_items_table(QString filter);
+
+    QTime getTotalTime() const;
+
+    void setIsSpeedLearn(bool newIsSpeedLearn);
 
 private slots:
     void on_pushButton_clicked();
     void timerHandler();
+    void totalTimerHandler();
 
     void on_LearningDialog_finished(int result);
 
@@ -56,8 +63,16 @@ private slots:
 
 private:
     Ui::LearningDialog *ui;
+
     QTimer *timer;
     QTime time;
+
+    QTimer *totalTimer;
+    QTime totalTime;
+    int totalCount;
+    int correctCount;
+    bool isSpeedLearn;
+
     bool submited;
     QString rating;
     QFont *font;

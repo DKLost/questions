@@ -17,6 +17,7 @@ SOURCES += \
     mainwindow.cpp \
     questionmovedialog.cpp \
     questionsql.cpp \
+    questiontageditdialog.cpp \
     settimedialog.cpp \
     toolfunctions.cpp
 
@@ -28,6 +29,7 @@ HEADERS += \
     mainwindow.h \
     questionmovedialog.h \
     questionsql.h \
+    questiontageditdialog.h \
     settimedialog.h \
     toolfunctions.h
 
@@ -37,6 +39,7 @@ FORMS += \
     learningdialog.ui \
     mainwindow.ui \
     questionmovedialog.ui \
+    questiontageditdialog.ui \
     settimedialog.ui
 
 # Default rules for deployment.

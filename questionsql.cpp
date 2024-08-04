@@ -98,32 +98,39 @@ void QuestionSql::_del_category(int id,int parentId)
     }
 }
 
-// void QuestionSql::add_tag(int id, QString name)
-// {
-//     QSqlQuery query(db);
-//     query.prepare("INSERT INTO tag VALUES(?,?,?)");
-//     query.bindValue(0,id);
-//     query.bindValue(1,name);
-//     query.bindValue(2,"23:59:59.00");
-//     query.exec();
-// }
+void QuestionSql::add_tag(int id, QString name)
+{
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO tags VALUES(?,?,?)");
+    query.bindValue(0,id);
+    query.bindValue(1,name);
+    query.bindValue(2,"23:59:59.99");
+    query.exec();
+}
 
-// void QuestionSql::del_tag(int id)
-// {
-//     QSqlQuery query(db);
-//     query.exec("DELETE FROM tags WHERE id = ?");
-//     query.bindValue(0,id);
-//     query.exec();
+void QuestionSql::del_tag(int id)
+{
+    QSqlQuery query(db);
+    QSqlQuery query2(db);
 
-//     QString queryString = QString("SELECT * FROM questions WHERE tag GLOB '*?*'").arg(id);
-//     query.exec(queryString);
-//     while(query.next())
-//     {
-//         query.value(0).toInt();
-//         QStringList list = query.value(2).toString().split(',');
-//         list.remove(list.indexOf(id));
-//     }
-// }
+    query.exec("DELETE FROM tags WHERE id = ?");
+    query.bindValue(0,id);
+    query.exec();
+
+    QString queryString = QString("SELECT id, tag FROM questions "
+                                  "WHERE (tag GLOB '*,%1') OR (tag GLOB '*,%1,*') OR (tag GLOB '%1,*') OR (tag GLOB '%1')").arg(id);
+    query.exec(queryString);
+    while(query.next())
+    {
+        int qId = query.value(0).toInt();
+        QStringList tagList = query.value(1).toString().split(',',Qt::SkipEmptyParts);
+        tagList.remove(tagList.indexOf(QString::number(id)));
+        query2.prepare("UPDATE questions SET tag = ? WHERE id = ?");
+        query2.bindValue(0,tagList.join(','));
+        query2.bindValue(1,qId);
+        query2.exec();
+    }
+}
 
 void QuestionSql::add_question(int id, int categoryId)
 {
@@ -283,6 +290,16 @@ QString QuestionSql::get_category_condString(int categoryId)
     return condString;
 }
 
+QString QuestionSql::get_toLearn_condString(QString currentFilter)
+{
+    QString currentDate = QDate::currentDate().toString("yyyy/MM/dd");
+    QString condString = QString("(%1 <= %2) AND %3")
+                             .arg("nextDate")
+                             .arg(QString("'%1'").arg(currentDate))
+                             .arg(QString("(%1)").arg(currentFilter));
+    return condString;
+}
+
 QString QuestionSql::get_toLearn_condString(int categoryId)
 {
     QString currentDate = QDate::currentDate().toString("yyyy/MM/dd");
@@ -328,9 +345,7 @@ QVariant QuestionSql::get_data(int id,QString name)
     }
     else
         return NULL;
-
 }
-
 
 void QuestionSql::update_question_state(int id,QTime myTime)
 {

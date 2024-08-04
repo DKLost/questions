@@ -39,10 +39,14 @@ public:
     int get_goodTime(int id);
     QString get_category_condString(int categoryId);
     QString get_toLearn_condString(int categoryId);
+    QString get_toLearn_condString(QString currentFilter);
 
     QVariant get_data(int id, QString name);
     void update_question_state(int id, QTime myTime);
     int count_total_questions_to_learn(int categoryId);
+
+    void add_tag(int id, QString name);
+    void del_tag(int id);
 
     template<typename T>void set_data(int id,QString name,T data)
     {
@@ -61,6 +65,7 @@ public:
         query.bindValue(0,data);
         query.exec();
     }
+
 
 private:
     QSqlDatabase db;
