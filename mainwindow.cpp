@@ -50,6 +50,8 @@ MainWindow::MainWindow(QWidget *parent)
     //init answer list
     ui->answerListWidget->setMovement(QListView::Free);
     ui->answerListWidget->setDragDropMode(QAbstractItemView::InternalMove);
+    connect(ui->answerListWidget->model(),&QAbstractItemModel::rowsMoved,
+            this,&MainWindow::on_answerListRowsMoved);
 
     //init question move dialog
     questionMoveDialog = new QuestionMoveDialog(categoryItemModel,this);
@@ -414,6 +416,15 @@ void MainWindow::on_answerListWidget_itemDoubleClicked(QListWidgetItem *item)
     on_answerEditButton_clicked();
 }
 
+void MainWindow::on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow)
+{
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
+        return;
+    int id = index.siblingAtColumn(0).data().toInt();
+    save_answerList(id);
+}
+
 void MainWindow::save_answerList(int id)
 {
     QJsonArray array;
@@ -631,4 +642,20 @@ void MainWindow::on_tagTableView_clicked(const QModelIndex &index)
 {
     on_tagTableView_activated(index);
 }
+
+
+void MainWindow::on_questionDirOpenButton_clicked()
+{
+    if(ui->questionTableView->currentIndex().isValid())
+    {
+        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        QString path = QString("%1/data/%2/question.html").arg(QDir::currentPath()).arg(qId);
+        QStringList args;
+        args << "/select," << QDir::toNativeSeparators(path);
+        QProcess process;
+        process.startDetached("explorer",args);
+    }
+}
+
+
 

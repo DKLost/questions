@@ -9,6 +9,7 @@
 #include <QKeyEvent>
 #include <QList>
 #include <QListWidget>
+#include <QProcess>
 #include "learningdialog.h"
 #include "questionsql.h"
 #include "questionmovedialog.h"
@@ -84,6 +85,10 @@ private slots:
     void on_tagTableView_clicked(const QModelIndex &index);
 
     void on_speedLearnButton_clicked();
+
+    void on_questionDirOpenButton_clicked();
+
+    void on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow);
 
 private:
     Ui::MainWindow *ui;
