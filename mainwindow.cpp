@@ -657,5 +657,21 @@ void MainWindow::on_questionDirOpenButton_clicked()
     }
 }
 
-
+//插入图片功能 2024/8/7
+void MainWindow::on_htmlImgAddButton_clicked()
+{
+    if(ui->questionTableView->currentIndex().isValid())
+    {
+        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        QString dirPath = QString("%1/data/%2/").arg(QDir::currentPath()).arg(qId);
+        QString filePath = QFileDialog::getOpenFileName(this,
+                                                        "打开图片", dirPath, tr("Image Files (*.jpg *.png *.gif)"));
+        if(filePath.isNull() || filePath.isEmpty() || filePath == "")
+            return;
+        QDir dir("./");
+        QTextCursor cursor = ui->questionTextEdit->textCursor();
+        QString imgHtml = QString("<img src=\"./%1\">").arg(dir.relativeFilePath(filePath));
+        cursor.insertHtml(imgHtml);
+    }
+}
 

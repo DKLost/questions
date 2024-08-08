@@ -10,6 +10,7 @@
 #include <QList>
 #include <QListWidget>
 #include <QProcess>
+#include <QFileDialog>
 #include "learningdialog.h"
 #include "questionsql.h"
 #include "questionmovedialog.h"
@@ -89,6 +90,8 @@ private slots:
     void on_questionDirOpenButton_clicked();
 
     void on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow);
+
+    void on_htmlImgAddButton_clicked();
 
 private:
     Ui::MainWindow *ui;

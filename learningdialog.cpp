@@ -269,9 +269,8 @@ void LearningDialog::on_pushButton_clicked()
     {
         if(!wrong)
         {
-            QString condString = QString("%1 AND questions.id != %2").arg(tableModel->filter()).arg(currentId);
+            QString condString = QString("(%1) AND questions.id != %2").arg(tableModel->filter()).arg(currentId);
             tableModel->setFilter(condString);
-            qDebug() << condString;
         }
     }
 
