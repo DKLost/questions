@@ -43,9 +43,13 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event);
 
 private slots:
+
     void on_categoryAddButton_clicked();
     void on_categoryDelButton_clicked();
     void on_categoryTreeView_clicked(const QModelIndex &index);
+    void category_item_change_handler(QStandardItem *item);
+    void on_categoryEditButton_clicked();
+
     void on_questionAddButton_clicked();
     void on_questionTextEdit_textChanged();
     void on_questionTableView_clicked(const QModelIndex &index);
@@ -54,44 +58,29 @@ private slots:
     void on_questionTableView_activated(const QModelIndex &index);
 
     void on_answerAddButton_clicked();
-
     void on_answerDelButton_clicked();
-
     void on_answerEditButton_clicked();
-
-    void on_itemLearnButton_clicked();
-
-    void on_setGoodTimeButton_clicked();
-
-    void on_categoryLearnButton_clicked();
-
-    void on_categoryToLearnButton_clicked();
-
     void on_answerListWidget_itemDoubleClicked(QListWidgetItem *item);
 
+    void on_setGoodTimeButton_clicked();
     void on_htmlTableAddButton_clicked();
+    void on_questionDirOpenButton_clicked();
+    void on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow);
+    void on_htmlImgAddButton_clicked();
 
-    void on_categoryEditButton_clicked();
-
-    void category_item_change_handler(QStandardItem *item);
-
+    //tag
     void on_addTagButton_clicked();
-
     void on_delTagButton_clicked();
-
     void on_questionTagButton_clicked();
-
     void on_tagTableView_activated(const QModelIndex &index);
-
     void on_tagTableView_clicked(const QModelIndex &index);
 
+    //learn
+    void on_itemLearnButton_clicked();
+    void on_categoryLearnButton_clicked();
+    void on_categoryToLearnButton_clicked();
     void on_speedLearnButton_clicked();
 
-    void on_questionDirOpenButton_clicked();
-
-    void on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow);
-
-    void on_htmlImgAddButton_clicked();
 
 private:
     Ui::MainWindow *ui;

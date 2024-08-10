@@ -414,8 +414,9 @@ void QuestionSql::update_question_state(int id,QTime myTime)
         if(rating == "wrong")
         {
             set_data(id,"state","learning");
-            s = FSRS::next_forget_stability(lastD,lastS,FSRS::rating[rating]);
-            interval = FSRS::next_interval(s);
+            //s = FSRS::next_forget_stability(lastD,lastS,FSRS::rating[rating]);
+            //FSRS::next_interval(s);
+            interval = 1;
         }
         if(rating == "hard")
         {
