@@ -50,6 +50,9 @@ public:
 
     void setIsSpeedLearn(bool newIsSpeedLearn);
 
+
+    int getLastId() const;
+
 private slots:
     void on_pushButton_clicked();
     void timerHandler();
@@ -82,6 +85,8 @@ private:
     QSqlRelationalTableModel *tableModel;
     int currentId;
     int oldRow;
+
+    int lastId;
 };
 
 #endif // LEARNINGDIALOG_H

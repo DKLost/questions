@@ -442,7 +442,8 @@ void MainWindow::on_setGoodTimeButton_clicked()
     QModelIndexList indexes = ui->questionTableView->selectionModel()->selectedIndexes();
     if(indexes.count() <= 0)
         return;
-    int id = indexes.begin()->siblingAtColumn(0).data().toInt();
+    int firstId = indexes.begin()->siblingAtColumn(0).data().toInt();
+    int id = firstId;
     QTime goodTime = QTime::fromString(questionSql->get_data(id,"goodTime").toString(),"mm'm':ss's'");
     setTimeDialog->setTime(goodTime);
     setTimeDialog->exec();
@@ -456,9 +457,11 @@ void MainWindow::on_setGoodTimeButton_clicked()
         questionSql->set_goodTime(id,time);
     }
 
-    QModelIndex index2 = ui->categoryTreeView->currentIndex();
-    on_categoryTreeView_clicked(index2);
-    ui->questionTableView->selectRow(index2.row());
+
+    questionTableModel->select();
+    QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,firstId).begin();
+    ui->questionTableView->setCurrentIndex(newIndex);
+    on_questionTableView_activated(newIndex);
 }
 
 //单项学习
@@ -473,24 +476,27 @@ void MainWindow::on_itemLearnButton_clicked()
     learningDialog->set_items_table(QString("questions.id = %1").arg(id));
     learningDialog->exec();
 
-    //reload categoryTreeView
+    //update categoryTreeView
     int categoryId =ui->categoryTreeView->currentIndex().siblingAtColumn(1).data().toInt();
     reload_categoryTreeView();
     ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
 
-    //on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
     questionTableModel->select();
+    if(learningDialog->getLastId() != -1)
+    {
+        QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,learningDialog->getLastId()).begin();
+        ui->questionTableView->setCurrentIndex(newIndex);
+        on_questionTableView_activated(newIndex);
+    }
 }
 
 //类别学习（全部）
 void MainWindow::on_categoryLearnButton_clicked()
 {
-    // learningDialog->clear_question_display();
-    // learningDialog->set_itmes_table(questionSql->get_category_condString(categoryId));
     learningDialog->set_items_table(questionTableModel->filter());
     learningDialog->exec();
 
-    //reload categoryTreeView
+    //update categoryTreeView
     QModelIndex index = ui->categoryTreeView->currentIndex();
     int categoryId = index.siblingAtColumn(1).data().toInt();
     reload_categoryTreeView();
@@ -498,19 +504,23 @@ void MainWindow::on_categoryLearnButton_clicked()
         return;
     ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
 
-    //on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
     questionTableModel->select();
+    if(learningDialog->getLastId() != -1)
+    {
+        QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,learningDialog->getLastId()).begin();
+        ui->questionTableView->setCurrentIndex(newIndex);
+        on_questionTableView_activated(newIndex);
+    }
 }
 
 //类别学习（仅待学）
 void MainWindow::on_categoryToLearnButton_clicked()
 {
     learningDialog->clear_question_display();
-    //learningDialog->set_itmes_table(questionSql->get_toLearn_condString(categoryId));
     learningDialog->set_items_table(questionSql->get_toLearn_condString(questionTableModel->filter()));
     learningDialog->exec();
 
-    //reload categoryTreeView
+    //update categoryTreeView
     QModelIndex index = ui->categoryTreeView->currentIndex();
     int categoryId = index.siblingAtColumn(1).data().toInt();
     reload_categoryTreeView();
@@ -518,8 +528,13 @@ void MainWindow::on_categoryToLearnButton_clicked()
         return;
     ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
 
-    //on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
     questionTableModel->select();
+    if(learningDialog->getLastId() != -1)
+    {
+        QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,learningDialog->getLastId()).begin();
+        ui->questionTableView->setCurrentIndex(newIndex);
+        on_questionTableView_activated(newIndex);
+    }
 }
 
 // 标签学习（不重复）
@@ -530,7 +545,7 @@ void MainWindow::on_speedLearnButton_clicked()
     learningDialog->exec();
     learningDialog->setIsSpeedLearn(false);
 
-    //reload categoryTreeView
+    //update categoryTreeView
     QModelIndex index = ui->categoryTreeView->currentIndex();
     int categoryId = index.siblingAtColumn(1).data().toInt();
     reload_categoryTreeView();
@@ -538,6 +553,12 @@ void MainWindow::on_speedLearnButton_clicked()
         return;
     ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
     questionTableModel->select();
+    if(learningDialog->getLastId() != -1)
+    {
+        QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,learningDialog->getLastId()).begin();
+        ui->questionTableView->setCurrentIndex(newIndex);
+        on_questionTableView_activated(newIndex);
+    }
 
     //update tag bestTime
     if(questionTableModel->filter().indexOf("tag") != -1)

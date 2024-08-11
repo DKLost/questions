@@ -314,6 +314,7 @@ void LearningDialog::on_LearningDialog_finished(int result)
     stop_timer();
     totalTimer->stop();
     submited = true;
+    lastId = currentId;
     currentId = -1;
     if(tableModel->rowCount() != 0)
     {
@@ -353,6 +354,11 @@ void LearningDialog::on_comboBox_currentTextChanged(const QString &arg1)
     }
     ui->tableView->clearSelection();
     clear_question_display();
+}
+
+int LearningDialog::getLastId() const
+{
+    return lastId;
 }
 
 void LearningDialog::setIsSpeedLearn(bool newIsSpeedLearn)
