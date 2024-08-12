@@ -82,6 +82,10 @@ private slots:
     void on_speedLearnButton_clicked();
 
 
+    void on_questionTableView_pressed(const QModelIndex &index);
+
+    void on_questionTableView_entered(const QModelIndex &index);
+
 private:
     Ui::MainWindow *ui;
 

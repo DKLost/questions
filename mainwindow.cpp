@@ -267,11 +267,7 @@ void MainWindow::on_questionTextEdit_textChanged()
 }
 
 
-void MainWindow::on_questionTableView_clicked(const QModelIndex &index)
-{
-    on_questionTableView_activated(index);
-}
-
+//题目选取功能 2024/8/11
 void MainWindow::on_questionTableView_activated(const QModelIndex &index)
 {
     int id = index.siblingAtColumn(0).data().toInt();
@@ -290,6 +286,23 @@ void MainWindow::on_questionTableView_activated(const QModelIndex &index)
         ui->answerListWidget->addItem(item.toString());
     }
 }
+void MainWindow::on_questionTableView_clicked(const QModelIndex &index)
+{
+    on_questionTableView_activated(index);
+}
+void MainWindow::on_questionTableView_pressed(const QModelIndex &index)
+{
+    on_questionTableView_activated(index);
+}
+void MainWindow::on_questionTableView_entered(const QModelIndex &index)
+{
+    if(QGuiApplication::mouseButtons() == Qt::NoButton)
+        return;
+    if(QGuiApplication::mouseButtons() == Qt::RightButton)
+        return;
+    on_questionTableView_activated(index);
+}
+
 
 void MainWindow::on_questionDelButton_clicked()
 {
@@ -695,4 +708,5 @@ void MainWindow::on_htmlImgAddButton_clicked()
         cursor.insertHtml(imgHtml);
     }
 }
+
 
