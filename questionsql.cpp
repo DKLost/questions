@@ -390,7 +390,7 @@ void QuestionSql::update_question_state(int id,QTime myTime)
         s = FSRS::next_short_term_stability(lastS,FSRS::rating[rating]);
         interval = FSRS::next_interval(s);
 
-        if(rating == "wrong") ;
+        if(rating == "wrong") interval = 0;
         if(rating == "hard") ;
         if(rating == "good") set_data(id,"state","review");
         if(rating == "easy")
@@ -414,9 +414,7 @@ void QuestionSql::update_question_state(int id,QTime myTime)
         if(rating == "wrong")
         {
             set_data(id,"state","learning");
-            //s = FSRS::next_forget_stability(lastD,lastS,FSRS::rating[rating]);
-            //FSRS::next_interval(s);
-            interval = 1;
+            interval = 0;
         }
         if(rating == "hard")
         {
@@ -441,10 +439,12 @@ void QuestionSql::update_question_state(int id,QTime myTime)
         }
     }
 
+    interval = qMax(interval - 1,0);
+
     set_data(id,"lastD",d);
     set_data(id,"lastS",s);
     set_data(id,"lastDate",QDate::currentDate().toString("yyyy/MM/dd"));
-    set_data(id,"nextDate",QDate::currentDate().addDays(interval - 1).toString("yyyy/MM/dd"));
+    set_data(id,"nextDate",QDate::currentDate().addDays(interval).toString("yyyy/MM/dd"));
 
     if(rating == "wrong")
         return;

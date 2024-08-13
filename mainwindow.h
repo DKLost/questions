@@ -39,6 +39,7 @@ public:
 
     void save_answerList(int id);
     void set_tableHeader();
+    void select_question_by_id(int id);
 protected:
     bool eventFilter(QObject *watched, QEvent *event);
 

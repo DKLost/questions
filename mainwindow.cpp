@@ -251,6 +251,7 @@ void MainWindow::on_questionAddButton_clicked()
     save_answerList(id);
 }
 
+
 void MainWindow::on_questionTextEdit_textChanged()
 {
     if(!is_questionTextEdit_editable)
@@ -477,6 +478,16 @@ void MainWindow::on_setGoodTimeButton_clicked()
     on_questionTableView_activated(newIndex);
 }
 
+void MainWindow::select_question_by_id(int id)
+{
+    if(id >= 0)
+    {
+        auto indexList = questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,id);
+        QModelIndex index = *indexList.begin();
+        ui->questionTableView->setCurrentIndex(index);
+        on_questionTableView_activated(index);
+    }
+}
 //单项学习
 void MainWindow::on_itemLearnButton_clicked()
 {
@@ -497,12 +508,9 @@ void MainWindow::on_itemLearnButton_clicked()
     questionTableModel->select();
     if(learningDialog->getLastId() != -1)
     {
-        QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,learningDialog->getLastId()).begin();
-        ui->questionTableView->setCurrentIndex(newIndex);
-        on_questionTableView_activated(newIndex);
+        select_question_by_id(learningDialog->getLastId());
     }
 }
-
 //类别学习（全部）
 void MainWindow::on_categoryLearnButton_clicked()
 {
@@ -520,12 +528,9 @@ void MainWindow::on_categoryLearnButton_clicked()
     questionTableModel->select();
     if(learningDialog->getLastId() != -1)
     {
-        QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,learningDialog->getLastId()).begin();
-        ui->questionTableView->setCurrentIndex(newIndex);
-        on_questionTableView_activated(newIndex);
+        select_question_by_id(learningDialog->getLastId());
     }
 }
-
 //类别学习（仅待学）
 void MainWindow::on_categoryToLearnButton_clicked()
 {
@@ -544,12 +549,9 @@ void MainWindow::on_categoryToLearnButton_clicked()
     questionTableModel->select();
     if(learningDialog->getLastId() != -1)
     {
-        QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,learningDialog->getLastId()).begin();
-        ui->questionTableView->setCurrentIndex(newIndex);
-        on_questionTableView_activated(newIndex);
+        select_question_by_id(learningDialog->getLastId());
     }
 }
-
 // 标签学习（不重复）
 void MainWindow::on_speedLearnButton_clicked()
 {
@@ -568,9 +570,7 @@ void MainWindow::on_speedLearnButton_clicked()
     questionTableModel->select();
     if(learningDialog->getLastId() != -1)
     {
-        QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,learningDialog->getLastId()).begin();
-        ui->questionTableView->setCurrentIndex(newIndex);
-        on_questionTableView_activated(newIndex);
+        select_question_by_id(learningDialog->getLastId());
     }
 
     //update tag bestTime
