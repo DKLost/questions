@@ -40,6 +40,7 @@ public:
     void save_answerList(int id);
     void set_tableHeader();
     void select_question_by_id(int id);
+    void update_count_categoryTreeView();
 protected:
     bool eventFilter(QObject *watched, QEvent *event);
 
@@ -106,5 +107,6 @@ private:
     HtmlTableAddDialog *htmlTableAddDialog;
     QuestionTagEditDialog *questionTagEditDialog;
 
+    QDate currentDate;
 };
 #endif // MAINWINDOW_H

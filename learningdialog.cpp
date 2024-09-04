@@ -91,6 +91,8 @@ void LearningDialog::set_items_table(QString filter)
     if(isSpeedLearn)
         ui->comboBox->setCurrentIndex(1);
     clear_question_display();
+    ui->tableView->sortByColumn(0,Qt::AscendingOrder);
+    on_comboBox_currentTextChanged(ui->comboBox->currentText());
 }
 
 void LearningDialog::set_question(int id)
@@ -177,18 +179,44 @@ void LearningDialog::on_pushButton_clicked()
     //两次提交切换题目、生成随机排序数
     if(submited)
     {
+        int newCurrentId = tableModel->index(oldRow,0).data().toInt();
+
         //更新随机排序数
-        if(ui->comboBox->currentText() == "随机排序")
+        if(ui->comboBox->currentText() == "随机排序" && newCurrentId == currentId)
         {
-            tableModel->index(oldRow,0).data().toInt();
             int randNum = QRandomGenerator::global()->bounded(32768);
-            questionSql->set_data(tableModel->index(oldRow,0).data().toInt(),"orderNum",randNum);
-            ui->tableView->sortByColumn(21,Qt::AscendingOrder);
+            questionSql->set_data(newCurrentId,"orderNum",randNum);
+            tableModel->select();
+        }else if(ui->comboBox->currentText() == "默认排序" && newCurrentId == currentId)
+        {
+            QString state = tableModel->index(oldRow,2).data().toString();
+            if(state == "learning")
+            {
+                int shortTimeCount = 0;
+                int row = oldRow + 1;
+                while(shortTimeCount < 30 && row < tableModel->rowCount())
+                {
+                    QTime gTime = QTime().fromString(tableModel->index(oldRow,5).data().toString(),"mm'm':ss's'");
+                    shortTimeCount += gTime.msecsSinceStartOfDay()/1000;
+                    row++;
+                }
+                int orderNum1 = tableModel->index(row - 1,21).data().toInt();
+                int orderNum2 = 32767;
+                if(row < tableModel->rowCount())
+                {
+                    orderNum2 = tableModel->index(row,21).data().toInt();
+                }
+                int newOrderNum = (orderNum1 + orderNum2) / 2;
+                questionSql->set_data(newCurrentId,"orderNum",newOrderNum);
+                tableModel->select();
+            }
         }
+
+        newCurrentId = tableModel->index(oldRow,0).data().toInt();
 
         //切换题目
         int newRow = oldRow;
-        if(tableModel->index(oldRow,0).data().toInt() == currentId)
+        if(newCurrentId == currentId)
         {
             newRow = oldRow + 1;
             if(newRow >= tableModel->rowCount())
@@ -344,10 +372,20 @@ void LearningDialog::on_comboBox_currentTextChanged(const QString &arg1)
         int rowCount = tableModel->rowCount();
         for(int i = 0;i < rowCount;i++)
         {
-            ui->tableView->setSortingEnabled(false);
             int randNum = QRandomGenerator::global()->bounded(32768);
             int id = tableModel->index(i,0).data().toInt();
             questionSql->set_data(id,"orderNum",randNum);
+        }
+        ui->tableView->setSortingEnabled(true);
+        ui->tableView->sortByColumn(21,Qt::AscendingOrder);
+    }else if(arg1 == "默认排序")
+    {
+        int rowCount = tableModel->rowCount();
+        int gap = 32767 / rowCount;
+        for(int i = 0;i < rowCount;i++)
+        {
+            int id = tableModel->index(i,0).data().toInt();
+            questionSql->set_data(id,"orderNum",i * gap);
         }
         ui->tableView->setSortingEnabled(true);
         ui->tableView->sortByColumn(21,Qt::AscendingOrder);

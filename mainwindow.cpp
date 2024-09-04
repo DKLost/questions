@@ -6,6 +6,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
 
     //init questionTableView
@@ -116,6 +117,23 @@ void MainWindow::reload_categoryTreeView()
     ui->categoryTreeView->hideColumn(1);
 }
 
+void MainWindow::update_count_categoryTreeView()
+{
+    QSqlQuery query(QSqlDatabase::database("connection1"));
+    query.prepare("SELECT * FROM categories");
+    query.exec();
+    while(query.next())
+    {
+        int id = query.value(0).toInt();
+        if(id == 0)
+            continue;
+        int qCount = questionSql->count_total_questions(id);
+        int qtoLearnCount = questionSql->count_total_questions_to_learn(id);
+        categoryItemLists[id][2]->setText(QString::number(qtoLearnCount));
+        categoryItemLists[id][3]->setText(QString::number(qCount));
+    }
+}
+
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == ui->questionTableView) {
@@ -151,7 +169,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 void MainWindow::get_categoryItemTree(QStandardItem* parent,int parentId)
 {
     QSqlQuery query(QSqlDatabase::database("connection1"));
-    query.prepare("SELECT * FROM categories WHERE parentId = ?");
+    query.prepare("SELECT * FROM categories WHERE parentId = ? ORDER BY name");
     query.bindValue(0,parentId);
     query.exec();
     while(query.next())
@@ -212,6 +230,12 @@ void MainWindow::on_categoryDelButton_clicked()
 
 void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
 {
+    if(currentDate != QDate::currentDate())
+    {
+        update_count_categoryTreeView();
+        currentDate = QDate::currentDate();
+    }
+
     int categoryId = index.siblingAtColumn(1).data().toInt();
     QString condString = questionSql->get_category_condString(categoryId);
     questionTableModel->setFilter(condString);
@@ -708,5 +732,4 @@ void MainWindow::on_htmlImgAddButton_clicked()
         cursor.insertHtml(imgHtml);
     }
 }
-
 
