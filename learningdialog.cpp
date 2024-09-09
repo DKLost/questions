@@ -190,6 +190,7 @@ void LearningDialog::on_pushButton_clicked()
         }else if(ui->comboBox->currentText() == "默认排序" && newCurrentId == currentId)
         {
             QString state = tableModel->index(oldRow,2).data().toString();
+            qDebug() << state;
             if(state == "learning")
             {
                 int shortTimeCount = 0;

@@ -44,3 +44,13 @@ void AnswerEditDialog::on_buttonBox_accepted()
     retString = ui->lineEdit->text();
 }
 
+
+void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
+{
+    int pixelWide = ui->lineEdit->fontMetrics().horizontalAdvance(arg1) + 35;
+    if(pixelWide < 175)
+        pixelWide = 175;
+    setFixedWidth(pixelWide);
+    //ui->lineEdit->setMaximumWidth(pixelWide);
+}
+

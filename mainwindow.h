@@ -11,6 +11,7 @@
 #include <QListWidget>
 #include <QProcess>
 #include <QFileDialog>
+#include <QFontDialog>
 #include "learningdialog.h"
 #include "questionsql.h"
 #include "questionmovedialog.h"
@@ -87,6 +88,8 @@ private slots:
     void on_questionTableView_pressed(const QModelIndex &index);
 
     void on_questionTableView_entered(const QModelIndex &index);
+
+    void on_setFontButton_clicked();
 
 private:
     Ui::MainWindow *ui;

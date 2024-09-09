@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1200</width>
-    <height>800</height>
+    <height>900</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -169,6 +169,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="setFontButton">
+        <property name="text">
+         <string>设置字体</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="label_4">
         <property name="text">
          <string> 答案</string>
@@ -297,6 +304,7 @@
             <widget class="QTextEdit" name="questionTextEdit">
              <property name="font">
               <font>
+               <family>Microsoft YaHei</family>
                <pointsize>12</pointsize>
               </font>
              </property>

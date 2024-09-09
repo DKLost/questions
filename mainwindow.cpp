@@ -733,3 +733,12 @@ void MainWindow::on_htmlImgAddButton_clicked()
     }
 }
 
+
+void MainWindow::on_setFontButton_clicked()
+{
+    bool ok;
+    QFont font = QFontDialog::getFont(&ok, QFont("黑体", 12), this);
+    if(ok)
+        ui->questionTextEdit->setCurrentFont(font);
+}
+
