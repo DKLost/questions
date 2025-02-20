@@ -375,6 +375,7 @@ void QuestionSql::update_question_state(int id,QTime myTime)
 
     interval = FSRS::next_state(rating,elapsedDays,state,d,s);
 
+    set_data(id,"state",state);
     set_data(id,"lastD",d);
     set_data(id,"lastS",s);
     set_data(id,"lastDate",QDate::currentDate().toString("yyyy/MM/dd"));
