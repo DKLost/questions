@@ -6,6 +6,9 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    QFont font("文泉驿微米黑",12);
+    //font.setStyleStrategy(QFont::PreferAntialias);
+    QApplication::setFont(font);
     currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
 

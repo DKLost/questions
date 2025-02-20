@@ -78,7 +78,7 @@ private:
 
     bool submited;
     QString rating;
-    QFont *font;
+    QFont font;
     QFontMetrics *fm;
     QuestionSql *questionSql;
     QLabel* timeLabel;

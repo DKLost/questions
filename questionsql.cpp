@@ -352,8 +352,17 @@ void QuestionSql::update_question_state(int id,QTime myTime)
     QSqlQuery query(db);
 
     QTime goodTime = QTime::fromString(get_data(id,"goodTime").toString(),"mm'm':ss's'");
+    QDate lastDate = QDate::fromString(get_data(id,"lastDate").toString(),"yyyy/MM/dd");
+
     QString rating = FSRS::time2rating(myTime,goodTime);
     QString state = get_data(id,"state").toString();
+    double d = get_data(id,"lastD").toDouble();
+    double s = get_data(id,"lastS").toDouble();
+    int interval = 0;
+    int elapsedDays = 0;
+    if(lastDate.isValid())
+        elapsedDays = lastDate.daysTo(QDate::currentDate());
+
     if(goodTime.msecsSinceStartOfDay() == 0)
     {
         if(rating != "wrong")
@@ -363,83 +372,8 @@ void QuestionSql::update_question_state(int id,QTime myTime)
         }
         return;
     }
-    double d = 0.0;
-    double s = 0.0;
-    int interval = 0;
-    if(state == "new")
-    {
-        d = FSRS::init_difficulty(FSRS::rating[rating]);
-        s = FSRS::init_stability(FSRS::rating[rating]);
-        interval = FSRS::next_interval(s);
 
-        if(rating == "wrong") set_data(id,"state","learning");
-        if(rating == "hard") set_data(id,"state","learning");
-        if(rating == "good") set_data(id,"state","learning");
-        if(rating == "easy")
-        {
-            set_data(id,"state","review");
-            double goodS = FSRS::init_stability(FSRS::rating["good"]);
-            int goodInterval = FSRS::next_interval(goodS);
-            interval = qMax(interval,goodInterval + 1);
-        }
-    }else if(state == "learning")
-    {
-        double lastD = get_data(id,"lastD").toDouble();
-        double lastS = get_data(id,"lastS").toDouble();
-        d = FSRS::next_difficulty(lastD,FSRS::rating[rating]);
-        s = FSRS::next_short_term_stability(lastS,FSRS::rating[rating]);
-        interval = FSRS::next_interval(s);
-
-        if(rating == "wrong") interval = 0;
-        if(rating == "hard") ;
-        if(rating == "good") set_data(id,"state","review");
-        if(rating == "easy")
-        {
-            set_data(id,"state","review");
-            double goodS = FSRS::next_short_term_stability(lastS,FSRS::rating["good"]);
-            int goodInterval = FSRS::next_interval(goodS);
-            interval = qMax(interval,goodInterval + 1);
-        }
-    }else if(state == "review")
-    {
-        QDate lastDate = QDate::fromString(get_data(id,"lastDate").toString(),"yyyy/MM/dd");
-        int elapsedDays = lastDate.daysTo(QDate::currentDate());
-        double lastD = get_data(id,"lastD").toDouble();
-        double lastS = get_data(id,"lastS").toDouble();
-        double retrievability = FSRS::forgetting_curve(elapsedDays,lastS);
-        d = FSRS::next_difficulty(lastD,FSRS::rating[rating]);
-        s = FSRS::next_recall_stability(lastD,lastS,retrievability,FSRS::rating[rating]);
-        interval = FSRS::next_interval(s);
-
-        if(rating == "wrong")
-        {
-            set_data(id,"state","learning");
-            interval = 0;
-        }
-        if(rating == "hard")
-        {
-            set_data(id,"state","review");
-            double goodS = FSRS::next_short_term_stability(lastS,FSRS::rating["good"]);
-            int goodInterval = FSRS::next_interval(goodS);
-            interval = qMin(interval,goodInterval);
-        }
-        if(rating == "good")
-        {
-            set_data(id,"state","review");
-            double hardS = FSRS::next_short_term_stability(lastS,FSRS::rating["hard"]);
-            int hardInterval = FSRS::next_interval(hardS);
-            interval = qMax(interval,hardInterval + 1);
-        }
-        if(rating == "easy")
-        {
-            set_data(id,"state","review");
-            double goodS = FSRS::next_short_term_stability(lastS,FSRS::rating["good"]);
-            int goodInterval = FSRS::next_interval(goodS);
-            interval = qMax(interval,goodInterval + 1);
-        }
-    }
-
-    interval = qMax(interval - 1,0);
+    interval = FSRS::next_state(rating,elapsedDays,state,d,s);
 
     set_data(id,"lastD",d);
     set_data(id,"lastS",s);

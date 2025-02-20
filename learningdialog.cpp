@@ -19,9 +19,8 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     totalTimer->setInterval(10);
     connect(totalTimer,&QTimer::timeout,this,&LearningDialog::totalTimerHandler);
 
-
-    font = new QFont("Microsoft YaHei",9);
-    fm = new QFontMetrics(*font);
+    font = QApplication::font();
+    fm = new QFontMetrics(font);
     time.setHMS(0,0,0);
     questionSql = newQuestionSql;
     submited = true;
@@ -43,6 +42,9 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
 
     //set text broswer
     ui->textBrowser->setTabStopDistance(ui->textBrowser->fontMetrics().horizontalAdvance(' ')*4);
+
+    //init isSpeedLearn
+    isSpeedLearn = false;
 
 }
 
@@ -176,6 +178,9 @@ void LearningDialog::on_pushButton_clicked()
     if(currentId == -1)
         return;
 
+    QMessageBox msgbox;
+    msgbox.setText("1");
+
     //两次提交切换题目、生成随机排序数
     if(submited)
     {
@@ -285,6 +290,7 @@ void LearningDialog::on_pushButton_clicked()
     checkLabel->show();
     oldRow = ui->tableView->currentIndex().row();
 
+
     //set accuracy label
     totalCount++;
     if(!wrong)
@@ -304,7 +310,7 @@ void LearningDialog::on_pushButton_clicked()
     }
 
     //update old row
-    tableModel->select();
+    tableModel  ->select();
     if(oldRow >= tableModel->rowCount())
         oldRow = 0;
     ui->tableView->selectRow(oldRow);

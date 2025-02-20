@@ -77,3 +77,76 @@ QString FSRS::time2rating(QTime myTime, QTime goodTime)
     }
     return rating;
 }
+
+int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,double &s)
+{
+    double nextD = 0.0;
+    double nextS = 0.0;
+    int interval = 0;
+    if(state == "new")
+    {
+        nextD = init_difficulty(FSRS::rating[rating]);
+        nextS = init_stability(FSRS::rating[rating]);
+        interval = next_interval(nextS);
+
+        state = "learning";
+        if(rating == "easy")
+        {
+            state = "review";
+            double goodS = init_stability(FSRS::rating["good"]);
+            int goodInterval = next_interval(goodS);
+            interval = qMax(interval,goodInterval + 1);
+        }
+    }else if(state == "learning")
+    {
+        nextD = next_difficulty(d,FSRS::rating[rating]);
+        nextS = next_short_term_stability(s,FSRS::rating[rating]);
+        interval = next_interval(s);
+
+        if(rating == "good") state = "review";
+        if(rating == "easy")
+        {
+            state ="review";
+            double goodS = next_short_term_stability(s,FSRS::rating["good"]);
+            int goodInterval = next_interval(goodS);
+            interval = qMax(interval,goodInterval + 1);
+        }
+    }else if(state == "review")
+    {
+        double r = forgetting_curve(elapsedDays,s);
+        nextD = next_difficulty(d,FSRS::rating[rating]);
+        nextS = next_recall_stability(d,s,r,FSRS::rating[rating]);
+        interval = next_interval(nextS);
+
+        if(rating == "hard")
+        {
+            double goodS = next_short_term_stability(s,FSRS::rating["good"]);
+            int goodInterval = next_interval(goodS);
+            interval = qMin(interval,goodInterval);
+        }
+        if(rating == "good")
+        {
+            double hardS = next_short_term_stability(s,FSRS::rating["hard"]);
+            int hardInterval = next_interval(hardS);
+            interval = qMax(interval,hardInterval + 1);
+        }
+        if(rating == "easy")
+        {
+            double goodS = next_short_term_stability(s,FSRS::rating["good"]);
+            int goodInterval = next_interval(goodS);
+            interval = qMax(interval,goodInterval + 1);
+        }
+    }
+
+    if(rating == "wrong")
+    {
+        state = "learning";
+        interval = 0;
+    }
+
+    d = nextD;
+    s = nextS;
+    interval = qMax(interval - 1,0);
+
+    return interval;
+}

@@ -29,7 +29,7 @@ public:
     static double convert_s();
 
     static QString time2rating(QTime myTime,QTime goodTime);
-private:
+    static int next_state(QString rating,int elapsedDays,QString &state,double &d,double &s);
 
 signals:
 
