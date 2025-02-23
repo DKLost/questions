@@ -13,24 +13,52 @@ AnswerEditDialog::~AnswerEditDialog()
     delete ui;
 }
 
-QString AnswerEditDialog::getRetString() const
-{
-    return retString;
-}
-
-void AnswerEditDialog::setRetString(const QString &newRetString)
-{
-    retString = newRetString;
-}
-
-void AnswerEditDialog::clearTextEdit()
+void AnswerEditDialog::resetEdit()
 {
     ui->lineEdit->clear();
+    retContent = "";
+    ui->comboBox->setCurrentText("自动检查");
+    retType = "auto";
 }
 
-void AnswerEditDialog::setTextEdit(QString text)
+QString AnswerEditDialog::getRetContent() const
 {
-    ui->lineEdit->setText(text);
+    return retContent;
+}
+
+void AnswerEditDialog::setRetContent(const QString &newRetContent)
+{
+    retContent = newRetContent;
+}
+
+void AnswerEditDialog::setType(const QString &type)
+{
+    ui->comboBox->setCurrentText(typeName[type]);
+}
+
+void AnswerEditDialog::setContent(const QString &content)
+{
+    ui->lineEdit->setText(content);
+}
+
+int AnswerEditDialog::getQId() const
+{
+    return qId;
+}
+
+void AnswerEditDialog::setQId(int newQId)
+{
+    qId = newQId;
+}
+
+QString AnswerEditDialog::getRetType() const
+{
+    return retType;
+}
+
+void AnswerEditDialog::setRetType(const QString &newRetType)
+{
+    retType = newRetType;
 }
 
 void AnswerEditDialog::lineEdit_selectAll()
@@ -41,16 +69,30 @@ void AnswerEditDialog::lineEdit_selectAll()
 
 void AnswerEditDialog::on_buttonBox_accepted()
 {
-    retString = ui->lineEdit->text();
+    retContent = ui->lineEdit->text();
+    retType = type[ui->comboBox->currentText()];
 }
-
 
 void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
 {
     int pixelWide = ui->lineEdit->fontMetrics().horizontalAdvance(arg1) + 35;
     if(pixelWide < 175)
         pixelWide = 175;
-    setFixedWidth(pixelWide);
+    setFixedWidth(pixelWide+30);
     //ui->lineEdit->setMaximumWidth(pixelWide);
+}
+
+void AnswerEditDialog::on_pushButton_clicked()
+{
+    if(ui->comboBox->currentText() == "手动检查(图片)")
+    {
+        QString dirPath = QString("%1/data/%2/").arg(QDir::currentPath()).arg(qId);
+        QString filePath = QFileDialog::getOpenFileName(this,
+                                                        "打开图片", dirPath, tr("Image Files (*.jpg *.png *.gif)"));
+        if(filePath.isNull() || filePath.isEmpty() || filePath == "")
+            return;
+        QDir dir("./");
+        ui->lineEdit->setText(dir.relativeFilePath(filePath));
+    }
 }
 

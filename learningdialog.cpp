@@ -97,8 +97,18 @@ void LearningDialog::set_items_table(QString filter)
     on_comboBox_currentTextChanged(ui->comboBox->currentText());
 }
 
+void LearningDialog::answer_lineEdit_textChanged(const QString &arg1)
+{
+    QLineEdit* senderLineEdit = (QLineEdit*)sender();
+    int pixelWide = senderLineEdit->fontMetrics().horizontalAdvance(arg1) + 15;
+    senderLineEdit->setFixedWidth(pixelWide);
+    //ui->lineEdit->setMaximumWidth(pixelWide);
+}
+
 void LearningDialog::set_question(int id)
-{    
+{
+    preSubmited = false;
+    submited = false;
     currentId = id;
     ui->idLabel->setText(QString("id:%1").arg(currentId));
 
@@ -116,20 +126,36 @@ void LearningDialog::set_question(int id)
     {
         QLineEdit* newLineEdit = new QLineEdit(this);
         QLabel* newAnswerLabel = new QLabel(this);
+        QCheckBox *newCheackBox = new QCheckBox(this);
         QLabel* newCheckLabel = new QLabel(this);
-        int pixelWide = fm->horizontalAdvance(array[i].toString());
 
-        newLineEdit->setMaximumWidth(pixelWide + 15);
-        newAnswerLabel->setText(array[i].toString());
-        newAnswerLabel->setMaximumWidth(pixelWide + 15);
+        int pixelWide = 10;
+        QJsonObject obj = array[i].toObject();
+        if(obj["type"].toString() != "manual(image)")
+        {
+            pixelWide = fm->horizontalAdvance(array[i].toObject().value("content").toString());
+        }
+        connect(newLineEdit,&QLineEdit::textChanged,this,&LearningDialog::answer_lineEdit_textChanged);
+
+        newLineEdit->setFixedWidth(pixelWide + 15);
+
+        if(obj["type"].toString() == "manual(image)")
+        {
+            newAnswerLabel->setPixmap(QPixmap{obj["content"].toString()});
+        }else
+        {
+            newAnswerLabel->setText(obj["content"].toString());
+        }
+        newCheackBox->setToolTip(obj["type"].toString());
         newCheckLabel->setText("错误");
+        newCheackBox->setChecked(false);
 
         layout->addWidget(newLineEdit,i,0);
         layout->addWidget(newAnswerLabel,i,1);
-        layout->addWidget(newCheckLabel,i,2);
+        layout->addWidget(newCheackBox,i,2);
 
         newAnswerLabel->hide();
-        newCheckLabel->hide();
+        newCheackBox->hide();
     }
 
     //add timeLabel
@@ -166,6 +192,107 @@ bool LearningDialog::is_submited()
     return submited;
 }
 
+void LearningDialog::preSubmit()
+{
+    preSubmited = true;
+    QGridLayout *layout = (QGridLayout *)ui->groupBox->layout();
+    int row = 0;
+
+    for(;row < (layout->count()-1)/3 -1;row++)
+    {
+        QLineEdit *lineEdit = (QLineEdit *)layout->itemAtPosition(row,0)->widget();
+        QLabel *answerLabel = (QLabel *)layout->itemAtPosition(row,1)->widget();
+        QCheckBox *checkBox = (QCheckBox *)layout->itemAtPosition(row,2)->widget();
+
+        if(checkBox->toolTip() == "auto")
+        {
+            if(lineEdit->text() == answerLabel->text())
+                checkBox->setChecked(true);
+            else
+                checkBox->setChecked(false);
+            checkBox->setEnabled(false);
+        }
+
+        lineEdit->setEnabled(false);
+        answerLabel->show();
+        checkBox->show();
+    }
+
+}
+
+void LearningDialog::submit()
+{
+    submited = true;
+    QGridLayout *layout = (QGridLayout *)ui->groupBox->layout();
+    int row = 0;
+    bool wrong = false;
+
+    for(;row < (layout->count()-1)/3 - 1;row++)
+    {
+        QCheckBox *checkBox = (QCheckBox *)layout->itemAtPosition(row,2)->widget();
+
+        if(checkBox->isChecked() == false)
+        {
+            wrong = true;
+            row = (layout->count()-1)/3 - 1;
+            break;
+        }
+    }
+
+    QLabel *timeLabel = (QLabel *)layout->itemAtPosition(row,0)->widget();
+    QLabel *goodTimeLabel = (QLabel *)layout->itemAtPosition(row,1)->widget();
+    QLabel *checkLabel = (QLabel *)layout->itemAtPosition(row,2)->widget();
+
+    QTime goodTime = QTime::fromString(goodTimeLabel->text(),"mm:ss.zz");
+    rating = FSRS::time2rating(time,goodTime);
+    if(rating == "hard")
+    {
+        checkLabel->setText("困难");
+    }
+    else if(rating == "easy")
+    {
+        checkLabel->setText("简单");
+    }
+    else
+    {
+        checkLabel->setText("良好");
+    }
+    if(wrong)
+    {
+        rating = "wrong";
+        time = QTime::fromMSecsSinceStartOfDay(0);
+        checkLabel->setText("出错");
+    }
+
+    questionSql->update_question_state(currentId,time);
+    checkLabel->show();
+    oldRow = ui->tableView->currentIndex().row();
+
+    //set accuracy label
+    totalCount++;
+    if(!wrong)
+        correctCount++;
+    QString acc = QString::number(double(correctCount)/totalCount*100,'f',2);
+    QString newAccuracyText = QString("正确率(%1\%):%2/%3").arg(acc).arg(correctCount).arg(totalCount);
+    ui->accuracyLabel->setText(newAccuracyText);
+
+    //set new filter
+    if(isSpeedLearn)
+    {
+        if(!wrong)
+        {
+            QString condString = QString("(%1) AND questions.id != %2").arg(tableModel->filter()).arg(currentId);
+            tableModel->setFilter(condString);
+        }
+    }
+
+    //update old row
+    tableModel  ->select();
+    if(oldRow >= tableModel->rowCount())
+        oldRow = 0;
+    ui->tableView->selectRow(oldRow);
+}
+
 void LearningDialog::on_pushButton_clicked()
 {
     stop_timer();
@@ -181,7 +308,7 @@ void LearningDialog::on_pushButton_clicked()
     QMessageBox msgbox;
     msgbox.setText("1");
 
-    //两次提交切换题目、生成随机排序数
+    //提交后再点击切换题目、生成随机排序数
     if(submited)
     {
         int newCurrentId = tableModel->index(oldRow,0).data().toInt();
@@ -195,7 +322,6 @@ void LearningDialog::on_pushButton_clicked()
         }else if(ui->comboBox->currentText() == "默认排序" && newCurrentId == currentId)
         {
             QString state = tableModel->index(oldRow,2).data().toString();
-            qDebug() << state;
             if(state == "learning")
             {
                 int shortTimeCount = 0;
@@ -236,84 +362,13 @@ void LearningDialog::on_pushButton_clicked()
         return;
     }
 
-    //主体
-    submited = true;
-    QGridLayout *layout = (QGridLayout *)ui->groupBox->layout();
-    int row = 0;
-    bool wrong = false;
-
-    for(;row < (layout->count()-1)/3 -1;row++)
+    if(!preSubmited)
+        preSubmit();
+    else if(!submited)
     {
-        QLineEdit *lineEdit = (QLineEdit *)layout->itemAtPosition(row,0)->widget();
-        QLabel *answerLabel = (QLabel *)layout->itemAtPosition(row,1)->widget();
-        QLabel *checkLabel = (QLabel *)layout->itemAtPosition(row,2)->widget();
-
-        if(lineEdit->text() == answerLabel->text())
-            checkLabel->setText("正确");
-        else
-        {
-            wrong = true;
-            checkLabel->setText("错误");
-        }
-
-        lineEdit->setEnabled(false);
-        answerLabel->show();
-        checkLabel->show();
+        preSubmited = false;
+        submit();
     }
-
-    QLabel *timeLabel = (QLabel *)layout->itemAtPosition(row,0)->widget();
-    QLabel *goodTimeLabel = (QLabel *)layout->itemAtPosition(row,1)->widget();
-    QLabel *checkLabel = (QLabel *)layout->itemAtPosition(row,2)->widget();
-
-    QTime goodTime = QTime::fromString(goodTimeLabel->text(),"mm:ss.zz");
-    rating = FSRS::time2rating(time,goodTime);
-    if(rating == "hard")
-    {
-        checkLabel->setText("困难");
-    }
-    else if(rating == "easy")
-    {
-        checkLabel->setText("简单");
-    }
-    else
-    {
-        checkLabel->setText("良好");
-    }
-    if(wrong)
-    {
-        rating = "wrong";
-        time = QTime::fromMSecsSinceStartOfDay(0);
-        checkLabel->setText("出错");
-    }
-
-    questionSql->update_question_state(currentId,time);
-    checkLabel->show();
-    oldRow = ui->tableView->currentIndex().row();
-
-
-    //set accuracy label
-    totalCount++;
-    if(!wrong)
-        correctCount++;
-    QString acc = QString::number(double(correctCount)/totalCount*100,'f',2);
-    QString newAccuracyText = QString("正确率(%1\%):%2/%3").arg(acc).arg(correctCount).arg(totalCount);
-    ui->accuracyLabel->setText(newAccuracyText);
-
-    //set new filter
-    if(isSpeedLearn)
-    {
-        if(!wrong)
-        {
-            QString condString = QString("(%1) AND questions.id != %2").arg(tableModel->filter()).arg(currentId);
-            tableModel->setFilter(condString);
-        }
-    }
-
-    //update old row
-    tableModel  ->select();
-    if(oldRow >= tableModel->rowCount())
-        oldRow = 0;
-    ui->tableView->selectRow(oldRow);
 }
 
 void LearningDialog::timerHandler()
@@ -400,6 +455,8 @@ void LearningDialog::on_comboBox_currentTextChanged(const QString &arg1)
     ui->tableView->clearSelection();
     clear_question_display();
 }
+
+
 
 int LearningDialog::getLastId() const
 {

@@ -305,15 +305,116 @@ void MainWindow::on_questionTableView_activated(const QModelIndex &index)
     is_questionTextEdit_editable = false;
     ui->questionTextEdit->setHtml(questionHTML);
     is_questionTextEdit_editable = true;
+    ui->answerListWidget->setIconSize(QSize(1000,1000));
 
     //load answer.json
     QJsonArray array = questionSql->read_answerJSON(id);
     ui->answerListWidget->clear();
     for(auto item : array)
     {
-        ui->answerListWidget->addItem(item.toString());
+        QJsonObject itemObject = item.toObject();
+        QString type = itemObject.value("type").toString();
+        QListWidgetItem *aitem = new QListWidgetItem{};
+        if(type == "manual(image)")
+        {
+            QIcon icon{itemObject.value("content").toString()};
+            aitem->setIcon(icon);
+            aitem->setWhatsThis(itemObject.value("content").toString());
+            //aitem->setText(itemObject.value("content").toString());
+            aitem->setToolTip("manual(image)");
+        }else if(type == "manual")
+        {
+            aitem->setText(itemObject.value("content").toString());
+            aitem->setToolTip("manual");
+        }else if(type == "auto")
+        {
+            aitem->setText(itemObject.value("content").toString());
+            aitem->setToolTip("auto");
+        }
+        ui->answerListWidget->addItem(aitem);
     }
 }
+
+void MainWindow::save_answerList(int id)
+{
+    QJsonArray array;
+
+    int rowCount = ui->answerListWidget->count();
+    for(int i = 0;i < rowCount;i++)
+    {
+        QJsonObject object;
+        QString type = ui->answerListWidget->item(i)->toolTip();
+
+        object.insert("type",ui->answerListWidget->item(i)->toolTip());
+        if(type == "manual(image)")
+        {
+            object.insert("content",ui->answerListWidget->item(i)->whatsThis());
+        }else
+        {
+            object.insert("content",ui->answerListWidget->item(i)->text());
+        }
+
+        array.append(object);
+        //array.append(ui->answerListWidget->item(i)->text());
+    }
+    questionSql->write_answerJSON(id,array);
+}
+
+//新建答案
+void MainWindow::on_answerAddButton_clicked()
+{
+    int row = ui->answerListWidget->currentRow() + 1;
+    ui->answerListWidget->insertItem(row,"");
+    ui->answerListWidget->setCurrentRow(row);
+
+    on_answerEditButton_clicked();
+}
+
+//修改答案
+void MainWindow::on_answerEditButton_clicked()
+{
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
+        return;
+    int id = index.siblingAtColumn(0).data().toInt();
+
+    QListWidgetItem *item = ui->answerListWidget->currentItem();
+    if(item == NULL)
+        return;
+
+    answerEditDialog->setQId(id);
+    answerEditDialog->resetEdit();
+    answerEditDialog->setType(item->toolTip());
+    if(item->toolTip() == "manual(image)")
+    {
+        answerEditDialog->setContent(item->whatsThis());
+    }else
+    {
+        answerEditDialog->setContent(item->text());
+    }
+    answerEditDialog->lineEdit_selectAll();
+    answerEditDialog->exec();
+
+    QString answerType = answerEditDialog->getRetType();
+    QString answerContent = answerEditDialog->getRetContent();
+    if(answerContent == "")
+        return;
+
+    item->setToolTip(answerType);
+    if(answerType == "manual(image)")
+    {
+        item->setWhatsThis(answerContent);
+        item->setIcon(QIcon{answerContent});
+    }else{
+        item->setText(answerContent);
+    }
+
+    save_answerList(id);
+}
+
+
+
+//
 void MainWindow::on_questionTableView_clicked(const QModelIndex &index)
 {
     on_questionTableView_activated(index);
@@ -330,7 +431,6 @@ void MainWindow::on_questionTableView_entered(const QModelIndex &index)
         return;
     on_questionTableView_activated(index);
 }
-
 
 void MainWindow::on_questionDelButton_clicked()
 {
@@ -389,27 +489,7 @@ void MainWindow::on_questionMoveButton_clicked()
     on_questionTableView_activated(newIndex);
 }
 
-void MainWindow::on_answerAddButton_clicked()
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    int id = index.siblingAtColumn(0).data().toInt();
 
-    answerEditDialog->setRetString("");
-    answerEditDialog->clearTextEdit();
-    answerEditDialog->lineEdit_selectAll();
-    answerEditDialog->exec();
-
-    QString answerString = answerEditDialog->getRetString();
-    if(answerString == "")
-        return;
-
-    int row = ui->answerListWidget->currentRow() + 1;
-    ui->answerListWidget->insertItem(row,answerString);
-    ui->answerListWidget->setCurrentRow(row);
-    save_answerList(id);
-}
 
 
 void MainWindow::on_answerDelButton_clicked()
@@ -428,29 +508,7 @@ void MainWindow::on_answerDelButton_clicked()
     save_answerList(id);
 }
 
-void MainWindow::on_answerEditButton_clicked()
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    int id = index.siblingAtColumn(0).data().toInt();
 
-    QListWidgetItem *item = ui->answerListWidget->currentItem();
-    if(item == NULL)
-        return;
-
-    answerEditDialog->setRetString("");
-    answerEditDialog->setTextEdit(item->text());
-    answerEditDialog->lineEdit_selectAll();
-    answerEditDialog->exec();
-
-    QString answerString = answerEditDialog->getRetString();
-    if(answerString == "")
-        return;
-    item->setText(answerString);
-
-    save_answerList(id);
-}
 
 void MainWindow::on_answerListWidget_itemDoubleClicked(QListWidgetItem *item)
 {
@@ -466,16 +524,6 @@ void MainWindow::on_answerListRowsMoved(const QModelIndex &sourceParent, int sou
     save_answerList(id);
 }
 
-void MainWindow::save_answerList(int id)
-{
-    QJsonArray array;
-    int rowCount = ui->answerListWidget->count();
-    for(int i = 0;i < rowCount;i++)
-    {
-        array.append(ui->answerListWidget->item(i)->text());
-    }
-    questionSql->write_answerJSON(id,array);
-}
 
 
 void MainWindow::on_setGoodTimeButton_clicked()
@@ -494,10 +542,9 @@ void MainWindow::on_setGoodTimeButton_clicked()
 
     for(auto index : indexes)
     {
-        id = index.siblingAtColumn(0).data( ).toInt();
+        id = index.siblingAtColumn(0).data().toInt();
         questionSql->set_goodTime(id,time);
     }
-
 
     questionTableModel->select();
     QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,firstId).begin();
@@ -645,7 +692,6 @@ void MainWindow::category_item_change_handler(QStandardItem *item)
     on_categoryTreeView_clicked(item->index());
 }
 
-
 void MainWindow::on_addTagButton_clicked()
 {
     QSqlQuery query(QSqlDatabase::database("connection1"));
@@ -664,7 +710,6 @@ void MainWindow::on_addTagButton_clicked()
     tagTableModel->select();
 }
 
-
 void MainWindow::on_delTagButton_clicked()
 {
     QModelIndex index = ui->tagTableView->currentIndex();
@@ -672,7 +717,6 @@ void MainWindow::on_delTagButton_clicked()
     questionSql->del_tag(id);
     tagTableModel->select();
 }
-
 
 void MainWindow::on_questionTagButton_clicked()
 {
@@ -735,7 +779,6 @@ void MainWindow::on_htmlImgAddButton_clicked()
         cursor.insertHtml(imgHtml);
     }
 }
-
 
 void MainWindow::on_setFontButton_clicked()
 {

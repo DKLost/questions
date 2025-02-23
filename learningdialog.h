@@ -16,6 +16,8 @@
 #include <QSqlRelationalTableModel>
 #include <QRandomGenerator>
 #include <QSqlRecord>
+#include <QJsonObject>
+#include <QCheckBox>
 
 namespace Ui {
 class LearningDialog;
@@ -64,6 +66,8 @@ private slots:
 
     void on_comboBox_currentTextChanged(const QString &arg1);
 
+    void answer_lineEdit_textChanged(const QString &arg1);
+
 private:
     Ui::LearningDialog *ui;
 
@@ -76,6 +80,7 @@ private:
     int correctCount;
     bool isSpeedLearn;
 
+    bool preSubmited;
     bool submited;
     QString rating;
     QFont font;
@@ -87,6 +92,8 @@ private:
     int oldRow;
 
     int lastId;
+    void preSubmit();
+    void submit();
 };
 
 #endif // LEARNINGDIALOG_H

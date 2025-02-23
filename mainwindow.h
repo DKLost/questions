@@ -12,6 +12,7 @@
 #include <QProcess>
 #include <QFileDialog>
 #include <QFontDialog>
+#include <QJsonObject>
 #include "learningdialog.h"
 #include "questionsql.h"
 #include "questionmovedialog.h"
