@@ -1,7 +1,6 @@
 #include "questiontageditdialog.h"
 #include "ui_questiontageditdialog.h"
 
-
 QuestionTagEditDialog::QuestionTagEditDialog(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::QuestionTagEditDialog)

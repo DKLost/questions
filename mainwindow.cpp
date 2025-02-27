@@ -12,21 +12,8 @@ MainWindow::MainWindow(QWidget *parent)
     currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
 
-    //init questionTableView
-    questionTableModel = new QSqlRelationalTableModel(this,questionSql->getDb());
-    questionTableModel->setTable("questions");
-    questionTableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
-    questionTableModel->setRelation(1,QSqlRelation{"categories","id","name"});
-    questionTableModel->select();
-
-    ui->questionTableView->setModel(questionTableModel);
-    ui->questionTableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->questionTableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    ui->questionTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->questionTableView->setSortingEnabled(true);
-    ui->questionTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    set_tableHeader();
-    ui->questionTableView->installEventFilter(this);
+    init_questionTableView();
+    init_answerTableView();
 
     //init categoryTreeView
     categoryItemModel = new QStandardItemModel(this);
@@ -83,6 +70,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->splitter->setStretchFactor(0,0);
     ui->splitter->setStretchFactor(1,0);
     ui->splitter->setStretchFactor(2,1);
+
 }
 
 MainWindow::~MainWindow()
@@ -90,173 +78,252 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::set_tableHeader()
+
+//answer
+void MainWindow::init_answerTableView()
+{
+    answerTableModel = new QSqlTableModel(this,questionSql->getDb());
+    answerTableModel->setTable("answers");
+    answerTableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+
+    ui->answerTableView->setModel(answerTableModel);
+    ui->answerTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    set_answer_tableHeader();
+}
+void MainWindow::set_answer_tableHeader()
+{
+    answerTableModel->setHeaderData(1, Qt::Horizontal, "状态");
+    answerTableModel->setHeaderData(2, Qt::Horizontal, "平均评分");
+    answerTableModel->setHeaderData(3, Qt::Horizontal, "良好用时");
+    answerTableModel->setHeaderData(4, Qt::Horizontal, "平均用时");
+    answerTableModel->setHeaderData(5, Qt::Horizontal, "最佳用时");
+    answerTableModel->setHeaderData(6, Qt::Horizontal, "到期");
+    answerTableModel->setHeaderData(7, Qt::Horizontal, "最近学习");
+}
+void MainWindow::on_answerAddButton_clicked() //新建答案
+{
+    int row = ui->answerListWidget->currentRow() + 1;
+    ui->answerListWidget->insertItem(row,"");
+    ui->answerListWidget->setCurrentRow(row);
+    int id = questionSql->get_max_id("answers") + 1;
+    ui->answerListWidget->currentItem()->setStatusTip(QString::number(id));
+    questionSql->add_answer(id);
+
+    on_answerEditButton_clicked();
+}
+void MainWindow::on_answerEditButton_clicked() //修改答案
+{
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
+        return;
+    int id = index.siblingAtColumn(0).data().toInt();
+
+    QListWidgetItem *item = ui->answerListWidget->currentItem();
+    if(item == NULL)
+        return;
+
+    //init
+    int aId = item->statusTip().toInt();
+    QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("answers",aId,"goodTime").toString());
+    answerEditDialog->setQId(id);
+    answerEditDialog->resetEdit();
+    answerEditDialog->setType(item->toolTip());
+    answerEditDialog->setGoodTime(goodTime);
+    if(item->toolTip() == "manual(image)")
+    {
+        answerEditDialog->setContent(item->whatsThis());
+    }else
+    {
+        answerEditDialog->setContent(item->text());
+    }
+    answerEditDialog->lineEdit_selectAll();
+    answerEditDialog->exec();
+
+    //return
+    QString answerType = answerEditDialog->getRetType();
+    QString answerContent = answerEditDialog->getRetContent();
+    QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
+    if(answerContent == "")
+        return;
+
+    item->setToolTip(answerType);
+    item->setWhatsThis(answerContent);
+    if(answerType == "manual(image)")
+    {
+        item->setIcon(QIcon{answerContent});
+    }else{
+        item->setText(answerContent);
+    }
+    questionSql->set_value("answers",aId,"goodTime",answerGoodTime);
+
+    save_answerList(id);
+}
+void MainWindow::on_answerDelButton_clicked() //删除答案
+{
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
+        return;
+    int qId = index.siblingAtColumn(0).data().toInt();
+
+    QListWidgetItem *item = ui->answerListWidget->currentItem();
+    if(item == NULL)
+        return;
+
+    int aId = item->statusTip().toInt();
+    questionSql->del_answer(aId);
+
+    delete item;
+
+    save_answerList(qId);
+}
+void MainWindow::save_answerList(int id) //保存指定题目的所有答案
+{
+    QJsonArray array;
+
+    int rowCount = ui->answerListWidget->count();
+    for(int i = 0;i < rowCount;i++)
+    {
+        QJsonObject object;
+        QString type = ui->answerListWidget->item(i)->toolTip();
+
+        object.insert("id",ui->answerListWidget->item(i)->statusTip().toInt());
+        object.insert("type",ui->answerListWidget->item(i)->toolTip());
+        object.insert("content",ui->answerListWidget->item(i)->whatsThis());
+
+        array.append(object);
+    }
+    questionSql->write_answerJSON(id,array);
+}
+void MainWindow::on_answerListWidget_itemDoubleClicked(QListWidgetItem *item)
+{
+    on_answerEditButton_clicked();
+}
+void MainWindow::on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow)
+{
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
+        return;
+    int id = index.siblingAtColumn(0).data().toInt();
+    save_answerList(id);
+}
+void MainWindow::on_answerListWidget_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
+{
+    if(current != nullptr)
+    {
+        int aId = current->statusTip().toInt();
+        QString condString = QString("id = %1").arg(aId);
+        answerTableModel->setFilter(condString);
+        answerTableModel->select();
+    }
+}
+
+//question
+void MainWindow::init_questionTableView()
+{
+    questionTableModel = new QSqlRelationalTableModel(this,questionSql->getDb());
+    questionTableModel->setTable("questions");
+    questionTableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    questionTableModel->setRelation(1,QSqlRelation{"categories","id","name"});
+    questionTableModel->select();
+
+    ui->questionTableView->setModel(questionTableModel);
+    ui->questionTableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->questionTableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    ui->questionTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->questionTableView->setSortingEnabled(true);
+    ui->questionTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    set_quesion_tableHeader();
+    ui->questionTableView->installEventFilter(this);
+}
+void MainWindow::set_quesion_tableHeader()
 {
     questionTableModel->setHeaderData(1, Qt::Horizontal, "类别");
-    questionTableModel->setHeaderData(2, Qt::Horizontal, "状态");
-    questionTableModel->setHeaderData(3, Qt::Horizontal, "平均评分");
-    questionTableModel->setHeaderData(4, Qt::Horizontal, "平均用时");
+    questionTableModel->setHeaderData(2, Qt::Horizontal, "名称");
+    questionTableModel->setHeaderData(3, Qt::Horizontal, "状态");
+    questionTableModel->setHeaderData(4, Qt::Horizontal, "平均评分");
     questionTableModel->setHeaderData(5, Qt::Horizontal, "良好用时");
-    questionTableModel->setHeaderData(6, Qt::Horizontal, "最佳用时");
-    questionTableModel->setHeaderData(7, Qt::Horizontal, "到期");
-    questionTableModel->setHeaderData(8, Qt::Horizontal, "最近学习");
-    for(int i = 9;i < 21;i++)
+    questionTableModel->setHeaderData(6, Qt::Horizontal, "平均用时");
+    questionTableModel->setHeaderData(7, Qt::Horizontal, "最佳用时");
+    questionTableModel->setHeaderData(8, Qt::Horizontal, "到期");
+    questionTableModel->setHeaderData(9, Qt::Horizontal, "最近学习");
+}
+void MainWindow::select_question_by_id(int id)
+{
+    if(id >= 0)
     {
-        ui->questionTableView->hideColumn(i);
+        auto indexList = questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,id);
+        QModelIndex index = *indexList.begin();
+        ui->questionTableView->setCurrentIndex(index);
+        on_questionTableView_activated(index);
     }
 }
-
-void MainWindow::reload_categoryTreeView()
+void MainWindow::on_questionDirOpenButton_clicked()
 {
-    categoryItemLists.clear();
-    categoryItemModel->clear();
-    categoryItemModel->setHorizontalHeaderLabels({"名称","id","待学习","总数"});
-    categoryItemLists[0].append(categoryItemModel->invisibleRootItem());
-    get_categoryItemTree(categoryItemLists[0][0],0);
-    ui->categoryTreeView->setModel(categoryItemModel);
-    ui->categoryTreeView->header()->setStretchLastSection(false);
-    ui->categoryTreeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->categoryTreeView->header()->setSectionResizeMode(0,QHeaderView::Stretch);
-    ui->categoryTreeView->hideColumn(1);
-}
-
-void MainWindow::update_count_categoryTreeView()
-{
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    query.prepare("SELECT * FROM categories");
-    query.exec();
-    while(query.next())
+    if(ui->questionTableView->currentIndex().isValid())
     {
-        int id = query.value(0).toInt();
-        if(id == 0)
-            continue;
-        int qCount = questionSql->count_total_questions(id);
-        int qtoLearnCount = questionSql->count_total_questions_to_learn(id);
-        categoryItemLists[id][2]->setText(QString::number(qtoLearnCount));
-        categoryItemLists[id][3]->setText(QString::number(qCount));
+        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        QString path = QString("%1/data/%2/question.html").arg(QDir::currentPath()).arg(qId);
+        QStringList args;
+        args << "/select," << QDir::toNativeSeparators(path);
+        QProcess process;
+        process.startDetached("explorer",args);
     }
 }
-
-bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+void MainWindow::on_questionTableView_clicked(const QModelIndex &index)
 {
-    if (watched == ui->questionTableView) {
-        if (event->type() == QEvent::KeyPress) {
-            QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
-            if(keyEvent->key() == Qt::Key_Up)
-            {
-                QModelIndex index = ui->questionTableView->currentIndex();
-                if(index.row() > 0)
-                {
-                    ui->questionTableView->selectRow(index.row() - 1);
-                    ui->questionTableView->activated(ui->questionTableView->currentIndex());
-                }
-            }else if(keyEvent->key() == Qt::Key_Down)
-            {
-                QModelIndex index = ui->questionTableView->currentIndex();
-                if(index.row() < ui->questionTableView->model()->rowCount())
-                {
-                    ui->questionTableView->selectRow(index.row() + 1);
-                    ui->questionTableView->activated(ui->questionTableView->currentIndex());
-                }
-            }
-            return true;
-        } else {
-            return false;
-        }
-    } else {
-        // pass the event on to the parent class
-        return QMainWindow::eventFilter(watched, event);
-    }
+    on_questionTableView_activated(index);
 }
-
-void MainWindow::get_categoryItemTree(QStandardItem* parent,int parentId)
+void MainWindow::on_questionTableView_pressed(const QModelIndex &index)
 {
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    query.prepare("SELECT * FROM categories WHERE parentId = ? ORDER BY name");
-    query.bindValue(0,parentId);
-    query.exec();
-    while(query.next())
-    {
-        int id = query.value(0).toInt();
-        QString name = query.value(1).toString();
-        int qCount = questionSql->count_total_questions(id);
-        int qtoLearnCount = questionSql->count_total_questions_to_learn(id);
-        categoryItemLists[id].append(new QStandardItem(name));
-        categoryItemLists[id].append(new QStandardItem(QString::number(id)));
-        categoryItemLists[id].append(new QStandardItem(QString::number(qtoLearnCount)));
-        categoryItemLists[id].append(new QStandardItem(QString::number(qCount)));
-        parent->appendRow(categoryItemLists[id]);
-        get_categoryItemTree(categoryItemLists[id][0],id);
-    }
+    //on_questionTableView_activated(index);
 }
-
-void MainWindow::on_categoryAddButton_clicked()
+void MainWindow::on_questionTableView_entered(const QModelIndex &index)
 {
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    QModelIndex index =ui->categoryTreeView->currentIndex();
-    query.exec("SELECT MAX(id) FROM categories");
-    query.next();
-    int id = query.value(0).toInt() + 1;
-    QString name = ui->lineEdit->text();
-    int parentId = index.siblingAtColumn(1).data().toInt();
-    if(parentId == 1)
-        parentId = 0;
-    query.prepare("INSERT INTO categories VALUES(?,?,?)");
-    query.bindValue(0,id);
-    query.bindValue(1,name);
-    query.bindValue(2,parentId);
-    query.exec();
-    reload_categoryTreeView();
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
-}
-
-void MainWindow::on_categoryDelButton_clicked()
-{
-    QModelIndex index =ui->categoryTreeView->currentIndex();
-    int id = index.siblingAtColumn(1).data().toInt();
-    if(id == 1)
+    if(QGuiApplication::mouseButtons() == Qt::NoButton)
         return;
-    questionSql->del_category(id);
-    QStandardItem *parent = categoryItemLists[id][0]->parent();
-    if(!parent)
-        parent = categoryItemLists[0][0];
-    int row = categoryItemLists[id][0]->row();
-    parent->removeRow(row);
-
-    int parentId = parent->index().siblingAtColumn(1).data().toInt();
-    if(parentId == 0)
-        parentId = 1;
-    reload_categoryTreeView();
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
-    on_categoryTreeView_clicked(categoryItemLists[parentId][0]->index());
+    if(QGuiApplication::mouseButtons() == Qt::RightButton)
+        return;
+    on_questionTableView_activated(index);
 }
-
-void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
+void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题目选取功能 2024/8/11
 {
-    if(currentDate != QDate::currentDate())
+    int id = index.siblingAtColumn(0).data().toInt();
+
+    //load question.html
+    QString questionHTML = questionSql->read_questionHTML(id);
+    is_questionTextEdit_editable = false;
+    ui->questionTextEdit->setHtml(questionHTML);
+    is_questionTextEdit_editable = true;
+
+    //load answer.json
+    QJsonArray array = questionSql->read_answerJSON(id);
+    ui->answerListWidget->clear();
+    ui->answerListWidget->setIconSize(QSize(1000,1000));
+    for(auto item : array)
     {
-        update_count_categoryTreeView();
-        currentDate = QDate::currentDate();
+        QJsonObject itemObject = item.toObject();
+        QString type = itemObject["type"].toString();
+        QListWidgetItem *aitem = new QListWidgetItem{};//id:StatusTip,type:ToolTip,content:WhatsThis
+        aitem->setStatusTip(QString::number(itemObject["id"].toInt()));
+        aitem->setToolTip(type);
+        aitem->setWhatsThis(itemObject["content"].toString());
+        if(type == "manual(image)")
+        {
+            QIcon icon{itemObject["content"].toString()};
+            aitem->setIcon(icon);
+        }else
+            aitem->setText(itemObject["content"].toString());
+        ui->answerListWidget->addItem(aitem);
     }
-
-    int categoryId = index.siblingAtColumn(1).data().toInt();
-    QString condString = questionSql->get_category_condString(categoryId);
-    questionTableModel->setFilter(condString);
-    currentSection = 0;
 }
-
 void MainWindow::on_questionAddButton_clicked()
 {
-    QSqlQuery query(QSqlDatabase::database("connection1"));
+    int id = questionSql->get_max_id("questions") + 1;
     QModelIndex index =ui->categoryTreeView->currentIndex();
-    query.exec("SELECT MAX(id) FROM questions");
-
-    int id = 1;
-    if(query.next())
-        id = query.value(0).toInt() + 1;
-
     int categoryId = index.siblingAtColumn(1).data().toInt();
-    questionSql->add_question(id,categoryId);
+    QString name = ui->lineEdit->text();
+    qDebug() << id;
+    questionSql->add_question(id,categoryId,name);
 
     //reload categoryTreeView
     reload_categoryTreeView();
@@ -274,164 +341,9 @@ void MainWindow::on_questionAddButton_clicked()
     ui->questionTableView->selectRow(row);
     on_questionTableView_clicked(ui->questionTableView->currentIndex());
 
-    ui->answerListWidget->addItem("请输入答案");
+    //ui->answerListWidget->addItem("请输入答案");
     save_answerList(id);
 }
-
-
-void MainWindow::on_questionTextEdit_textChanged()
-{
-    if(!is_questionTextEdit_editable)
-        return;
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    int id = index.siblingAtColumn(0).data().toInt();
-    QString questionHTML;
-    questionHTML = ui->questionTextEdit->toHtml();
-    questionSql->write_questionHTML(id,questionHTML);
-    on_categoryTreeView_clicked(ui->categoryTreeView->currentIndex());
-    ui->questionTableView->selectRow(index.row());
-}
-
-
-//题目选取功能 2024/8/11
-void MainWindow::on_questionTableView_activated(const QModelIndex &index)
-{
-    int id = index.siblingAtColumn(0).data().toInt();
-
-    //load question.html
-    QString questionHTML = questionSql->read_questionHTML(id);
-    is_questionTextEdit_editable = false;
-    ui->questionTextEdit->setHtml(questionHTML);
-    is_questionTextEdit_editable = true;
-    ui->answerListWidget->setIconSize(QSize(1000,1000));
-
-    //load answer.json
-    QJsonArray array = questionSql->read_answerJSON(id);
-    ui->answerListWidget->clear();
-    for(auto item : array)
-    {
-        QJsonObject itemObject = item.toObject();
-        QString type = itemObject.value("type").toString();
-        QListWidgetItem *aitem = new QListWidgetItem{};
-        if(type == "manual(image)")
-        {
-            QIcon icon{itemObject.value("content").toString()};
-            aitem->setIcon(icon);
-            aitem->setWhatsThis(itemObject.value("content").toString());
-            //aitem->setText(itemObject.value("content").toString());
-            aitem->setToolTip("manual(image)");
-        }else if(type == "manual")
-        {
-            aitem->setText(itemObject.value("content").toString());
-            aitem->setToolTip("manual");
-        }else if(type == "auto")
-        {
-            aitem->setText(itemObject.value("content").toString());
-            aitem->setToolTip("auto");
-        }
-        ui->answerListWidget->addItem(aitem);
-    }
-}
-
-void MainWindow::save_answerList(int id)
-{
-    QJsonArray array;
-
-    int rowCount = ui->answerListWidget->count();
-    for(int i = 0;i < rowCount;i++)
-    {
-        QJsonObject object;
-        QString type = ui->answerListWidget->item(i)->toolTip();
-
-        object.insert("type",ui->answerListWidget->item(i)->toolTip());
-        if(type == "manual(image)")
-        {
-            object.insert("content",ui->answerListWidget->item(i)->whatsThis());
-        }else
-        {
-            object.insert("content",ui->answerListWidget->item(i)->text());
-        }
-
-        array.append(object);
-        //array.append(ui->answerListWidget->item(i)->text());
-    }
-    questionSql->write_answerJSON(id,array);
-}
-
-//新建答案
-void MainWindow::on_answerAddButton_clicked()
-{
-    int row = ui->answerListWidget->currentRow() + 1;
-    ui->answerListWidget->insertItem(row,"");
-    ui->answerListWidget->setCurrentRow(row);
-
-    on_answerEditButton_clicked();
-}
-
-//修改答案
-void MainWindow::on_answerEditButton_clicked()
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    int id = index.siblingAtColumn(0).data().toInt();
-
-    QListWidgetItem *item = ui->answerListWidget->currentItem();
-    if(item == NULL)
-        return;
-
-    answerEditDialog->setQId(id);
-    answerEditDialog->resetEdit();
-    answerEditDialog->setType(item->toolTip());
-    if(item->toolTip() == "manual(image)")
-    {
-        answerEditDialog->setContent(item->whatsThis());
-    }else
-    {
-        answerEditDialog->setContent(item->text());
-    }
-    answerEditDialog->lineEdit_selectAll();
-    answerEditDialog->exec();
-
-    QString answerType = answerEditDialog->getRetType();
-    QString answerContent = answerEditDialog->getRetContent();
-    if(answerContent == "")
-        return;
-
-    item->setToolTip(answerType);
-    if(answerType == "manual(image)")
-    {
-        item->setWhatsThis(answerContent);
-        item->setIcon(QIcon{answerContent});
-    }else{
-        item->setText(answerContent);
-    }
-
-    save_answerList(id);
-}
-
-
-
-//
-void MainWindow::on_questionTableView_clicked(const QModelIndex &index)
-{
-    on_questionTableView_activated(index);
-}
-void MainWindow::on_questionTableView_pressed(const QModelIndex &index)
-{
-    on_questionTableView_activated(index);
-}
-void MainWindow::on_questionTableView_entered(const QModelIndex &index)
-{
-    if(QGuiApplication::mouseButtons() == Qt::NoButton)
-        return;
-    if(QGuiApplication::mouseButtons() == Qt::RightButton)
-        return;
-    on_questionTableView_activated(index);
-}
-
 void MainWindow::on_questionDelButton_clicked()
 {
     QModelIndex index = ui->questionTableView->currentIndex();
@@ -455,7 +367,6 @@ void MainWindow::on_questionDelButton_clicked()
         on_questionTableView_clicked(ui->questionTableView->currentIndex());
     }
 }
-
 void MainWindow::on_questionMoveButton_clicked()
 {
     QModelIndexList indexes = ui->questionTableView->selectionModel()->selectedIndexes();
@@ -471,7 +382,7 @@ void MainWindow::on_questionMoveButton_clicked()
     for(auto index : indexes)
     {
         id = index.siblingAtColumn(0).data().toInt();
-        questionSql->set_question_categoryId(id,newCategoryId);
+        questionSql->set_value("questions",id,"categoryId",newCategoryId);
     }
 
     reload_categoryTreeView();
@@ -488,82 +399,34 @@ void MainWindow::on_questionMoveButton_clicked()
     ui->questionTableView->setCurrentIndex(newIndex);
     on_questionTableView_activated(newIndex);
 }
-
-
-
-
-void MainWindow::on_answerDelButton_clicked()
+void MainWindow::on_questionTextEdit_textChanged()
 {
+    if(!is_questionTextEdit_editable)
+        return;
     QModelIndex index = ui->questionTableView->currentIndex();
     if(!index.isValid())
         return;
     int id = index.siblingAtColumn(0).data().toInt();
-
-    QListWidgetItem *item = ui->answerListWidget->currentItem();
-    if(item == NULL)
-        return;
-
-    delete item;
-
-    save_answerList(id);
+    QString questionHTML;
+    questionHTML = ui->questionTextEdit->toHtml();
+    questionSql->write_questionHTML(id,questionHTML);
+    on_categoryTreeView_clicked(ui->categoryTreeView->currentIndex());
+    ui->questionTableView->selectRow(index.row());
 }
-
-
-
-void MainWindow::on_answerListWidget_itemDoubleClicked(QListWidgetItem *item)
-{
-    on_answerEditButton_clicked();
-}
-
-void MainWindow::on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow)
+void MainWindow::on_questionRenameButton_clicked()
 {
     QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    int id = index.siblingAtColumn(0).data().toInt();
-    save_answerList(id);
-}
 
-
-
-void MainWindow::on_setGoodTimeButton_clicked()
-{
-    QModelIndexList indexes = ui->questionTableView->selectionModel()->selectedIndexes();
-    if(indexes.count() <= 0)
-        return;
-    int firstId = indexes.begin()->siblingAtColumn(0).data().toInt();
-    int id = firstId;
-    QTime goodTime = QTime::fromString(questionSql->get_data(id,"goodTime").toString(),"mm'm':ss's'");
-    setTimeDialog->setTime(goodTime);
-    setTimeDialog->exec();
-    QTime time = setTimeDialog->getTime();
-    if(time.msecsSinceStartOfDay() == 0)
-        return;
-
-    for(auto index : indexes)
+    questionRenameDialog.setText(index.siblingAtColumn(2).data().toString());
+    if(questionRenameDialog.exec())
     {
-        id = index.siblingAtColumn(0).data().toInt();
-        questionSql->set_goodTime(id,time);
-    }
-
-    questionTableModel->select();
-    QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,firstId).begin();
-    ui->questionTableView->setCurrentIndex(newIndex);
-    on_questionTableView_activated(newIndex);
-}
-
-void MainWindow::select_question_by_id(int id)
-{
-    if(id >= 0)
-    {
-        auto indexList = questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,id);
-        QModelIndex index = *indexList.begin();
-        ui->questionTableView->setCurrentIndex(index);
-        on_questionTableView_activated(index);
+        questionTableModel->setData(index.siblingAtColumn(2),questionRenameDialog.getText());
+        questionTableModel->submitAll();
     }
 }
-//单项学习
-void MainWindow::on_itemLearnButton_clicked()
+
+//learn
+void MainWindow::on_itemLearnButton_clicked()//单项学习
 {
     QModelIndex index = ui->questionTableView->currentIndex();
     if(!index.isValid())
@@ -572,6 +435,7 @@ void MainWindow::on_itemLearnButton_clicked()
 
     learningDialog->clear_question_display();
     learningDialog->set_items_table(QString("questions.id = %1").arg(id));
+    learningDialog->setOnlyToLearn(false);
     learningDialog->exec();
 
     //update categoryTreeView
@@ -585,50 +449,9 @@ void MainWindow::on_itemLearnButton_clicked()
         select_question_by_id(learningDialog->getLastId());
     }
 }
-//类别学习（全部）
-void MainWindow::on_categoryLearnButton_clicked()
+void MainWindow::on_speedLearnButton_clicked()// 标签学习（不重复）
 {
-    learningDialog->set_items_table(questionTableModel->filter());
-    learningDialog->exec();
-
-    //update categoryTreeView
-    QModelIndex index = ui->categoryTreeView->currentIndex();
-    int categoryId = index.siblingAtColumn(1).data().toInt();
-    reload_categoryTreeView();
-    if(!index.isValid())
-        return;
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-
-    questionTableModel->select();
-    if(learningDialog->getLastId() != -1)
-    {
-        select_question_by_id(learningDialog->getLastId());
-    }
-}
-//类别学习（仅待学）
-void MainWindow::on_categoryToLearnButton_clicked()
-{
-    learningDialog->clear_question_display();
-    learningDialog->set_items_table(questionSql->get_toLearn_condString(questionTableModel->filter()));
-    learningDialog->exec();
-
-    //update categoryTreeView
-    QModelIndex index = ui->categoryTreeView->currentIndex();
-    int categoryId = index.siblingAtColumn(1).data().toInt();
-    reload_categoryTreeView();
-    if(!index.isValid())
-        return;
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-
-    questionTableModel->select();
-    if(learningDialog->getLastId() != -1)
-    {
-        select_question_by_id(learningDialog->getLastId());
-    }
-}
-// 标签学习（不重复）
-void MainWindow::on_speedLearnButton_clicked()
-{
+    learningDialog->setOnlyToLearn(false);
     learningDialog->setIsSpeedLearn(true);
     learningDialog->set_items_table(questionTableModel->filter());
     learningDialog->exec();
@@ -660,110 +483,50 @@ void MainWindow::on_speedLearnButton_clicked()
         }
     }
 }
-
-void MainWindow::on_htmlTableAddButton_clicked()
+void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
 {
-    htmlTableAddDialog->setRetRow(0);
-    htmlTableAddDialog->setRetColumn(0);
-    htmlTableAddDialog->exec();
-    QTextTableFormat tf;
-    tf.setBorder(1);
-    tf.setCellPadding(5);
-    int row = htmlTableAddDialog->getRetRow();
-    int column = htmlTableAddDialog->getRetColumn();
-    ui->questionTextEdit->textCursor().insertTable(row,column,tf);
-}
+    learningDialog->clear_question_display();
+    learningDialog->set_items_table(questionSql->get_toLearn_condString(questionTableModel->filter()));
+    learningDialog->setOnlyToLearn(true);
+    learningDialog->exec();
 
-
-void MainWindow::on_categoryEditButton_clicked()
-{
+    //update categoryTreeView
     QModelIndex index = ui->categoryTreeView->currentIndex();
-    ui->categoryTreeView->edit(index);
-}
-
-void MainWindow::category_item_change_handler(QStandardItem *item)
-{
-    if(item->column() == 0)
-    {
-        QString newName = item->index().siblingAtColumn(0).data().toString();
-        int id = item->index().siblingAtColumn(1).data().toInt();
-        questionSql->set_category_data(id,"name",newName);
-    }
-    on_categoryTreeView_clicked(item->index());
-}
-
-void MainWindow::on_addTagButton_clicked()
-{
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    query.exec("SELECT MAX(id) FROM tags");
-    query.next();
-    int id = query.value(0).toInt() + 1;
-    QString name = ui->lineEdit->text();
-
-    query.prepare("SELECT * FROM tags WHERE name = ?");
-    query.bindValue(0,name);
-    query.exec();
-    if(query.next())
-        return;
-
-    questionSql->add_tag(id,name);
-    tagTableModel->select();
-}
-
-void MainWindow::on_delTagButton_clicked()
-{
-    QModelIndex index = ui->tagTableView->currentIndex();
-    int id = index.siblingAtColumn(0).data().toInt();
-    questionSql->del_tag(id);
-    tagTableModel->select();
-}
-
-void MainWindow::on_questionTagButton_clicked()
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
+    int categoryId = index.siblingAtColumn(1).data().toInt();
+    reload_categoryTreeView();
     if(!index.isValid())
         return;
-
-    int qId = index.siblingAtColumn(0).data().toInt();
-    questionTagEditDialog->set_question(qId);
-    questionTagEditDialog->exec();
+    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
 
     questionTableModel->select();
-    tagTableModel->select();
-}
-
-
-void MainWindow::on_tagTableView_activated(const QModelIndex &index)
-{
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    int tagId = index.siblingAtColumn(0).data().toInt();
-    QString condString = QString("(tag GLOB '*,%1') OR (tag GLOB '*,%1,*') OR (tag GLOB '%1,*') OR (tag GLOB '%1')").arg(tagId);
-    questionTableModel->setFilter(condString);
-    currentSection = 1;
-}
-
-
-void MainWindow::on_tagTableView_clicked(const QModelIndex &index)
-{
-    on_tagTableView_activated(index);
-}
-
-
-void MainWindow::on_questionDirOpenButton_clicked()
-{
-    if(ui->questionTableView->currentIndex().isValid())
+    if(learningDialog->getLastId() != -1)
     {
-        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        QString path = QString("%1/data/%2/question.html").arg(QDir::currentPath()).arg(qId);
-        QStringList args;
-        args << "/select," << QDir::toNativeSeparators(path);
-        QProcess process;
-        process.startDetached("explorer",args);
+        select_question_by_id(learningDialog->getLastId());
+    }
+}
+void MainWindow::on_categoryLearnButton_clicked() //表项学习（全部）
+{
+    learningDialog->set_items_table(questionTableModel->filter());
+    learningDialog->setOnlyToLearn(false);
+    learningDialog->exec();
+
+    //update categoryTreeView
+    QModelIndex index = ui->categoryTreeView->currentIndex();
+    int categoryId = index.siblingAtColumn(1).data().toInt();
+    reload_categoryTreeView();
+    if(!index.isValid())
+        return;
+    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
+
+    questionTableModel->select();
+    if(learningDialog->getLastId() != -1)
+    {
+        select_question_by_id(learningDialog->getLastId());
     }
 }
 
-//插入图片功能 2024/8/7
-void MainWindow::on_htmlImgAddButton_clicked()
+//html edit
+void MainWindow::on_htmlImgAddButton_clicked() //插入图片功能 2024/8/7
 {
     if(ui->questionTableView->currentIndex().isValid())
     {
@@ -779,7 +542,186 @@ void MainWindow::on_htmlImgAddButton_clicked()
         cursor.insertHtml(imgHtml);
     }
 }
+void MainWindow::on_htmlTableAddButton_clicked()
+{
+    htmlTableAddDialog->setRetRow(0);
+    htmlTableAddDialog->setRetColumn(0);
+    htmlTableAddDialog->exec();
+    QTextTableFormat tf;
+    tf.setBorder(1);
+    tf.setCellPadding(5);
+    int row = htmlTableAddDialog->getRetRow();
+    int column = htmlTableAddDialog->getRetColumn();
+    ui->questionTextEdit->textCursor().insertTable(row,column,tf);
+}
 
+//category
+void MainWindow::reload_categoryTreeView()
+{
+    categoryItemLists.clear();
+    categoryItemModel->clear();
+    categoryItemModel->setHorizontalHeaderLabels({"名称","id","待学习","总数"});
+    categoryItemLists[0].append(categoryItemModel->invisibleRootItem());
+    get_categoryItemTree(categoryItemLists[0][0],0);
+    ui->categoryTreeView->setModel(categoryItemModel);
+    ui->categoryTreeView->header()->setStretchLastSection(false);
+    ui->categoryTreeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->categoryTreeView->header()->setSectionResizeMode(0,QHeaderView::Stretch);
+    ui->categoryTreeView->hideColumn(1);
+}
+void MainWindow::update_count_categoryTreeView()
+{
+    QSqlQuery query(QSqlDatabase::database("connection1"));
+    query.prepare("SELECT * FROM categories");
+    query.exec();
+    while(query.next())
+    {
+        int id = query.value(0).toInt();
+        if(id == 0)
+            continue;
+        int qCount = questionSql->count_total_questions(id);
+        int qtoLearnCount = questionSql->count_total_questions_to_learn(id);
+        categoryItemLists[id][2]->setText(QString::number(qtoLearnCount));
+        categoryItemLists[id][3]->setText(QString::number(qCount));
+    }
+}
+void MainWindow::get_categoryItemTree(QStandardItem* parent,int parentId)
+{
+    QSqlQuery query(QSqlDatabase::database("connection1"));
+    query.prepare("SELECT * FROM categories WHERE parentId = ? ORDER BY name");
+    query.bindValue(0,parentId);
+    query.exec();
+    while(query.next())
+    {
+        int id = query.value(0).toInt();
+        QString name = query.value(1).toString();
+        int qCount = questionSql->count_total_questions(id);
+        int qtoLearnCount = questionSql->count_total_questions_to_learn(id);
+        categoryItemLists[id].append(new QStandardItem(name));
+        categoryItemLists[id].append(new QStandardItem(QString::number(id)));
+        categoryItemLists[id].append(new QStandardItem(QString::number(qtoLearnCount)));
+        categoryItemLists[id].append(new QStandardItem(QString::number(qCount)));
+        parent->appendRow(categoryItemLists[id]);
+        get_categoryItemTree(categoryItemLists[id][0],id);
+    }
+}
+void MainWindow::on_categoryAddButton_clicked()
+{
+
+    int id = questionSql->get_max_id("categories") + 1;
+    QModelIndex index =ui->categoryTreeView->currentIndex();
+    QString name = ui->lineEdit->text();
+    int parentId = index.siblingAtColumn(1).data().toInt();
+    if(parentId == 1)
+        parentId = 0;
+
+    QSqlQuery query(QSqlDatabase::database("connection1"));
+    query.prepare("INSERT INTO categories VALUES(?,?,?)");
+    query.bindValue(0,id);
+    query.bindValue(1,name);
+    query.bindValue(2,parentId);
+    query.exec();
+    reload_categoryTreeView();
+    ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
+}
+void MainWindow::on_categoryDelButton_clicked()
+{
+    QModelIndex index =ui->categoryTreeView->currentIndex();
+    int id = index.siblingAtColumn(1).data().toInt();
+    if(id == 1)
+        return;
+    questionSql->del_category(id);
+    QStandardItem *parent = categoryItemLists[id][0]->parent();
+    if(!parent)
+        parent = categoryItemLists[0][0];
+    int row = categoryItemLists[id][0]->row();
+    parent->removeRow(row);
+
+    int parentId = parent->index().siblingAtColumn(1).data().toInt();
+    if(parentId == 0)
+        parentId = 1;
+    reload_categoryTreeView();
+    ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
+    on_categoryTreeView_clicked(categoryItemLists[parentId][0]->index());
+}
+void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
+{
+    if(currentDate != QDate::currentDate())
+    {
+        update_count_categoryTreeView();
+        currentDate = QDate::currentDate();
+    }
+
+    int categoryId = index.siblingAtColumn(1).data().toInt();
+    QString condString = questionSql->get_category_condString(categoryId);
+    questionTableModel->setFilter(condString);
+    currentSection = 0;
+}
+void MainWindow::on_categoryEditButton_clicked()
+{
+    QModelIndex index = ui->categoryTreeView->currentIndex();
+    ui->categoryTreeView->edit(index);
+}
+void MainWindow::category_item_change_handler(QStandardItem *item)
+{
+    if(item->column() == 0)
+    {
+        QString newName = item->index().siblingAtColumn(0).data().toString();
+        int id = item->index().siblingAtColumn(1).data().toInt();
+        questionSql->set_value("categories",id,"name",newName);
+    }
+    on_categoryTreeView_clicked(item->index());
+}
+
+//tag
+void MainWindow::on_addTagButton_clicked()
+{
+    int id = questionSql->get_max_id("tags") + 1;
+    QString name = ui->lineEdit->text();
+    QSqlQuery query(QSqlDatabase::database("connection1"));
+    query.prepare("SELECT * FROM tags WHERE name = ?");
+    query.bindValue(0,name);
+    query.exec();
+    if(query.next())
+        return;
+
+    questionSql->add_tag(id,name);
+    tagTableModel->select();
+}
+void MainWindow::on_delTagButton_clicked()
+{
+    QModelIndex index = ui->tagTableView->currentIndex();
+    int id = index.siblingAtColumn(0).data().toInt();
+    questionSql->del_tag(id);
+    tagTableModel->select();
+}
+void MainWindow::on_questionTagButton_clicked()
+{
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
+        return;
+
+    int qId = index.siblingAtColumn(0).data().toInt();
+    questionTagEditDialog->set_question(qId);
+    questionTagEditDialog->exec();
+
+    questionTableModel->select();
+    tagTableModel->select();
+}
+void MainWindow::on_tagTableView_activated(const QModelIndex &index)
+{
+    QSqlQuery query(QSqlDatabase::database("connection1"));
+    int tagId = index.siblingAtColumn(0).data().toInt();
+    QString condString = QString("(tag GLOB '*,%1') OR (tag GLOB '*,%1,*') OR (tag GLOB '%1,*') OR (tag GLOB '%1')").arg(tagId);
+    questionTableModel->setFilter(condString);
+    currentSection = 1;
+}
+void MainWindow::on_tagTableView_clicked(const QModelIndex &index)
+{
+    on_tagTableView_activated(index);
+}
+
+//other
 void MainWindow::on_setFontButton_clicked()
 {
     bool ok;
@@ -787,4 +729,67 @@ void MainWindow::on_setFontButton_clicked()
     if(ok)
         ui->questionTextEdit->setCurrentFont(font);
 }
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == ui->questionTableView) {
+        if (event->type() == QEvent::KeyPress) {
+            QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+            if(keyEvent->key() == Qt::Key_Up)
+            {
+                QModelIndex index = ui->questionTableView->currentIndex();
+                if(index.row() > 0)
+                {
+                    ui->questionTableView->selectRow(index.row() - 1);
+                    ui->questionTableView->activated(ui->questionTableView->currentIndex());
+                }
+            }else if(keyEvent->key() == Qt::Key_Down)
+            {
+                QModelIndex index = ui->questionTableView->currentIndex();
+                if(index.row() < ui->questionTableView->model()->rowCount())
+                {
+                    ui->questionTableView->selectRow(index.row() + 1);
+                    ui->questionTableView->activated(ui->questionTableView->currentIndex());
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        // pass the event on to the parent class
+        return QMainWindow::eventFilter(watched, event);
+    }
+}
+void MainWindow::on_setGoodTimeButton_clicked()
+{
+    QModelIndexList indexes = ui->questionTableView->selectionModel()->selectedIndexes();
+    if(indexes.count() <= 0)
+        return;
+    int firstId = indexes.begin()->siblingAtColumn(0).data().toInt();
+    int id = firstId;
+    QTime goodTime = QTime::fromString(questionSql->get_value("questions",id,"goodTime").toString(),"mm'm':ss's'");
+    setTimeDialog->setTime(goodTime);
+    setTimeDialog->exec();
+    QTime time = setTimeDialog->getTime();
+    if(time.msecsSinceStartOfDay() == 0)
+        return;
 
+    for(auto index : indexes)
+    {
+        id = index.siblingAtColumn(0).data().toInt();
+        QJsonArray answerArray = questionSql->read_answerJSON(id);
+        time = QTime::fromMSecsSinceStartOfDay(time.msecsSinceStartOfDay()/answerArray.count()/1000*1000);
+        for(auto a : answerArray)
+        {
+            int aId = a.toObject().value("id").toInt();
+            questionSql->set_value("answers",aId,"goodTime",time.toString("mm'm':ss's'"));
+        }
+        time =  QTime::fromMSecsSinceStartOfDay(time.msecsSinceStartOfDay()*answerArray.count());
+        questionSql->set_value("questions",id,"goodTime",time.toString("mm'm':ss's'"));
+    }
+
+    questionTableModel->select();
+    QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,firstId).begin();
+    ui->questionTableView->setCurrentIndex(newIndex);
+    on_questionTableView_activated(newIndex);
+}

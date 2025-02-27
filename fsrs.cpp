@@ -1,11 +1,13 @@
 #include "fsrs.h"
 
-double FSRS::w[20] = {0.4197, 1.1869, 3.0412, 15.2441, 7.1434, 0.6477, 1.0007, 0.0674, 1.6597, 0.1712, 1.1178, 2.0225, 0.0904, 0.3025, 2.1214, 0.2498, 2.9466, 0.4891, 0.6468};
+double FSRS::w[20] = {0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925,
+                      1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621};
 double FSRS::requestRetention = 0.9;
 int FSRS::maximumInterval = 36500;
 double FSRS::DECAY = -0.5;
 double FSRS::FACTOR = qPow(0.9,(1 / DECAY)) - 1;
 QMap<QString,int> FSRS::rating = {{"wrong",1},{"hard",2},{"good",3},{"easy",4}};
+QMap<QString,int> FSRS::state = {{"new",1},{"learning",2},{"review",3}};
 
 FSRS::FSRS(QObject *parent)
     : QObject{parent}
@@ -50,32 +52,6 @@ double FSRS::next_short_term_stability(double s,int rating) {
 int FSRS::next_interval(double stability) {
     double new_interval = stability / FACTOR * (qPow(requestRetention, 1 / DECAY) - 1);
     return qMin(qMax(qRound(new_interval), 1), maximumInterval);
-}
-
-QString FSRS::time2rating(QTime myTime, QTime goodTime)
-{
-    int goodTimeMs = goodTime.msecsSinceStartOfDay();
-    int myTimeMs = myTime.msecsSinceStartOfDay();
-
-    QString rating;
-    if(myTime.msecsSinceStartOfDay() == 0)
-    {
-        rating = "wrong";
-        return rating;
-    }
-    if(myTimeMs > goodTimeMs)
-    {
-        rating = "hard";
-    }
-    else if(myTimeMs < goodTimeMs * 0.4)
-    {
-        rating = "easy";
-    }
-    else
-    {
-        rating = "good";
-    }
-    return rating;
 }
 
 int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,double &s)
@@ -149,4 +125,30 @@ int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,dou
     interval = qMax(interval - 1,0);
 
     return interval;
+}
+
+QString FSRS::time2rating(QTime myTime, QTime goodTime)
+{
+    int goodTimeMs = goodTime.msecsSinceStartOfDay();
+    int myTimeMs = myTime.msecsSinceStartOfDay();
+
+    QString rating;
+    if(myTime.msecsSinceStartOfDay() == 0)
+    {
+        rating = "wrong";
+        return rating;
+    }
+    if(myTimeMs > goodTimeMs)
+    {
+        rating = "hard";
+    }
+    else if(myTimeMs < goodTimeMs * 0.4)
+    {
+        rating = "easy";
+    }
+    else
+    {
+        rating = "good";
+    }
+    return rating;
 }

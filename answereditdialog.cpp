@@ -25,20 +25,30 @@ QString AnswerEditDialog::getRetContent() const
 {
     return retContent;
 }
-
 void AnswerEditDialog::setRetContent(const QString &newRetContent)
 {
     retContent = newRetContent;
 }
-
 void AnswerEditDialog::setType(const QString &type)
 {
     ui->comboBox->setCurrentText(typeName[type]);
 }
-
 void AnswerEditDialog::setContent(const QString &content)
 {
     ui->lineEdit->setText(content);
+}
+void AnswerEditDialog::setGoodTime(const QTime &goodTime)
+{
+    ui->goodTimeEdit->setTime(goodTime);
+}
+QTime AnswerEditDialog::getRetGoodTime() const
+{
+    return retGoodTime;
+}
+
+void AnswerEditDialog::setRetGoodTime(const QTime &newRetGoodTime)
+{
+    retGoodTime = newRetGoodTime;
 }
 
 int AnswerEditDialog::getQId() const
@@ -67,12 +77,6 @@ void AnswerEditDialog::lineEdit_selectAll()
     ui->lineEdit->selectAll();
 }
 
-void AnswerEditDialog::on_buttonBox_accepted()
-{
-    retContent = ui->lineEdit->text();
-    retType = type[ui->comboBox->currentText()];
-}
-
 void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
 {
     int pixelWide = ui->lineEdit->fontMetrics().horizontalAdvance(arg1) + 35;
@@ -81,7 +85,15 @@ void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
     setFixedWidth(pixelWide+30);
     //ui->lineEdit->setMaximumWidth(pixelWide);
 }
-
+void AnswerEditDialog::on_buttonBox_accepted()
+{
+    retContent = ui->lineEdit->text();
+    retType = type[ui->comboBox->currentText()];
+}
+void AnswerEditDialog::on_goodTimeEdit_userTimeChanged(const QTime &time)
+{
+    retGoodTime = time;
+}
 void AnswerEditDialog::on_pushButton_clicked()
 {
     if(ui->comboBox->currentText() == "手动检查(图片)")
@@ -95,4 +107,9 @@ void AnswerEditDialog::on_pushButton_clicked()
         ui->lineEdit->setText(dir.relativeFilePath(filePath));
     }
 }
+
+
+
+
+
 

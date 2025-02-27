@@ -1,4 +1,3 @@
-
 #include "toolfunctions.h"
 
 ToolFunctions::ToolFunctions() {}
@@ -14,6 +13,22 @@ QString ToolFunctions::sec2string(int seconds)
     return result;
 }
 
+QString ToolFunctions::ms2msz(QString timeString)
+{
+    QTime t = QTime::fromString(timeString,"mm'm':ss's'");
+    return t.toString("mm:ss.zzz");
+}
+
+QTime ToolFunctions::ms2QTime(QString timeString)
+{
+    return QTime::fromString(timeString,"mm'm':ss's'");
+}
+
+QTime ToolFunctions::msz2QTime(QString timeString)
+{
+    return QTime::fromString(timeString,"mm:ss.zz");
+}
+
 QString ToolFunctions::timeDurationText(QTime startTime,QTime endTime)
 {
     int d = (endTime.hour()*60 + endTime.minute()) - (startTime.hour()*60 + startTime.minute());
@@ -22,5 +37,13 @@ QString ToolFunctions::timeDurationText(QTime startTime,QTime endTime)
                        .arg(endTime.toString("HH:mm"))
                        .arg(d);
     return text;
+}
+
+QLineEdit* ToolFunctions::get_active_LineEdit() {
+    QWidget* focusedWidget = QApplication::focusWidget();
+    if (focusedWidget && focusedWidget->inherits("QLineEdit")) {
+        return qobject_cast<QLineEdit*>(focusedWidget);
+    }
+    return nullptr;
 }
 

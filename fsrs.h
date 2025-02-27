@@ -16,6 +16,7 @@ public:
     static double DECAY;
     static double FACTOR;
     static QMap<QString,int> rating;
+    static QMap<QString,int> state;
 
     static double constrain_difficulty(double difficulty);
     static double init_difficulty(int rating);
@@ -26,10 +27,11 @@ public:
     static double next_forget_stability(double d, double s, double r);
     static double next_short_term_stability(double s, int rating);
     static int next_interval(double stability);
-    static double convert_s();
+
+    static int next_state(QString rating,int elapsedDays,QString &state,double &d,double &s);
 
     static QString time2rating(QTime myTime,QTime goodTime);
-    static int next_state(QString rating,int elapsedDays,QString &state,double &d,double &s);
+
 
 signals:
 

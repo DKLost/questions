@@ -55,6 +55,9 @@ public:
 
     int getLastId() const;
 
+    bool getOnlyToLearn() const;
+    void setOnlyToLearn(bool newOnlyToLearn);
+
 private slots:
     void on_pushButton_clicked();
     void timerHandler();
@@ -92,6 +95,10 @@ private:
     int oldRow;
 
     int lastId;
+
+    bool onlyToLearn;
+
+    int rowCount;
     void preSubmit();
     void submit();
 };
