@@ -2,12 +2,12 @@
 #include "ui_questionmovedialog.h"
 #include <QModelIndex>
 
-QuestionMoveDialog::QuestionMoveDialog(QStandardItemModel *categoryItemModel,QWidget *parent)
+QuestionMoveDialog::QuestionMoveDialog(QTreeView *categoryTreeView,QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::QuestionMoveDialog)
 {
     ui->setupUi(this);
-    ui->treeView->setModel(categoryItemModel);
+    ui->treeView->setModel(categoryTreeView->model());
 
     ui->treeView->header()->setStretchLastSection(false);
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -35,5 +35,10 @@ int QuestionMoveDialog::getRetId() const
 void QuestionMoveDialog::setRetId(int newRetId)
 {
     retId = newRetId;
+}
+
+void QuestionMoveDialog::setCurrentIndex(const QModelIndex &index)
+{
+    ui->treeView->setCurrentIndex(index);
 }
 

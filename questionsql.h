@@ -34,6 +34,8 @@ public:
     void add_answer(int id);
     void del_answer(int id);
     void update_answer_state(int id, QTime myTime);
+    void inc_answer_bind_count(int id);
+    void dec_answer_bind_count(int id);
 
     //question
     void add_question(int id,int categoryId,QString name);

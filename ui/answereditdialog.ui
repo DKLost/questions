@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>174</width>
-    <height>128</height>
+    <height>159</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -91,6 +91,24 @@
        </property>
        <property name="displayFormat">
         <string>HH:mm:ss</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QLineEdit" name="bindIdLineEdit">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="bindButton">
+       <property name="text">
+        <string>绑定到</string>
        </property>
       </widget>
      </item>

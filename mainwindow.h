@@ -22,6 +22,7 @@
 #include "questiontageditdialog.h"
 #include "toolfunctions.h"
 #include "questionrenamedialog.h"
+#include "bindanswerdialog.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -32,6 +33,7 @@ QT_END_NAMESPACE
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
+    friend class BindAnswerDialog;
 
 public:
     MainWindow(QWidget *parent = nullptr);
@@ -61,14 +63,15 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event);
 
 private slots:
-
-
+    //answer
     void on_answerAddButton_clicked();
     void on_answerDelButton_clicked();
     void on_answerEditButton_clicked();
     void on_answerListWidget_itemDoubleClicked(QListWidgetItem *item);
     void on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow);
-    void on_answerListWidget_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
+    void on_answerListWidget_itemActivated(QListWidgetItem *item);
+    void on_answerListWidget_itemClicked(QListWidgetItem *item);
+    void on_answerListWidget_itemChanged(QListWidgetItem *item);
 
     //question
     void on_questionDirOpenButton_clicked();
@@ -111,6 +114,7 @@ private slots:
 
     void on_questionRenameButton_clicked();
 
+
 private:
     Ui::MainWindow *ui;
 
@@ -128,6 +132,7 @@ private:
     HtmlTableAddDialog *htmlTableAddDialog;
     QuestionTagEditDialog *questionTagEditDialog;
     QuestionRenameDialog questionRenameDialog;
+    BindAnswerDialog *bindAnswerDialog;
 
     //other
     QuestionSql *questionSql;

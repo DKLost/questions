@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1200</width>
-    <height>900</height>
+    <height>783</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -60,7 +60,7 @@
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
-          <widget class="QWidget" name="">
+          <widget class="QWidget" name="layoutWidget">
            <layout class="QVBoxLayout" name="verticalLayout_3">
             <item>
              <widget class="QTableView" name="questionTableView">
@@ -89,7 +89,7 @@
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>100</height>
+                <height>90</height>
                </size>
               </property>
               <property name="editTriggers">
@@ -142,6 +142,9 @@
     </item>
     <item>
      <layout class="QVBoxLayout" name="verticalLayout">
+      <property name="spacing">
+       <number>3</number>
+      </property>
       <item>
        <widget class="QLabel" name="label_5">
         <property name="text">
@@ -180,16 +183,16 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="categoryEditButton">
+       <widget class="QPushButton" name="categoryDelButton">
         <property name="text">
-         <string>编辑分类</string>
+         <string>删除分类</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="categoryDelButton">
+       <widget class="QPushButton" name="categoryEditButton">
         <property name="text">
-         <string>删除分类</string>
+         <string>编辑分类</string>
         </property>
        </widget>
       </item>
@@ -204,16 +207,16 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="addTagButton">
+       <widget class="QPushButton" name="delTagButton">
         <property name="text">
-         <string>添加标签</string>
+         <string>删除标签</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="delTagButton">
+       <widget class="QPushButton" name="addTagButton">
         <property name="text">
-         <string>删除标签</string>
+         <string>添加标签</string>
         </property>
        </widget>
       </item>
@@ -230,14 +233,7 @@
       <item>
        <widget class="QPushButton" name="questionAddButton">
         <property name="text">
-         <string>添加空题目</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="questionRenameButton">
-        <property name="text">
-         <string>重命名题目</string>
+         <string>添加题目</string>
         </property>
        </widget>
       </item>
@@ -245,6 +241,13 @@
        <widget class="QPushButton" name="questionDelButton">
         <property name="text">
          <string>删除题目</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="questionRenameButton">
+        <property name="text">
+         <string>重命名题目</string>
         </property>
        </widget>
       </item>
@@ -274,6 +277,12 @@
       </item>
       <item>
        <widget class="QPushButton" name="htmlTableAddButton">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="text">
          <string>插入表格</string>
         </property>
@@ -325,16 +334,16 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="answerEditButton">
+       <widget class="QPushButton" name="answerDelButton">
         <property name="text">
-         <string> 编辑答案</string>
+         <string>删除答案</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="answerDelButton">
+       <widget class="QPushButton" name="answerEditButton">
         <property name="text">
-         <string>删除答案</string>
+         <string> 编辑答案</string>
         </property>
        </widget>
       </item>
@@ -378,7 +387,7 @@
       <item>
        <widget class="QPushButton" name="speedLearnButton">
         <property name="text">
-         <string>开始学习(标签,不重复)</string>
+         <string>开始学习(表项,不重复)</string>
         </property>
        </widget>
       </item>

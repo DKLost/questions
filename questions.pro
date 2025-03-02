@@ -10,6 +10,7 @@ CONFIG += c++17
 
 SOURCES += \
     answereditdialog.cpp \
+    bindanswerdialog.cpp \
     fsrs.cpp \
     htmltableadddialog.cpp \
     learningdialog.cpp \
@@ -24,6 +25,7 @@ SOURCES += \
 
 HEADERS += \
     answereditdialog.h \
+    bindanswerdialog.h \
     fsrs.h \
     htmltableadddialog.h \
     learningdialog.h \
@@ -36,14 +38,15 @@ HEADERS += \
     toolfunctions.h
 
 FORMS += \
-    answereditdialog.ui \
-    htmltableadddialog.ui \
-    learningdialog.ui \
-    mainwindow.ui \
-    questionmovedialog.ui \
-    questionrenamedialog.ui \
-    questiontageditdialog.ui \
-    settimedialog.ui
+    ui/answereditdialog.ui \
+    ui/bindanswerdialog.ui \
+    ui/htmltableadddialog.ui \
+    ui/learningdialog.ui \
+    ui/mainwindow.ui \
+    ui/questionmovedialog.ui \
+    ui/questionrenamedialog.ui \
+    ui/questiontageditdialog.ui \
+    ui/settimedialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

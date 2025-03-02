@@ -44,33 +44,21 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->answerListWidget->model(),&QAbstractItemModel::rowsMoved,
             this,&MainWindow::on_answerListRowsMoved);
 
-    //init question move dialog
-    questionMoveDialog = new QuestionMoveDialog(categoryItemModel,this);
-
-    //init answer edit dialog
-    answerEditDialog = new AnswerEditDialog(this);
-
-    //init learning dialog
-    learningDialog = new LearningDialog(questionSql,this);
-
-    //init set time dialog
-    setTimeDialog = new SetTimeDialog(this);
-
-    //init html table add dialog
-    htmlTableAddDialog = new HtmlTableAddDialog(this);
-
-    //init questionTagEditDialog
-    questionTagEditDialog = new QuestionTagEditDialog(this);
+    learningDialog = new LearningDialog(questionSql,this);                          //init learning dialog
+    setTimeDialog = new SetTimeDialog(this);                                        //init set time dialog
+    htmlTableAddDialog = new HtmlTableAddDialog(this);                              //init html table add dialog
+    questionTagEditDialog = new QuestionTagEditDialog(this);                        //init questionTagEditDialog
+    questionMoveDialog = new QuestionMoveDialog(ui->categoryTreeView,this);         //init question move dialog
+    bindAnswerDialog = new BindAnswerDialog{questionSql,                            //init bind answer dialog
+                                            ui->categoryTreeView,
+                                            ui->tagTableView,this};
+    answerEditDialog = new AnswerEditDialog(bindAnswerDialog,this);                 //init answer edit dialog
 
     //init current section
     currentSection = -1;
 
     //init splitter
-    ui->splitter->setSizes({250,600,350});
-    ui->splitter->setStretchFactor(0,0);
-    ui->splitter->setStretchFactor(1,0);
-    ui->splitter->setStretchFactor(2,1);
-
+    ui->splitter->setSizes({600,250});
 }
 
 MainWindow::~MainWindow()
@@ -106,17 +94,26 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     ui->answerListWidget->insertItem(row,"");
     ui->answerListWidget->setCurrentRow(row);
     int id = questionSql->get_max_id("answers") + 1;
-    ui->answerListWidget->currentItem()->setStatusTip(QString::number(id));
     questionSql->add_answer(id);
-
+    questionSql->inc_answer_bind_count(id);
+    ui->answerListWidget->currentItem()->setStatusTip(QString::number(id));
+    ui->answerListWidget->currentItem()->setToolTip("auto");
+    ui->answerListWidget->currentItem()->setWhatsThis("请输入答案");
+    ui->answerListWidget->currentItem()->setText("请输入答案");
+    questionSql->set_value<QString>("answers",id,"goodTime","00m:00s");
+    QModelIndex index = ui->questionTableView->currentIndex();
+    int qId = index.siblingAtColumn(0).data().toInt();
+    save_answerList(qId);
+    questionSql->update_question_state(qId);
     on_answerEditButton_clicked();
+
 }
 void MainWindow::on_answerEditButton_clicked() //修改答案
 {
     QModelIndex index = ui->questionTableView->currentIndex();
     if(!index.isValid())
         return;
-    int id = index.siblingAtColumn(0).data().toInt();
+    int qId = index.siblingAtColumn(0).data().toInt();
 
     QListWidgetItem *item = ui->answerListWidget->currentItem();
     if(item == NULL)
@@ -125,10 +122,11 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
     //init
     int aId = item->statusTip().toInt();
     QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("answers",aId,"goodTime").toString());
-    answerEditDialog->setQId(id);
+    answerEditDialog->setQId(qId);
     answerEditDialog->resetEdit();
     answerEditDialog->setType(item->toolTip());
     answerEditDialog->setGoodTime(goodTime);
+    answerEditDialog->setAId(aId);
     if(item->toolTip() == "manual(image)")
     {
         answerEditDialog->setContent(item->whatsThis());
@@ -137,26 +135,37 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         answerEditDialog->setContent(item->text());
     }
     answerEditDialog->lineEdit_selectAll();
-    answerEditDialog->exec();
 
-    //return
-    QString answerType = answerEditDialog->getRetType();
-    QString answerContent = answerEditDialog->getRetContent();
-    QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
-    if(answerContent == "")
-        return;
-
-    item->setToolTip(answerType);
-    item->setWhatsThis(answerContent);
-    if(answerType == "manual(image)")
+    //exec
+    if(answerEditDialog->exec())
     {
-        item->setIcon(QIcon{answerContent});
-    }else{
-        item->setText(answerContent);
-    }
-    questionSql->set_value("answers",aId,"goodTime",answerGoodTime);
+        //return
+        QString answerType = answerEditDialog->getRetType();
+        QString answerContent = answerEditDialog->getRetContent();
+        QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
+        int answerAId = answerEditDialog->getRetAId();
+        // if(answerContent == "")
+        //     return;
 
-    save_answerList(id);
+        if(aId != answerAId)
+        {
+            item->setStatusTip(QString::number(answerAId));
+            questionSql->inc_answer_bind_count(answerAId);
+            questionSql->del_answer(aId);
+        }
+
+        item->setToolTip(answerType);
+        item->setWhatsThis(answerContent);
+        if(answerType == "manual(image)")
+        {
+            item->setIcon(QIcon{answerContent});
+        }else{
+            item->setText(answerContent);
+        }
+        questionSql->set_value("answers",aId,"goodTime",answerGoodTime);
+        questionSql->update_question_state(qId);
+        save_answerList(qId);
+    }
 }
 void MainWindow::on_answerDelButton_clicked() //删除答案
 {
@@ -171,10 +180,14 @@ void MainWindow::on_answerDelButton_clicked() //删除答案
 
     int aId = item->statusTip().toInt();
     questionSql->del_answer(aId);
-
+    questionSql->update_question_state(qId);
     delete item;
 
     save_answerList(qId);
+    if(ui->answerListWidget->currentItem() == nullptr)
+        answerTableModel->select();
+    else
+        on_answerListWidget_itemActivated(ui->answerListWidget->currentItem());
 }
 void MainWindow::save_answerList(int id) //保存指定题目的所有答案
 {
@@ -193,6 +206,7 @@ void MainWindow::save_answerList(int id) //保存指定题目的所有答案
         array.append(object);
     }
     questionSql->write_answerJSON(id,array);
+    //answerTableModel->select();
 }
 void MainWindow::on_answerListWidget_itemDoubleClicked(QListWidgetItem *item)
 {
@@ -206,11 +220,29 @@ void MainWindow::on_answerListRowsMoved(const QModelIndex &sourceParent, int sou
     int id = index.siblingAtColumn(0).data().toInt();
     save_answerList(id);
 }
-void MainWindow::on_answerListWidget_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
+void MainWindow::on_answerListWidget_itemChanged(QListWidgetItem *item)
 {
-    if(current != nullptr)
+    if(item != nullptr)
     {
-        int aId = current->statusTip().toInt();
+        int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        if(aId != item->statusTip().toInt())
+            on_answerListWidget_itemActivated(item);
+    }
+}
+void MainWindow::on_answerListWidget_itemClicked(QListWidgetItem *item)
+{
+    if(item != nullptr)
+    {
+        int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        if(aId != item->statusTip().toInt())
+            on_answerListWidget_itemActivated(item);
+    }
+}
+void MainWindow::on_answerListWidget_itemActivated(QListWidgetItem *item)
+{
+    if(item != nullptr)
+    {
+        int aId = item->statusTip().toInt();
         QString condString = QString("id = %1").arg(aId);
         answerTableModel->setFilter(condString);
         answerTableModel->select();
@@ -322,7 +354,6 @@ void MainWindow::on_questionAddButton_clicked()
     QModelIndex index =ui->categoryTreeView->currentIndex();
     int categoryId = index.siblingAtColumn(1).data().toInt();
     QString name = ui->lineEdit->text();
-    qDebug() << id;
     questionSql->add_question(id,categoryId,name);
 
     //reload categoryTreeView
@@ -373,6 +404,7 @@ void MainWindow::on_questionMoveButton_clicked()
 
     //get new category id
     questionMoveDialog->setRetId(0);
+    questionMoveDialog->setCurrentIndex(ui->categoryTreeView->currentIndex());
     questionMoveDialog->exec();
     int newCategoryId = questionMoveDialog->getRetId();
     if(newCategoryId == 0)
@@ -646,6 +678,9 @@ void MainWindow::on_categoryDelButton_clicked()
 }
 void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
 {
+    if(ui->tagTableView->currentIndex().isValid())
+        ui->tagTableView->selectionModel()->clearCurrentIndex();
+    ui->tagTableView->clearSelection();
     if(currentDate != QDate::currentDate())
     {
         update_count_categoryTreeView();
@@ -793,3 +828,15 @@ void MainWindow::on_setGoodTimeButton_clicked()
     ui->questionTableView->setCurrentIndex(newIndex);
     on_questionTableView_activated(newIndex);
 }
+
+
+
+
+
+
+
+
+
+
+
+

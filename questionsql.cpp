@@ -41,7 +41,8 @@ QuestionSql::QuestionSql(QString fileName,QObject *parent)
                "time6 TEXT,"
                "time7 TEXT,"
                "time8 TEXT,"
-               "time9 TEXT)");
+               "time9 TEXT,"
+               "bindCount INTEGER)");
 
     //questions
     query.exec("CREATE TABLE IF NOT EXISTS questions("
@@ -145,7 +146,7 @@ void QuestionSql::add_answer(int id)
 {
     QSqlQuery query(db);
     query.prepare("INSERT INTO answers VALUES(?,?,?,?,?,?,?,?,?,?"
-                  ",?,?,?,?,?,?,?,?,?,?)");
+                  ",?,?,?,?,?,?,?,?,?,?,?)");
     query.bindValue(0,id); //id
     query.bindValue(1,"new"); //state
     query.bindValue(2,""); //avg10Rating
@@ -158,14 +159,31 @@ void QuestionSql::add_answer(int id)
     query.bindValue(9,-1); //lastS
     for(int i = 0;i < 10;i++) //time0-9
         query.bindValue(10+i,"");
+    query.bindValue(20,0);
     query.exec();
 }
 void QuestionSql::del_answer(int id)
 {
     QSqlQuery query(db);
-    query.prepare("DELETE FROM answers WHERE id = ?");
-    query.bindValue(0,id);
-    query.exec();
+    int bindCount = get_value("answers",id,"bindCount").toInt();
+    if(bindCount > 1)
+        dec_answer_bind_count(id);
+    else {
+        query.prepare("DELETE FROM answers WHERE id = ?");
+        query.bindValue(0,id);
+        query.exec();
+    }
+
+}
+void QuestionSql::inc_answer_bind_count(int aId)
+{
+    int bindCount = get_value("answers",aId,"bindCount").toInt();
+    set_value("answers",aId,"bindCount",bindCount+1);
+}
+void QuestionSql::dec_answer_bind_count(int aId)
+{
+    int bindCount = get_value("answers",aId,"bindCount").toInt();
+    set_value("answers",aId,"bindCount",bindCount-1);
 }
 
 //question
@@ -202,15 +220,15 @@ void QuestionSql::add_question(int id, int categoryId,QString name)
 void QuestionSql::del_question(int id)
 {
     QSqlQuery query(db);
-    query.prepare("DELETE FROM questions WHERE id = ?");
-    query.bindValue(0,id);
-    query.exec();
     QJsonArray array =read_answerJSON(id);
     for(auto item : array)
     {
         int aId = item.toObject().value("id").toInt();
         del_answer(aId);
     }
+    query.prepare("DELETE FROM questions WHERE id = ?");
+    query.bindValue(0,id);
+    query.exec();
     QString dirPath = QString("./data/%1").arg(id);
     QDir dir(dirPath);
     dir.removeRecursively();
@@ -348,10 +366,10 @@ int QuestionSql::get_max_id(QString table)
     if(query.next())
     {
         id = query.value(0).toInt();
-        qDebug() << id;
     }
     return id;
 }
+
 
 //timeStringToInt => QTime::fromString(timeString,"mm'm':ss's'").second();
 //void set_goodTime(int id, QTime goodTime) => set_value("questions",id,"goodTime",goodTime.toString("mm'm':ss's'"));
@@ -429,7 +447,7 @@ void QuestionSql::update_question_state(int id)
 {
     QSqlQuery query(db);
     QString state = "review";
-    QString avg10Rating;
+    QString avg10Rating = "";
     QTime goodTime = QTime::fromMSecsSinceStartOfDay(0);
     QTime avg10Time = QTime::fromMSecsSinceStartOfDay(0);
     QTime bestTime = QTime::fromMSecsSinceStartOfDay(0);
@@ -455,7 +473,15 @@ void QuestionSql::update_question_state(int id)
         if(aLastDate < lastDate) lastDate = aLastDate;
 
     }
-    avg10Rating = FSRS::time2rating(avg10Time,goodTime);
+    if(answerArray.empty())
+    {
+        state = "new";
+        nextDate = QDate::currentDate();
+    }
+    else
+    {
+        avg10Rating = FSRS::time2rating(avg10Time,goodTime);
+    }
 
     set_value("questions",id,"state",state);
     set_value("questions",id,"avg10Rating",avg10Rating);
