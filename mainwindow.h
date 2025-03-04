@@ -45,7 +45,7 @@ public:
 
     //question
     void init_questionTableView();
-    void select_question_by_id(int id);
+    int select_question_by_id(int id);
     void set_quesion_tableHeader();
 
     //category
@@ -56,6 +56,7 @@ public:
     void save_answerList(int id);
 
     void update_count_categoryTreeView();
+
 
 
 

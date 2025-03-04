@@ -281,15 +281,15 @@ void MainWindow::set_quesion_tableHeader()
     questionTableModel->setHeaderData(8, Qt::Horizontal, "到期");
     questionTableModel->setHeaderData(9, Qt::Horizontal, "最近学习");
 }
-void MainWindow::select_question_by_id(int id)
+int MainWindow::select_question_by_id(int id) //选取问题，成功返回1，失败返回0
 {
-    if(id >= 0)
-    {
-        auto indexList = questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,id);
-        QModelIndex index = *indexList.begin();
-        ui->questionTableView->setCurrentIndex(index);
-        on_questionTableView_activated(index);
-    }
+    auto indexList = questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,id);
+    if(id < 0 || indexList.isEmpty())
+        return 0;
+    QModelIndex index = *indexList.begin();
+    ui->questionTableView->setCurrentIndex(index);
+    on_questionTableView_activated(index);
+    return 1;
 }
 void MainWindow::on_questionDirOpenButton_clicked()
 {

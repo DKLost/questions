@@ -179,7 +179,7 @@ void LearningDialog::on_comboBox_currentTextChanged(const QString &arg1) //排�
     }else if(arg1 == "默认排序")
     {
         int rowCount = tableModel->rowCount();
-        int gap = 32767 / rowCount;
+        int gap = rowCount == 0? 0:32767 / rowCount;
         for(int i = 0;i < rowCount;i++)
         {
             int id = tableModel->index(i,0).data().toInt();
