@@ -22,8 +22,6 @@ void AnswerEditDialog::resetEdit()
     retType = "auto";
 }
 
-
-
 int AnswerEditDialog::getQId() const
 {
     return qId;

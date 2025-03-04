@@ -90,6 +90,9 @@ void MainWindow::set_answer_tableHeader()
 }
 void MainWindow::on_answerAddButton_clicked() //新建答案
 {
+    if(!ui->questionTableView->currentIndex().isValid())
+        return;
+
     int row = ui->answerListWidget->currentRow() + 1;
     ui->answerListWidget->insertItem(row,"");
     ui->answerListWidget->setCurrentRow(row);
@@ -106,7 +109,6 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     save_answerList(qId);
     questionSql->update_question_state(qId);
     on_answerEditButton_clicked();
-
 }
 void MainWindow::on_answerEditButton_clicked() //修改答案
 {
