@@ -161,6 +161,7 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         if(answerType == "manual(image)")
         {
             item->setIcon(QIcon{answerContent});
+            item->setText("");
         }else{
             item->setText(answerContent);
         }

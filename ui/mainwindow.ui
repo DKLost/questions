@@ -207,16 +207,16 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="delTagButton">
+       <widget class="QPushButton" name="addTagButton">
         <property name="text">
-         <string>删除标签</string>
+         <string>添加标签</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="addTagButton">
+       <widget class="QPushButton" name="delTagButton">
         <property name="text">
-         <string>添加标签</string>
+         <string>删除标签</string>
         </property>
        </widget>
       </item>
