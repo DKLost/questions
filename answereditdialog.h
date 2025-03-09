@@ -27,7 +27,7 @@ public:
     QString getRetContent() const;
     QTime getRetGoodTime() const;
     int getRetAId() const;
-
+    int getRetPool() const;
 
     //setter
     void setQId(int newQId);
@@ -38,18 +38,17 @@ public:
     void setContent(const QString &content);
     void setGoodTime(const QTime &goodTime);
     void setAId(const int &aId);
+    void setPool(const int &pool);
+
 
 private slots:
     void on_lineEdit_textChanged(const QString &arg1);
     void on_pushButton_clicked();
-
     void on_goodTimeEdit_userTimeChanged(const QTime &time);
-
     void on_comboBox_currentTextChanged(const QString &arg1);
-
     void on_bindButton_clicked();
-
     void on_bindIdLineEdit_textChanged(const QString &arg1);
+    void on_poolComboBox_currentTextChanged(const QString &arg1);
 
 private:
     Ui::AnswerEditDialog *ui;
@@ -60,6 +59,7 @@ private:
     QString retContent;
     QTime retGoodTime;
     int retAId;
+    int retPool;
 
     QMap<QString,QString> type{{"自动检查","auto"},{"手动检查","manual"},{"手动检查(图片)","manual(image)"}};
     QMap<QString,QString> typeName{{"auto","自动检查"},{"manual","手动检查"},{"manual(image)","手动检查(图片)"}};

@@ -7,8 +7,8 @@ BindAnswerDialog::BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainC
     , ui(new Ui::BindAnswerDialog)
 {
     ui->setupUi(this);
-    QFont font("文泉驿微米黑",12);
-    QApplication::setFont(font);
+    //QFont font("文泉驿微米黑",12);
+    //QApplication::setFont(font);
     questionSql = mainQuestionSql;
 
     init_questionTableView();

@@ -70,6 +70,7 @@ private slots:
     void on_comboBox_currentTextChanged(const QString &arg1);
 
     void answer_lineEdit_textChanged(const QString &arg1);
+    void poolComboBox_currentIndexChanged(const int &index);
 
 private:
     Ui::LearningDialog *ui;
@@ -92,6 +93,7 @@ private:
     QLabel* timeLabel;
     QSqlRelationalTableModel *tableModel;
     int currentId;
+    QJsonArray currentArray;
     int oldRow;
 
     int lastId;

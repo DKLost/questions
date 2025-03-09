@@ -13,6 +13,8 @@ QuestionMoveDialog::QuestionMoveDialog(QTreeView *categoryTreeView,QWidget *pare
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->treeView->header()->setSectionResizeMode(0,QHeaderView::Stretch);
     ui->treeView->hideColumn(1);
+
+    retId = 0;
 }
 
 QuestionMoveDialog::~QuestionMoveDialog()

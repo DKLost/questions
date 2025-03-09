@@ -43,6 +43,11 @@
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="styleSheet">
+            <string notr="true">QTreeView{
+border:1px solid black;
+}</string>
+           </property>
            <property name="editTriggers">
             <set>QAbstractItemView::NoEditTriggers</set>
            </property>
@@ -53,6 +58,11 @@
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QTableView{
+border:1px solid black;
+}</string>
            </property>
           </widget>
          </widget>
@@ -69,6 +79,13 @@
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QTableView{
+border-width:1px;
+border-style:solid;
+border-color:black;
+}</string>
               </property>
              </widget>
             </item>
@@ -92,6 +109,11 @@
                 <height>90</height>
                </size>
               </property>
+              <property name="styleSheet">
+               <string notr="true">QTableView{
+border:1px solid black;
+}</string>
+              </property>
               <property name="editTriggers">
                <set>QAbstractItemView::NoEditTriggers</set>
               </property>
@@ -112,9 +134,12 @@
            <widget class="QTextEdit" name="questionTextEdit">
             <property name="font">
              <font>
-              <family>Microsoft YaHei</family>
+              <family>Source Sans Pro</family>
               <pointsize>12</pointsize>
              </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">border:1px solid black</string>
             </property>
            </widget>
            <widget class="QGroupBox" name="groupBox_2">
@@ -266,6 +291,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="setGoodTimeButton">
+        <property name="text">
+         <string>设置良好用时</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="label_6">
         <property name="text">
          <string>题目编辑</string>
@@ -292,13 +324,6 @@
        <widget class="QPushButton" name="htmlImgAddButton">
         <property name="text">
          <string>插入图片</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="setGoodTimeButton">
-        <property name="text">
-         <string>设置良好用时</string>
         </property>
        </widget>
       </item>

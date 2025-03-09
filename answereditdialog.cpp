@@ -7,6 +7,7 @@ AnswerEditDialog::AnswerEditDialog(BindAnswerDialog *mainBindAnswerDialog,QWidge
 {
     ui->setupUi(this);
     bindAnswerDialog = mainBindAnswerDialog;
+    retPool = 0;
 }
 
 AnswerEditDialog::~AnswerEditDialog()
@@ -83,6 +84,12 @@ void AnswerEditDialog::setAId(const int &aId)
     ui->bindIdLineEdit->setText(QString::number(aId));
 }
 
+void AnswerEditDialog::setPool(const int &pool)
+{
+    qDebug() << "pool:" << pool;
+    ui->poolComboBox->setCurrentText(QString::number(pool));
+}
+
 //getter
 QTime AnswerEditDialog::getRetGoodTime() const
 {
@@ -99,6 +106,10 @@ QString AnswerEditDialog::getRetType() const
 int AnswerEditDialog::getRetAId() const
 {
     return retAId;
+}
+int AnswerEditDialog::getRetPool() const
+{
+    return retPool;
 }
 
 
@@ -122,5 +133,10 @@ void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
 void AnswerEditDialog::on_bindIdLineEdit_textChanged(const QString &arg1)
 {
     retAId = arg1.toInt();
+}
+void AnswerEditDialog::on_poolComboBox_currentTextChanged(const QString &arg1)
+{
+    qDebug() << "arg1" << arg1;
+    retPool = arg1.toInt();
 }
 

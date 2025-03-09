@@ -6,8 +6,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    QFont font("文泉驿微米黑",12);
-    //font.setStyleStrategy(QFont::PreferAntialias);
+    QFont font("Source Sans Pro",12);
     QApplication::setFont(font);
     currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
@@ -106,7 +105,17 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     questionSql->set_value<QString>("answers",id,"goodTime","00m:00s");
     QModelIndex index = ui->questionTableView->currentIndex();
     int qId = index.siblingAtColumn(0).data().toInt();
-    save_answerList(qId);
+
+    //保存
+    QJsonArray array = questionSql->read_answerJSON(qId);
+    QJsonObject aObj;
+    aObj["content"] = "请输入答案";
+    aObj["id"] = id;
+    aObj["type"] = "auto";
+    aObj["pool"] = 0;
+    array.insert(row,aObj);
+    questionSql->write_answerJSON(qId,array);
+
     questionSql->update_question_state(qId);
     on_answerEditButton_clicked();
 }
@@ -122,6 +131,11 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         return;
 
     //init
+    int row = ui->answerListWidget->currentRow();
+    QJsonArray array = questionSql->read_answerJSON(qId);
+    QJsonObject aObj = array[row].toObject();
+
+
     int aId = item->statusTip().toInt();
     QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("answers",aId,"goodTime").toString());
     answerEditDialog->setQId(qId);
@@ -129,6 +143,7 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
     answerEditDialog->setType(item->toolTip());
     answerEditDialog->setGoodTime(goodTime);
     answerEditDialog->setAId(aId);
+    answerEditDialog->setPool(aObj["pool"].toInt());
     if(item->toolTip() == "manual(image)")
     {
         answerEditDialog->setContent(item->whatsThis());
@@ -146,6 +161,7 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         QString answerContent = answerEditDialog->getRetContent();
         QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
         int answerAId = answerEditDialog->getRetAId();
+        int answerPool = answerEditDialog->getRetPool();
         // if(answerContent == "")
         //     return;
 
@@ -167,7 +183,14 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         }
         questionSql->set_value("answers",aId,"goodTime",answerGoodTime);
         questionSql->update_question_state(qId);
-        save_answerList(qId);
+
+        //保存
+        aObj["content"] = answerContent;
+        aObj["id"] = answerAId;
+        aObj["type"] = answerType;
+        aObj["pool"] = answerPool;
+        array[row] = aObj;
+        questionSql->write_answerJSON(qId,array);
     }
 }
 void MainWindow::on_answerDelButton_clicked() //删除答案
@@ -182,11 +205,14 @@ void MainWindow::on_answerDelButton_clicked() //删除答案
         return;
 
     int aId = item->statusTip().toInt();
+    int row = ui->answerListWidget->currentRow();
     questionSql->del_answer(aId);
     questionSql->update_question_state(qId);
     delete item;
 
-    save_answerList(qId);
+    QJsonArray array = questionSql->read_answerJSON(qId);
+    array.removeAt(row);
+    questionSql->write_answerJSON(qId,array);
     if(ui->answerListWidget->currentItem() == nullptr)
         answerTableModel->select();
     else
@@ -221,7 +247,11 @@ void MainWindow::on_answerListRowsMoved(const QModelIndex &sourceParent, int sou
     if(!index.isValid())
         return;
     int id = index.siblingAtColumn(0).data().toInt();
-    save_answerList(id);
+    QJsonArray array = questionSql->read_answerJSON(id);
+    QJsonObject obj = array[sourceStart].toObject();
+    array.removeAt(sourceStart);
+    array.insert(sourceEnd,obj);
+    questionSql->write_answerJSON(id,array);
 }
 void MainWindow::on_answerListWidget_itemChanged(QListWidgetItem *item)
 {
@@ -374,9 +404,6 @@ void MainWindow::on_questionAddButton_clicked()
     }
     ui->questionTableView->selectRow(row);
     on_questionTableView_clicked(ui->questionTableView->currentIndex());
-
-    //ui->answerListWidget->addItem("请输入答案");
-    save_answerList(id);
 }
 void MainWindow::on_questionDelButton_clicked()
 {
