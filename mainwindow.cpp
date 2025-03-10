@@ -207,12 +207,12 @@ void MainWindow::on_answerDelButton_clicked() //删除答案
     int aId = item->statusTip().toInt();
     int row = ui->answerListWidget->currentRow();
     questionSql->del_answer(aId);
-    questionSql->update_question_state(qId);
     delete item;
 
     QJsonArray array = questionSql->read_answerJSON(qId);
     array.removeAt(row);
     questionSql->write_answerJSON(qId,array);
+    questionSql->update_question_state(qId);
     if(ui->answerListWidget->currentItem() == nullptr)
         answerTableModel->select();
     else
@@ -246,11 +246,13 @@ void MainWindow::on_answerListRowsMoved(const QModelIndex &sourceParent, int sou
     QModelIndex index = ui->questionTableView->currentIndex();
     if(!index.isValid())
         return;
+
     int id = index.siblingAtColumn(0).data().toInt();
     QJsonArray array = questionSql->read_answerJSON(id);
     QJsonObject obj = array[sourceStart].toObject();
+    if(destinationRow >= array.count()) destinationRow--;
     array.removeAt(sourceStart);
-    array.insert(sourceEnd,obj);
+    array.insert(destinationRow,obj);
     questionSql->write_answerJSON(id,array);
 }
 void MainWindow::on_answerListWidget_itemChanged(QListWidgetItem *item)
