@@ -546,6 +546,7 @@ void LearningDialog::submit()
         //int aId = answerLabel->statusTip().toInt();
 
         questionSql->update_answer_state(aId,answerTime);
+        checkBox->setEnabled(false);
     }
 
     //QLabel *timeLabel = (QLabel *)layout->itemAtPosition(row,0)->widget();
