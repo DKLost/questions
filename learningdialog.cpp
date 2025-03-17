@@ -1,7 +1,7 @@
 #include "learningdialog.h"
 #include "ui_learningdialog.h"
 #include "toolfunctions.h"
-#include "fsrs.h"
+#include "core/fsrs.h"
 #include <QListView>
 
 LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)

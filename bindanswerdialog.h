@@ -15,7 +15,7 @@
 #include <QJsonObject>
 #include <QTreeView>
 #include <QTableView>
-#include "questionsql.h"
+#include "core/questionsql.h"
 #include "toolfunctions.h"
 
 

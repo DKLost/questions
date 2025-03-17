@@ -218,25 +218,6 @@ void MainWindow::on_answerDelButton_clicked() //删除答案
     else
         on_answerListWidget_itemActivated(ui->answerListWidget->currentItem());
 }
-void MainWindow::save_answerList(int id) //保存指定题目的所有答案
-{
-    QJsonArray array;
-
-    int rowCount = ui->answerListWidget->count();
-    for(int i = 0;i < rowCount;i++)
-    {
-        QJsonObject object;
-        QString type = ui->answerListWidget->item(i)->toolTip();
-
-        object.insert("id",ui->answerListWidget->item(i)->statusTip().toInt());
-        object.insert("type",ui->answerListWidget->item(i)->toolTip());
-        object.insert("content",ui->answerListWidget->item(i)->whatsThis());
-
-        array.append(object);
-    }
-    questionSql->write_answerJSON(id,array);
-    //answerTableModel->select();
-}
 void MainWindow::on_answerListWidget_itemDoubleClicked(QListWidgetItem *item)
 {
     on_answerEditButton_clicked();
@@ -371,6 +352,7 @@ void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题�
         QJsonObject itemObject = item.toObject();
         QString type = itemObject["type"].toString();
         QListWidgetItem *aitem = new QListWidgetItem{};//id:StatusTip,type:ToolTip,content:WhatsThis
+
         aitem->setStatusTip(QString::number(itemObject["id"].toInt()));
         aitem->setToolTip(type);
         aitem->setWhatsThis(itemObject["content"].toString());

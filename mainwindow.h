@@ -14,7 +14,7 @@
 #include <QFontDialog>
 #include <QJsonObject>
 #include "learningdialog.h"
-#include "questionsql.h"
+#include "core/questionsql.h"
 #include "questionmovedialog.h"
 #include "answereditdialog.h"
 #include "settimedialog.h"
@@ -51,9 +51,6 @@ public:
     //category
     void get_categoryItemTree(QStandardItem *parent, int parentId);
     void reload_categoryTreeView();
-
-
-    void save_answerList(int id);
 
     void update_count_categoryTreeView();
 

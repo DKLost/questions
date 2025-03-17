@@ -1,5 +1,5 @@
-#include "questionsql.h"
-#include "fsrs.h"
+#include "core/questionsql.h"
+#include "core/fsrs.h"
 #include "toolfunctions.h"
 
 QuestionSql::QuestionSql(QString fileName,QObject *parent)
@@ -13,7 +13,10 @@ QuestionSql::QuestionSql(QString fileName,QObject *parent)
     QSqlQuery query(db);
 
     //categories
-    query.exec("CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY,name TEXT,parentId INTEGER)");
+    query.exec("CREATE TABLE IF NOT EXISTS categories("
+               "id INTEGER PRIMARY KEY,"
+               "name TEXT,"
+               "parentId INTEGER)");
     query.exec("INSERT INTO categories VALUES(0,'root',-1)");
     query.exec("INSERT INTO categories VALUES(1,'未分类',0)");
 
@@ -255,43 +258,6 @@ int QuestionSql::count_total_questions(int categoryId)
 
     return qCount;
 }
-QString QuestionSql::get_category_condString(int categoryId)
-{
-    QString condString = QString("categoryId = %1").arg(categoryId);
-    QSqlQuery query(db);
-    QList<int> ids{categoryId};
-    for(int i = 0;i < ids.size();i++)
-    {
-        query.prepare("SELECT id FROM categories WHERE parentId = ?");
-        query.bindValue(0,ids[i]);
-        query.exec();
-        while(query.next())
-        {
-            ids.append(query.value(0).toInt());
-        }
-        if(ids[i] != categoryId)
-            condString.append(QString(" OR categoryId = %1").arg(ids[i]));
-    }
-    return condString;
-}
-QString QuestionSql::get_toLearn_condString(QString currentFilter)
-{
-    QString currentDate = QDate::currentDate().toString("yyyy/MM/dd");
-    QString condString = QString("(%1 <= %2) AND %3")
-                             .arg("nextDate")
-                             .arg(QString("'%1'").arg(currentDate))
-                             .arg(QString("(%1)").arg(currentFilter));
-    return condString;
-}
-QString QuestionSql::get_toLearn_condString(int categoryId)
-{
-    QString currentDate = QDate::currentDate().toString("yyyy/MM/dd");
-    QString condString = QString("(%1 <= %2) AND %3")
-                             .arg("nextDate")
-                             .arg(QString("'%1'").arg(currentDate))
-                             .arg(QString("(%1)").arg(get_category_condString(categoryId)));
-    return condString;
-}
 
 //other
 QVariant QuestionSql::get_value(QString table,int id,QString column)
@@ -370,13 +336,6 @@ int QuestionSql::get_max_id(QString table)
     return id;
 }
 
-
-//timeStringToInt => QTime::fromString(timeString,"mm'm':ss's'").second();
-//void set_goodTime(int id, QTime goodTime) => set_value("questions",id,"goodTime",goodTime.toString("mm'm':ss's'"));
-//void set_question_categoryId(int id,int categoryId) => set_value("questions",id,"categoryId",categoryId);
-//int get_goodTime(int id) => timeStringToInt(get_value("questions",id,"goodTime"));
-
-
 void QuestionSql::update_answer_state(int id,QTime myTime)
 {
     QSqlQuery query(db);
@@ -442,7 +401,6 @@ void QuestionSql::update_answer_state(int id,QTime myTime)
     set_value("answers",id,"avg10Time",newAvg10Time.toString("mm:ss.zzz").chopped(1));
     set_value("answers",id,"avg10Rating",FSRS::time2rating(newAvg10Time,goodTime));
 }
-
 void QuestionSql::update_question_state(int id)
 {
     QSqlQuery query(db);
@@ -490,6 +448,45 @@ void QuestionSql::update_question_state(int id)
     set_value("questions",id,"bestTime",bestTime.toString("mm:ss.zzz").chopped(1));
     set_value("questions",id,"nextDate",nextDate.toString("yyyy/MM/dd"));
     set_value("questions",id,"lastDate",lastDate.toString("yyyy/MM/dd"));
+}
+
+//ui
+QString QuestionSql::get_category_condString(int categoryId)
+{
+    QString condString = QString("categoryId = %1").arg(categoryId);
+    QSqlQuery query(db);
+    QList<int> ids{categoryId};
+    for(int i = 0;i < ids.size();i++)
+    {
+        query.prepare("SELECT id FROM categories WHERE parentId = ?");
+        query.bindValue(0,ids[i]);
+        query.exec();
+        while(query.next())
+        {
+            ids.append(query.value(0).toInt());
+        }
+        if(ids[i] != categoryId)
+            condString.append(QString(" OR categoryId = %1").arg(ids[i]));
+    }
+    return condString;
+}
+QString QuestionSql::get_toLearn_condString(QString currentFilter)
+{
+    QString currentDate = QDate::currentDate().toString("yyyy/MM/dd");
+    QString condString = QString("(%1 <= %2) AND %3")
+                             .arg("nextDate")
+                             .arg(QString("'%1'").arg(currentDate))
+                             .arg(QString("(%1)").arg(currentFilter));
+    return condString;
+}
+QString QuestionSql::get_toLearn_condString(int categoryId)
+{
+    QString currentDate = QDate::currentDate().toString("yyyy/MM/dd");
+    QString condString = QString("(%1 <= %2) AND %3")
+                             .arg("nextDate")
+                             .arg(QString("'%1'").arg(currentDate))
+                             .arg(QString("(%1)").arg(get_category_condString(categoryId)));
+    return condString;
 }
 
 

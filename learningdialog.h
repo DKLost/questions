@@ -10,7 +10,7 @@
 #include <QFontMetrics>
 #include <QSqlDatabase>
 #include <QSqlQuery>
-#include "questionsql.h"
+#include "core/questionsql.h"
 #include <QLabel>
 #include <QSqlTableModel>
 #include <QSqlRelationalTableModel>

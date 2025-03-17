@@ -9,30 +9,30 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    core/fsrs.cpp \
+    core/questionsql.cpp \
     answereditdialog.cpp \
     bindanswerdialog.cpp \
-    fsrs.cpp \
     htmltableadddialog.cpp \
     learningdialog.cpp \
     main.cpp \
     mainwindow.cpp \
     questionmovedialog.cpp \
     questionrenamedialog.cpp \
-    questionsql.cpp \
     questiontageditdialog.cpp \
     settimedialog.cpp \
     toolfunctions.cpp
 
 HEADERS += \
+    core/fsrs.h \
+    core/questionsql.h \
     answereditdialog.h \
     bindanswerdialog.h \
-    fsrs.h \
     htmltableadddialog.h \
     learningdialog.h \
     mainwindow.h \
     questionmovedialog.h \
     questionrenamedialog.h \
-    questionsql.h \
     questiontageditdialog.h \
     settimedialog.h \
     toolfunctions.h
