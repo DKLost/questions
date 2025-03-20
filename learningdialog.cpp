@@ -47,6 +47,8 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     //init isSpeedLearn
     isSpeedLearn = false;
 
+    //init answer grid layout
+    QGridLayout *answerBoxLayout = qobject_cast<QGridLayout*>(ui->groupBox->layout());
 }
 
 LearningDialog::~LearningDialog()
@@ -80,7 +82,7 @@ void LearningDialog::timerHandler()
     {
         int row = currentLineEdit->toolTip().toInt();
         QGridLayout* layout = qobject_cast<QGridLayout*>(currentLineEdit->parentWidget()->layout());
-        QLabel* answerTimeLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,3)->widget());
+        QLabel* answerTimeLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,4)->widget());
         QTime answerTime = ToolFunctions::msz2QTime(answerTimeLabel->text());
         answerTime = answerTime.addMSecs(10);
         answerTimeLabel->setText(answerTime.toString("mm:ss.zzz").chopped(1));
@@ -245,9 +247,9 @@ void LearningDialog::poolComboBox_currentIndexChanged(const int &index)
     //统计所有已使用的答案原行号到实际行号的映射
     for(int i = 0;i < rowCount;i++)
     {
-        if(layout->itemAtPosition(i,1) == nullptr)
+        if(layout->itemAtPosition(i,2) == nullptr)
             continue;
-        QComboBox* comBox = qobject_cast<QComboBox*>(layout->itemAtPosition(i,1)->widget());
+        QComboBox* comBox = qobject_cast<QComboBox*>(layout->itemAtPosition(i,2)->widget());
         if(comBox == nullptr)
             continue;
         if(currentArray[i].toObject()["pool"].toInt() != pool)
@@ -263,9 +265,9 @@ void LearningDialog::poolComboBox_currentIndexChanged(const int &index)
     //如果和已有冲突，则换成其他可用行号
     for(int i = 0;i < rowCount;i++)
     {
-        if(layout->itemAtPosition(i,1) == nullptr)
+        if(layout->itemAtPosition(i,2) == nullptr)
             continue;
-        QComboBox* comBox = qobject_cast<QComboBox*>(layout->itemAtPosition(i,1)->widget());
+        QComboBox* comBox = qobject_cast<QComboBox*>(layout->itemAtPosition(i,2)->widget());
         if(comBox == nullptr)
             continue;
         if(currentArray[i].toObject()["pool"].toInt() != pool)
@@ -312,6 +314,7 @@ void LearningDialog::set_question(int id)
     rowCount = array.count();
     for(int i = 0;i < array.count();i++)
     {
+        QLabel* newLineNumberLabel = new QLabel(this);
         QLineEdit* newLineEdit = new QLineEdit(this);
         QLabel* newAnswerLabel = new QLabel(this); //StatusTip:id ToolTip:type
         QCheckBox* newCheackBox = new QCheckBox(this);
@@ -319,8 +322,9 @@ void LearningDialog::set_question(int id)
         QLabel* newTimeLabel = new QLabel(this);
         QLabel* newGoodTimeLabel = new QLabel(this);
 
-        //newAnswerComboBox->fin
         int pixelWide = 10;
+
+        newLineNumberLabel->setText(QString::number(i+1));
 
         QJsonObject obj = array[i].toObject();
         newAnswerLabel->setStatusTip(QString::number(obj["id"].toInt()));
@@ -354,16 +358,18 @@ void LearningDialog::set_question(int id)
 
         QString nextDateString = questionSql->get_value("answers",obj["id"].toInt(),"nextDate").toString();
         QDate nextDate = QDate::fromString(nextDateString,"yyyy/MM/dd");
+
+        layout->addWidget(newLineNumberLabel,i,0);
         if(onlyToLearn && nextDate > QDate::currentDate())
         {
-            layout->addWidget(newAnswerLabel,i,0);
+            layout->addWidget(newAnswerLabel,i,1);
         }else
         {
-            layout->addWidget(newLineEdit,i,0);
-            layout->addWidget(newAnswerLabel,i,1);
-            layout->addWidget(newCheackBox,i,2);
-            layout->addWidget(newTimeLabel,i,3);
-            layout->addWidget(newGoodTimeLabel,i,4);
+            layout->addWidget(newLineEdit,i,1);
+            layout->addWidget(newAnswerLabel,i,2);
+            layout->addWidget(newCheackBox,i,3);
+            layout->addWidget(newTimeLabel,i,4);
+            layout->addWidget(newGoodTimeLabel,i,5);
 
             newAnswerLabel->hide();
             newCheackBox->hide();
@@ -373,7 +379,7 @@ void LearningDialog::set_question(int id)
     //乱序池
     for(int row = 0;row < array.count();row++)
     {
-        if(layout->itemAtPosition(row,1) == nullptr)
+        if(layout->itemAtPosition(row,2) == nullptr)
             continue;
 
         QJsonObject obj = array[row].toObject();
@@ -387,7 +393,7 @@ void LearningDialog::set_question(int id)
 
             for(int row = 0;row < array.count();row++) //遍历添加乱序选框选项
             {
-                if(layout->itemAtPosition(row,1) == nullptr)
+                if(layout->itemAtPosition(row,2) == nullptr)
                     continue;
                 QJsonObject pool_obj = array[row].toObject();
                 if(pool_obj["pool"].toInt() == obj["pool"].toInt())
@@ -402,8 +408,8 @@ void LearningDialog::set_question(int id)
                 }
             }
             newAnswerComboBox->setCurrentIndex(newAnswerComboBox->findData(row));
-            layout->removeItem(layout->itemAtPosition(row,1));
-            layout->addWidget(newAnswerComboBox,row,1);
+            layout->removeItem(layout->itemAtPosition(row,2));
+            layout->addWidget(newAnswerComboBox,row,2);
             newAnswerComboBox->hide();
         }
     }
@@ -413,6 +419,7 @@ void LearningDialog::set_question(int id)
     QLabel* newGoodTimeLabel = new QLabel(this);
     QLabel* newCheckLabel = new QLabel(this);
     timeLabel->setText("00:00.00");
+    timeLabel->setFixedWidth(80);
     QString timeString = ToolFunctions::ms2msz(questionSql->get_value("questions",id,"goodTime").toString());
     newGoodTimeLabel->setText(timeString);
     newCheckLabel->setText("良好");
@@ -440,20 +447,20 @@ void LearningDialog::preSubmit()
 
     for(;row < rowCount;row++)
     {
-        if(layout->itemAtPosition(row,1) == nullptr)
+        if(layout->itemAtPosition(row,2) == nullptr)
         {
             continue;
         }
         QJsonArray array = questionSql->read_answerJSON(currentId);
-        QLineEdit *lineEdit = (QLineEdit *)layout->itemAtPosition(row,0)->widget();
-        QCheckBox *checkBox = (QCheckBox *)layout->itemAtPosition(row,2)->widget();
+        QLineEdit *lineEdit = (QLineEdit *)layout->itemAtPosition(row,1)->widget();
+        QCheckBox *checkBox = (QCheckBox *)layout->itemAtPosition(row,3)->widget();
         lineEdit->setEnabled(false);
         checkBox->show();
 
         //非乱序池答案
         if(array[row].toObject()["pool"].toInt() == 0)
         {
-            QLabel *answerLabel = (QLabel *)layout->itemAtPosition(row,1)->widget();
+            QLabel *answerLabel = (QLabel *)layout->itemAtPosition(row,2)->widget();
             if(answerLabel->toolTip() == "auto")
             {
                 if(lineEdit->text() == answerLabel->text())
@@ -468,7 +475,7 @@ void LearningDialog::preSubmit()
         //乱序池答案，自动检查通过的从其他乱序池答案的选框项中移除
         if(array[row].toObject()["pool"].toInt() != 0)
         {
-            QComboBox *answerComboBox = (QComboBox *)layout->itemAtPosition(row,1)->widget();
+            QComboBox *answerComboBox = (QComboBox *)layout->itemAtPosition(row,2)->widget();
 
             QJsonObject currentObj = array[row].toObject();
 
@@ -499,9 +506,9 @@ void LearningDialog::preSubmit()
 
                         QJsonObject _obj = array[_row].toObject();
                         if(_obj["pool"].toInt() == currentObj["pool"].toInt() &&
-                            layout->itemAtPosition(_row,1) != nullptr)
+                            layout->itemAtPosition(_row,2) != nullptr)
                         {
-                            QComboBox *_answerComboBox = (QComboBox *)layout->itemAtPosition(_row,1)->widget();
+                            QComboBox *_answerComboBox = (QComboBox *)layout->itemAtPosition(_row,2)->widget();
                             _answerComboBox->removeItem(_answerComboBox->findText(answerComboBox->currentText()));
                         }
                     }
@@ -524,11 +531,11 @@ void LearningDialog::submit()
     for(;row < rowCount;row++)
     {
         QJsonObject currentObj = array[row].toObject();
-        if(layout->itemAtPosition(row,1) == nullptr)
+        if(layout->itemAtPosition(row,2) == nullptr)
             continue;
         //QLabel *answerLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,1)->widget());
-        QCheckBox *checkBox = (QCheckBox *)layout->itemAtPosition(row,2)->widget();
-        QString answerTimeString = qobject_cast<QLabel*>(layout->itemAtPosition(row,3)->widget())->text();
+        QCheckBox *checkBox = (QCheckBox *)layout->itemAtPosition(row,3)->widget();
+        QString answerTimeString = qobject_cast<QLabel*>(layout->itemAtPosition(row,4)->widget())->text();
         QTime answerTime = ToolFunctions::msz2QTime(answerTimeString);
 
         if(checkBox->isChecked() == false)
@@ -539,7 +546,7 @@ void LearningDialog::submit()
         int aId = currentObj["id"].toInt();
         if(currentObj["pool"] != 0) //如果答案属于乱序池则根据乱序选框确定aId
         {
-            QComboBox *answerComboBox = qobject_cast<QComboBox*>(layout->itemAtPosition(row,1)->widget());
+            QComboBox *answerComboBox = qobject_cast<QComboBox*>(layout->itemAtPosition(row,2)->widget());
             int _row = answerComboBox->itemData(answerComboBox->currentIndex()).toInt();
             aId = array[_row].toObject()["id"].toInt();
         }

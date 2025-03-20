@@ -86,7 +86,6 @@ void AnswerEditDialog::setAId(const int &aId)
 
 void AnswerEditDialog::setPool(const int &pool)
 {
-    qDebug() << "pool:" << pool;
     ui->poolComboBox->setCurrentText(QString::number(pool));
 }
 

@@ -1,9 +1,14 @@
 # questions
-题库型的学习软件，采用FSRS算法，核心思路与anki相同。以填空题答题速度为依据判断对知识点的掌握程度。
+题库型的学习软件，采用FSRS算法，核心思路与anki相同。以填空题答题时间为依据判断对知识点的掌握程度。
 
-![questions-sample1](questions-sample1.png)
+计划实现的功能：
 
-![questions-sample2](questions-sample2.png)
+- [x] 跨题目答案绑定
+- [x] 乱序答案池
+- [ ] 去除标签功能，通过将一个问题归属多个分类来替代标签功能
+- [ ] 将答案参与题目统计从单纯计数改为记录所有参与的题目的id，便于反向查找题目
+
+
 
 本项目FSRS算法实现主要来自该项目：https://github.com/open-spaced-repetition/fsrs4anki
 

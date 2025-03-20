@@ -13,6 +13,7 @@ SOURCES += \
     core/questionsql.cpp \
     answereditdialog.cpp \
     bindanswerdialog.cpp \
+    dragqtreewidget.cpp \
     htmltableadddialog.cpp \
     learningdialog.cpp \
     main.cpp \
@@ -28,6 +29,7 @@ HEADERS += \
     core/questionsql.h \
     answereditdialog.h \
     bindanswerdialog.h \
+    dragqtreewidget.h \
     htmltableadddialog.h \
     learningdialog.h \
     mainwindow.h \

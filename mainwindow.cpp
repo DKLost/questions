@@ -13,6 +13,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     init_questionTableView();
     init_answerTableView();
+    init_answerTreeWidget();
 
     //init categoryTreeView
     categoryItemModel = new QStandardItemModel(this);
@@ -37,12 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     //init question html text edit
     ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*4);
 
-    //init answer list
-    ui->answerListWidget->setMovement(QListView::Free);
-    ui->answerListWidget->setDragDropMode(QAbstractItemView::InternalMove);
-    connect(ui->answerListWidget->model(),&QAbstractItemModel::rowsMoved,
-            this,&MainWindow::on_answerListRowsMoved);
-
+    //init dialogs
     learningDialog = new LearningDialog(questionSql,this);                          //init learning dialog
     setTimeDialog = new SetTimeDialog(this);                                        //init set time dialog
     htmlTableAddDialog = new HtmlTableAddDialog(this);                              //init html table add dialog
@@ -67,6 +63,27 @@ MainWindow::~MainWindow()
 
 
 //answer
+void MainWindow::load_answer(int qId)
+{
+    //load answer.json
+    QJsonArray array = questionSql->read_answerJSON(qId);
+    ui->answerTreeWidget->clear();
+    ui->answerTreeWidget->setIconSize(QSize(1000,1000));
+    for(int row = 0;row < array.count();row++)
+    {
+        QJsonObject itemObject = array[row].toObject();
+        QString type = itemObject["type"].toString();
+        QTreeWidgetItem *aitem = new QTreeWidgetItem{};//id:StatusTip,type:ToolTip,content:WhatsThis
+        aitem->setText(0,QString::number(row+1));
+        if(type == "manual(image)")
+        {
+            QIcon icon{itemObject["content"].toString()};
+            aitem->setIcon(1,icon);
+        }else
+            aitem->setText(1,itemObject["content"].toString());
+        ui->answerTreeWidget->addTopLevelItem(aitem);
+    }
+}
 void MainWindow::init_answerTableView()
 {
     answerTableModel = new QSqlTableModel(this,questionSql->getDb());
@@ -87,24 +104,101 @@ void MainWindow::set_answer_tableHeader()
     answerTableModel->setHeaderData(6, Qt::Horizontal, "到期");
     answerTableModel->setHeaderData(7, Qt::Horizontal, "最近学习");
 }
-void MainWindow::on_answerAddButton_clicked() //新建答案
+
+void MainWindow::init_answerTreeWidget()
 {
-    if(!ui->questionTableView->currentIndex().isValid())
+    //ui->answerTreeWidget->setHeaderLabels({"编号","内容"});
+    ui->answerTreeWidget->setDragDropMode(QAbstractItemView::InternalMove);
+    ui->answerTreeWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->answerTreeWidget->headerItem()->setHidden(true);
+    ui->answerTreeWidget->setIndentation(0);
+    ui->answerTreeWidget->setHeaderLabels({"num","content"});
+    ui->answerTreeWidget->resizeColumnToContents(0);
+
+    connect(ui->answerTreeWidget,&DragQTreeWidget::signalRowsMoved,
+            this,&MainWindow::answerItemRowsMoved);
+}
+
+void MainWindow::on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, int column)
+{
+    on_answerEditButton_clicked();
+}
+void MainWindow::on_answerTreeWidget_itemActivated(QTreeWidgetItem *item, int column)
+{
+    QString condString = "";
+    if(item != nullptr)
+    {
+        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int row = item->text(0).toInt() - 1;
+        QJsonArray answerJson = questionSql->read_answerJSON(qId);
+        int aId = answerJson[row].toObject()["id"].toInt();
+        condString = QString("id = %1").arg(aId);
+    }
+    answerTableModel->setFilter(condString);
+    answerTableModel->select();
+    ui->answerTableView->selectRow(0);
+}
+void MainWindow::on_answerTreeWidget_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous)
+{
+    on_answerTreeWidget_itemClicked(current,0);
+}
+void MainWindow::on_answerTreeWidget_itemClicked(QTreeWidgetItem *item, int column)
+{
+    if(item != nullptr)
+    {
+        int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int row = item->text(0).toInt() - 1;
+        QJsonArray answerJson = questionSql->read_answerJSON(qId);
+        if(aId != answerJson[row].toObject()["id"].toInt())
+            on_answerTreeWidget_itemActivated(item,column);
+    }
+}
+void MainWindow::on_answerTreeWidget_itemChanged(QTreeWidgetItem *item, int column)
+{
+    if(item != nullptr)
+    {
+        int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int row = item->text(0).toInt() - 1;
+        QJsonArray answerJson = questionSql->read_answerJSON(qId);
+        if(aId != answerJson[row].toObject()["id"].toInt())
+            on_answerTreeWidget_itemActivated(item,column);
+    }
+}
+void MainWindow::answerItemRowsMoved(int startIndex,int endIndex)
+{
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
         return;
 
-    int row = ui->answerListWidget->currentRow() + 1;
-    ui->answerListWidget->insertItem(row,"");
-    ui->answerListWidget->setCurrentRow(row);
+    int qId = index.siblingAtColumn(0).data().toInt();
+    QJsonArray array = questionSql->read_answerJSON(qId);
+    QJsonObject obj = array[startIndex].toObject();
+    if(endIndex >= array.count()) endIndex--;
+    array.removeAt(startIndex);
+    array.insert(endIndex,obj);
+    questionSql->write_answerJSON(qId,array);
+    load_answer(qId);
+    QTreeWidgetItem *item = ui->answerTreeWidget->findItems(QString::number(endIndex + 1),Qt::MatchExactly,0).first();
+    ui->answerTreeWidget->setCurrentItem(item);
+}
+
+void MainWindow::on_answerAddButton_clicked() //新建答案
+{
+    QModelIndex qIndex = ui->questionTableView->currentIndex();
+    if(!qIndex.isValid())
+        return;
+
+    int qId = qIndex.siblingAtColumn(0).data().toInt();
+
+    int row = ui->answerTreeWidget->currentIndex().row() + 1;
+    QTreeWidgetItem *newItem = new QTreeWidgetItem{{QString::number(row + 1),"请输入答案"}};
+    ui->answerTreeWidget->insertTopLevelItem(row,newItem);
     int id = questionSql->get_max_id("answers") + 1;
     questionSql->add_answer(id);
     questionSql->inc_answer_bind_count(id);
-    ui->answerListWidget->currentItem()->setStatusTip(QString::number(id));
-    ui->answerListWidget->currentItem()->setToolTip("auto");
-    ui->answerListWidget->currentItem()->setWhatsThis("请输入答案");
-    ui->answerListWidget->currentItem()->setText("请输入答案");
     questionSql->set_value<QString>("answers",id,"goodTime","00m:00s");
-    QModelIndex index = ui->questionTableView->currentIndex();
-    int qId = index.siblingAtColumn(0).data().toInt();
 
     //保存
     QJsonArray array = questionSql->read_answerJSON(qId);
@@ -115,8 +209,13 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     aObj["pool"] = 0;
     array.insert(row,aObj);
     questionSql->write_answerJSON(qId,array);
-
     questionSql->update_question_state(qId);
+    load_answer(qId);
+    newItem = ui->answerTreeWidget->findItems(QString::number(row + 1),Qt::MatchExactly,0).first();
+    ui->answerTreeWidget->setCurrentItem(newItem);
+    //on_answerTreeWidget_itemActivated(newItem)
+
+    //修改
     on_answerEditButton_clicked();
 }
 void MainWindow::on_answerEditButton_clicked() //修改答案
@@ -126,31 +225,26 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         return;
     int qId = index.siblingAtColumn(0).data().toInt();
 
-    QListWidgetItem *item = ui->answerListWidget->currentItem();
+    QTreeWidgetItem *item = ui->answerTreeWidget->currentItem();
     if(item == NULL)
         return;
 
     //init
-    int row = ui->answerListWidget->currentRow();
+    int row = item->text(0).toInt() - 1;
     QJsonArray array = questionSql->read_answerJSON(qId);
     QJsonObject aObj = array[row].toObject();
 
-
-    int aId = item->statusTip().toInt();
+    int aId = aObj["id"].toInt();
     QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("answers",aId,"goodTime").toString());
+    //QString type = aObj["type"].toString();
+    //QString content = aObj["content"].toString();
     answerEditDialog->setQId(qId);
     answerEditDialog->resetEdit();
-    answerEditDialog->setType(item->toolTip());
     answerEditDialog->setGoodTime(goodTime);
     answerEditDialog->setAId(aId);
+    answerEditDialog->setType(aObj["type"].toString());
     answerEditDialog->setPool(aObj["pool"].toInt());
-    if(item->toolTip() == "manual(image)")
-    {
-        answerEditDialog->setContent(item->whatsThis());
-    }else
-    {
-        answerEditDialog->setContent(item->text());
-    }
+    answerEditDialog->setContent(aObj["content"].toString());
     answerEditDialog->lineEdit_selectAll();
 
     //exec
@@ -162,24 +256,20 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
         int answerAId = answerEditDialog->getRetAId();
         int answerPool = answerEditDialog->getRetPool();
-        // if(answerContent == "")
-        //     return;
 
         if(aId != answerAId)
         {
-            item->setStatusTip(QString::number(answerAId));
             questionSql->inc_answer_bind_count(answerAId);
             questionSql->del_answer(aId);
         }
 
-        item->setToolTip(answerType);
-        item->setWhatsThis(answerContent);
+
         if(answerType == "manual(image)")
         {
-            item->setIcon(QIcon{answerContent});
-            item->setText("");
+            item->setIcon(1,QIcon{answerContent});
+            item->setText(1,"");
         }else{
-            item->setText(answerContent);
+            item->setText(1,answerContent);
         }
         questionSql->set_value("answers",aId,"goodTime",answerGoodTime);
         questionSql->update_question_state(qId);
@@ -200,70 +290,29 @@ void MainWindow::on_answerDelButton_clicked() //删除答案
         return;
     int qId = index.siblingAtColumn(0).data().toInt();
 
-    QListWidgetItem *item = ui->answerListWidget->currentItem();
+    QTreeWidgetItem *item = ui->answerTreeWidget->currentItem();
     if(item == NULL)
         return;
 
-    int aId = item->statusTip().toInt();
-    int row = ui->answerListWidget->currentRow();
+    int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
+    int row = item->text(0).toInt() - 1;
     questionSql->del_answer(aId);
-    delete item;
 
     QJsonArray array = questionSql->read_answerJSON(qId);
     array.removeAt(row);
     questionSql->write_answerJSON(qId,array);
     questionSql->update_question_state(qId);
-    if(ui->answerListWidget->currentItem() == nullptr)
-        answerTableModel->select();
-    else
-        on_answerListWidget_itemActivated(ui->answerListWidget->currentItem());
-}
-void MainWindow::on_answerListWidget_itemDoubleClicked(QListWidgetItem *item)
-{
-    on_answerEditButton_clicked();
-}
-void MainWindow::on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow)
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
 
-    int id = index.siblingAtColumn(0).data().toInt();
-    QJsonArray array = questionSql->read_answerJSON(id);
-    QJsonObject obj = array[sourceStart].toObject();
-    if(destinationRow >= array.count()) destinationRow--;
-    array.removeAt(sourceStart);
-    array.insert(destinationRow,obj);
-    questionSql->write_answerJSON(id,array);
+    load_answer(qId);
+    item = nullptr;
+    if(row >= ui->answerTreeWidget->topLevelItemCount())
+        row--;
+    auto items = ui->answerTreeWidget->findItems(QString::number(row + 1),Qt::MatchExactly,0);
+    if(!items.empty())
+        item = items.first();
+    ui->answerTreeWidget->setCurrentItem(item);
 }
-void MainWindow::on_answerListWidget_itemChanged(QListWidgetItem *item)
-{
-    if(item != nullptr)
-    {
-        int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        if(aId != item->statusTip().toInt())
-            on_answerListWidget_itemActivated(item);
-    }
-}
-void MainWindow::on_answerListWidget_itemClicked(QListWidgetItem *item)
-{
-    if(item != nullptr)
-    {
-        int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        if(aId != item->statusTip().toInt())
-            on_answerListWidget_itemActivated(item);
-    }
-}
-void MainWindow::on_answerListWidget_itemActivated(QListWidgetItem *item)
-{
-    if(item != nullptr)
-    {
-        int aId = item->statusTip().toInt();
-        QString condString = QString("id = %1").arg(aId);
-        answerTableModel->setFilter(condString);
-        answerTableModel->select();
-    }
-}
+
 
 //question
 void MainWindow::init_questionTableView()
@@ -343,27 +392,7 @@ void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题�
     ui->questionTextEdit->setHtml(questionHTML);
     is_questionTextEdit_editable = true;
 
-    //load answer.json
-    QJsonArray array = questionSql->read_answerJSON(id);
-    ui->answerListWidget->clear();
-    ui->answerListWidget->setIconSize(QSize(1000,1000));
-    for(auto item : array)
-    {
-        QJsonObject itemObject = item.toObject();
-        QString type = itemObject["type"].toString();
-        QListWidgetItem *aitem = new QListWidgetItem{};//id:StatusTip,type:ToolTip,content:WhatsThis
-
-        aitem->setStatusTip(QString::number(itemObject["id"].toInt()));
-        aitem->setToolTip(type);
-        aitem->setWhatsThis(itemObject["content"].toString());
-        if(type == "manual(image)")
-        {
-            QIcon icon{itemObject["content"].toString()};
-            aitem->setIcon(icon);
-        }else
-            aitem->setText(itemObject["content"].toString());
-        ui->answerListWidget->addItem(aitem);
-    }
+    load_answer(id);
 }
 void MainWindow::on_questionAddButton_clicked()
 {
@@ -842,6 +871,17 @@ void MainWindow::on_setGoodTimeButton_clicked()
     ui->questionTableView->setCurrentIndex(newIndex);
     on_questionTableView_activated(newIndex);
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

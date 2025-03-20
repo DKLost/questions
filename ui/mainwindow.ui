@@ -154,9 +154,13 @@ border:1px solid black;
             <property name="title">
              <string>答案</string>
             </property>
-            <layout class="QVBoxLayout" name="verticalLayout_2">
+            <layout class="QHBoxLayout" name="horizontalLayout">
              <item>
-              <widget class="QListWidget" name="answerListWidget"/>
+              <widget class="DragQTreeWidget" name="answerTreeWidget">
+               <property name="dragDropMode">
+                <enum>QAbstractItemView::DragDropMode::InternalMove</enum>
+               </property>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -441,6 +445,13 @@ border:1px solid black;
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DragQTreeWidget</class>
+   <extends>QTreeWidget</extends>
+   <header location="global">dragqtreewidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

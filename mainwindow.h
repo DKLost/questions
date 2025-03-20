@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QStandardItemModel>
 #include <QStandardItem>
+#include <QTreeWidgetItem>
 #include <QSqlTableModel>
 #include <QSqlRelationalTableModel>
 #include <QKeyEvent>
@@ -40,8 +41,10 @@ public:
     ~MainWindow();
 
     //answer
+    void load_answer(int qId);
     void init_answerTableView();
     void set_answer_tableHeader();
+    void init_answerTreeWidget();
 
     //question
     void init_questionTableView();
@@ -55,21 +58,20 @@ public:
     void update_count_categoryTreeView();
 
 
-
-
 protected:
     bool eventFilter(QObject *watched, QEvent *event);
+
 
 private slots:
     //answer
     void on_answerAddButton_clicked();
     void on_answerDelButton_clicked();
     void on_answerEditButton_clicked();
-    void on_answerListWidget_itemDoubleClicked(QListWidgetItem *item);
-    void on_answerListRowsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow);
-    void on_answerListWidget_itemActivated(QListWidgetItem *item);
-    void on_answerListWidget_itemClicked(QListWidgetItem *item);
-    void on_answerListWidget_itemChanged(QListWidgetItem *item);
+    void on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, int column);
+    void on_answerTreeWidget_itemChanged(QTreeWidgetItem *item, int column);
+    void on_answerTreeWidget_itemActivated(QTreeWidgetItem *item, int column);
+    void on_answerTreeWidget_itemClicked(QTreeWidgetItem *item, int column);
+    void answerItemRowsMoved(int startIndex, int endIndex);
 
     //question
     void on_questionDirOpenButton_clicked();
@@ -113,6 +115,11 @@ private slots:
     void on_questionRenameButton_clicked();
 
 
+
+
+
+    void on_answerTreeWidget_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
+
 private:
     Ui::MainWindow *ui;
 
@@ -138,5 +145,6 @@ private:
     bool is_questionTextEdit_editable = false;
     int currentSection;
     QDate currentDate;
+
 };
 #endif // MAINWINDOW_H
