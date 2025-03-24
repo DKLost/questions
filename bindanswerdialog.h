@@ -28,8 +28,7 @@ class BindAnswerDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainCategoryTreeView,
-                              QTableView *mainTagTableView ,QWidget *parent = nullptr);
+    explicit BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainCategoryTreeView,QWidget *parent = nullptr);
     ~BindAnswerDialog();
     //answer
     void init_answerTableView();
@@ -60,11 +59,6 @@ private slots:
     //category
     void on_categoryTreeView_clicked(const QModelIndex &index);
 
-    //tag
-    void on_tagTableView_activated(const QModelIndex &index);
-    void on_tagTableView_clicked(const QModelIndex &index);
-
-
     void on_buttonBox_accepted();
 
 private:
@@ -72,12 +66,10 @@ private:
 
     //main
     QTreeView *mainCategoryTreeView;
-    QTableView *mainTagTableView;
 
     //model
     QSqlRelationalTableModel *questionTableModel;
     QSqlTableModel *answerTableModel;
-    QSqlTableModel *tagTableModel;
 
     //other
     QuestionSql *questionSql;

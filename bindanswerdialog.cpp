@@ -1,8 +1,7 @@
 #include "bindanswerdialog.h"
 #include "ui_bindanswerdialog.h"
 
-BindAnswerDialog::BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainCategoryTreeView,
-                                   QTableView *mainTagTableView,QWidget *parent)
+BindAnswerDialog::BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainCategoryTreeView,QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::BindAnswerDialog)
 {
@@ -21,21 +20,6 @@ BindAnswerDialog::BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainC
     ui->categoryTreeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->categoryTreeView->header()->setSectionResizeMode(0,QHeaderView::Stretch);
     ui->categoryTreeView->hideColumn(1);
-
-    //init tagTableView
-    this->mainTagTableView = mainTagTableView;
-    // tagTableModel = new QSqlTableModel(this,questionSql->getDb());
-    // tagTableModel->setTable("tags");
-    // tagTableModel->setHeaderData(1,Qt::Horizontal,"标签名称");
-    // tagTableModel->setHeaderData(2,Qt::Horizontal,"最佳用时");
-    // tagTableModel->select();
-
-    ui->tagTableView->setModel(mainTagTableView->model());
-    ui->tagTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tagTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->tagTableView->hideColumn(0);
-    ui->tagTableView->horizontalHeader()->setSectionResizeMode(1,QHeaderView::Stretch);
-    ui->tagTableView->setSortingEnabled(true);
 
     //init question html text edit
     ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*4);
@@ -178,26 +162,9 @@ void BindAnswerDialog::on_questionTableView_activated(const QModelIndex &index) 
 //category
 void BindAnswerDialog::on_categoryTreeView_clicked(const QModelIndex &index)
 {
-    if(ui->tagTableView->currentIndex().isValid())
-        ui->tagTableView->selectionModel()->clearCurrentIndex();
-    ui->tagTableView->clearSelection();
-
     int categoryId = index.siblingAtColumn(1).data().toInt();
     QString condString = questionSql->get_category_condString(categoryId);
     questionTableModel->setFilter(condString);
-}
-
-//tag
-void BindAnswerDialog::on_tagTableView_activated(const QModelIndex &index)
-{
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    int tagId = index.siblingAtColumn(0).data().toInt();
-    QString condString = QString("(tag GLOB '*,%1') OR (tag GLOB '*,%1,*') OR (tag GLOB '%1,*') OR (tag GLOB '%1')").arg(tagId);
-    questionTableModel->setFilter(condString);
-}
-void BindAnswerDialog::on_tagTableView_clicked(const QModelIndex &index)
-{
-    on_tagTableView_activated(index);
 }
 
 //other
@@ -257,13 +224,7 @@ void BindAnswerDialog::on_buttonBox_accepted()
 void BindAnswerDialog::initDialog(int qId,int aId)
 {
     ui->categoryTreeView->setCurrentIndex(mainCategoryTreeView->currentIndex());
-    if(mainTagTableView->currentIndex().isValid())
-    {
-        ui->tagTableView->setCurrentIndex(mainTagTableView->currentIndex());
-        on_tagTableView_clicked(ui->tagTableView->currentIndex());
-    }
-    else
-        on_categoryTreeView_clicked(ui->categoryTreeView->currentIndex());
+    on_categoryTreeView_clicked(ui->categoryTreeView->currentIndex());
     retAId = -1;
 
     select_question_by_id(qId);

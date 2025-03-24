@@ -20,9 +20,6 @@ QuestionSql::QuestionSql(QString fileName,QObject *parent)
     query.exec("INSERT INTO categories VALUES(0,'root',-1)");
     query.exec("INSERT INTO categories VALUES(1,'未分类',0)");
 
-    //tags
-    query.exec("CREATE TABLE IF NOT EXISTS tags(id INTEGER PRIMARY KEY,name TEXT,bestTime TEXT)");
-
     //answers
     query.exec("CREATE TABLE IF NOT EXISTS answers("
                "id INTEGER PRIMARY KEY,"
@@ -59,8 +56,7 @@ QuestionSql::QuestionSql(QString fileName,QObject *parent)
                "bestTime TEXT,"
                "nextDate TEXT,"
                "lastDate TEXT,"
-               "orderNum INTEGER,"
-               "tag TEXT)");
+               "orderNum INTEGER)");
 }
 
 //category
@@ -107,40 +103,6 @@ void QuestionSql::_del_category(int id,int parentId)
     while(query.next())
     {
         _del_category(query.value(0).toInt(),parentId);
-    }
-}
-
-//tag
-void QuestionSql::add_tag(int id, QString name)
-{
-    QSqlQuery query(db);
-    query.prepare("INSERT INTO tags VALUES(?,?,?)");
-    query.bindValue(0,id);
-    query.bindValue(1,name);
-    query.bindValue(2,"23:59:59.99");
-    query.exec();
-}
-void QuestionSql::del_tag(int id)
-{
-    QSqlQuery query(db);
-    QSqlQuery query2(db);
-
-    query.exec("DELETE FROM tags WHERE id = ?");
-    query.bindValue(0,id);
-    query.exec();
-
-    QString queryString = QString("SELECT id, tag FROM questions "
-                                  "WHERE (tag GLOB '*,%1') OR (tag GLOB '*,%1,*') OR (tag GLOB '%1,*') OR (tag GLOB '%1')").arg(id);
-    query.exec(queryString);
-    while(query.next())
-    {
-        int qId = query.value(0).toInt();
-        QStringList tagList = query.value(1).toString().split(',',Qt::SkipEmptyParts);
-        tagList.remove(tagList.indexOf(QString::number(id)));
-        query2.prepare("UPDATE questions SET tag = ? WHERE id = ?");
-        query2.bindValue(0,tagList.join(','));
-        query2.bindValue(1,qId);
-        query2.exec();
     }
 }
 
@@ -193,7 +155,7 @@ void QuestionSql::dec_answer_bind_count(int aId)
 void QuestionSql::add_question(int id, int categoryId,QString name)
 {
     QSqlQuery query(db);
-    query.prepare("INSERT INTO questions VALUES(?,?,?,?,?,?,?,?,?,?,?,?)");
+    query.prepare("INSERT INTO questions VALUES(?,?,?,?,?,?,?,?,?,?,?)");
     query.bindValue(0,id); //id
     query.bindValue(1,categoryId); //categoryId
     query.bindValue(2,name); //name
@@ -205,7 +167,6 @@ void QuestionSql::add_question(int id, int categoryId,QString name)
     query.bindValue(8,QDate::currentDate().toString("yyyy/MM/dd")); //nextDate
     query.bindValue(9,""); //lastDate
     query.bindValue(10,-1); //order
-    query.bindValue(11,""); //tag
     query.exec();
 
     QString dirPath = QString("./data/%1").arg(id);
@@ -488,5 +449,3 @@ QString QuestionSql::get_toLearn_condString(int categoryId)
                              .arg(QString("(%1)").arg(get_category_condString(categoryId)));
     return condString;
 }
-
-

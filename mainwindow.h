@@ -20,7 +20,6 @@
 #include "answereditdialog.h"
 #include "settimedialog.h"
 #include "htmltableadddialog.h"
-#include "questiontageditdialog.h"
 #include "toolfunctions.h"
 #include "questionrenamedialog.h"
 #include "bindanswerdialog.h"
@@ -101,13 +100,6 @@ private slots:
     void category_item_change_handler(QStandardItem *item);
     void on_categoryEditButton_clicked();
 
-    //tag
-    void on_addTagButton_clicked();
-    void on_delTagButton_clicked();
-    void on_questionTagButton_clicked();
-    void on_tagTableView_activated(const QModelIndex &index);
-    void on_tagTableView_clicked(const QModelIndex &index);
-
     //other
     void on_setFontButton_clicked();
     void on_setGoodTimeButton_clicked();
@@ -126,7 +118,6 @@ private:
     //model
     QSqlRelationalTableModel *questionTableModel;
     QSqlTableModel *answerTableModel;
-    QSqlTableModel *tagTableModel;
     QStandardItemModel *categoryItemModel;
 
     //dialog
@@ -135,7 +126,6 @@ private:
     LearningDialog *learningDialog;
     SetTimeDialog *setTimeDialog;
     HtmlTableAddDialog *htmlTableAddDialog;
-    QuestionTagEditDialog *questionTagEditDialog;
     QuestionRenameDialog questionRenameDialog;
     BindAnswerDialog *bindAnswerDialog;
 

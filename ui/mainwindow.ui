@@ -52,19 +52,6 @@ border:1px solid black;
             <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
            </property>
           </widget>
-          <widget class="QTableView" name="tagTableView">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QTableView{
-border:1px solid black;
-}</string>
-           </property>
-          </widget>
          </widget>
          <widget class="QSplitter" name="splitter_2">
           <property name="orientation">
@@ -160,6 +147,11 @@ border:1px solid black;
                <property name="dragDropMode">
                 <enum>QAbstractItemView::DragDropMode::InternalMove</enum>
                </property>
+               <column>
+                <property name="text">
+                 <string notr="true">1</string>
+                </property>
+               </column>
               </widget>
              </item>
             </layout>
@@ -228,30 +220,6 @@ border:1px solid black;
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>标签</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="addTagButton">
-        <property name="text">
-         <string>添加标签</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="delTagButton">
-        <property name="text">
-         <string>删除标签</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
          <string>题目</string>
@@ -286,13 +254,6 @@ border:1px solid black;
        <widget class="QPushButton" name="questionMoveButton">
         <property name="text">
          <string>移动题目</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="questionTagButton">
-        <property name="text">
-         <string>设置标签</string>
         </property>
        </widget>
       </item>

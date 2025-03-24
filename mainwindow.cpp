@@ -22,19 +22,6 @@ MainWindow::MainWindow(QWidget *parent)
     on_categoryTreeView_clicked(categoryItemLists[1][0]->index());
     connect(categoryItemModel,&QStandardItemModel::itemChanged,this,&MainWindow::category_item_change_handler);
 
-    //init tagTableView
-    tagTableModel = new QSqlTableModel(this,questionSql->getDb());
-    tagTableModel->setTable("tags");
-    tagTableModel->setHeaderData(1,Qt::Horizontal,"标签名称");
-    tagTableModel->setHeaderData(2,Qt::Horizontal,"最佳用时");
-    tagTableModel->select();
-    ui->tagTableView->setModel(tagTableModel);
-    ui->tagTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tagTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->tagTableView->hideColumn(0);
-    ui->tagTableView->horizontalHeader()->setSectionResizeMode(1,QHeaderView::Stretch);
-    ui->tagTableView->setSortingEnabled(true);
-
     //init question html text edit
     ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*4);
 
@@ -42,11 +29,10 @@ MainWindow::MainWindow(QWidget *parent)
     learningDialog = new LearningDialog(questionSql,this);                          //init learning dialog
     setTimeDialog = new SetTimeDialog(this);                                        //init set time dialog
     htmlTableAddDialog = new HtmlTableAddDialog(this);                              //init html table add dialog
-    questionTagEditDialog = new QuestionTagEditDialog(this);                        //init questionTagEditDialog
     questionMoveDialog = new QuestionMoveDialog(ui->categoryTreeView,this);         //init question move dialog
     bindAnswerDialog = new BindAnswerDialog{questionSql,                            //init bind answer dialog
                                             ui->categoryTreeView,
-                                            ui->tagTableView,this};
+                                            this};
     answerEditDialog = new AnswerEditDialog(bindAnswerDialog,this);                 //init answer edit dialog
 
     //init current section
@@ -397,6 +383,7 @@ void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题�
 void MainWindow::on_questionAddButton_clicked()
 {
     int id = questionSql->get_max_id("questions") + 1;
+    qDebug() << id;
     QModelIndex index =ui->categoryTreeView->currentIndex();
     int categoryId = index.siblingAtColumn(1).data().toInt();
     QString name = ui->lineEdit->text();
@@ -543,19 +530,6 @@ void MainWindow::on_speedLearnButton_clicked()// 标签学习（不重复）
     if(learningDialog->getLastId() != -1)
     {
         select_question_by_id(learningDialog->getLastId());
-    }
-
-    //update tag bestTime
-    if(questionTableModel->filter().indexOf("tag") != -1)
-    {
-        QModelIndex tagTimeIndex = ui->tagTableView->currentIndex().siblingAtColumn(2);
-        QString bestTime = tagTimeIndex.data().toString();
-        QString newTime = learningDialog->getTotalTime().toString("hh:mm:ss.zzz").chopped(1);
-        if(bestTime > newTime)
-        {
-            tagTableModel->setData(tagTimeIndex,newTime);
-            tagTableModel->submitAll();
-        }
     }
 }
 void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
@@ -721,9 +695,6 @@ void MainWindow::on_categoryDelButton_clicked()
 }
 void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
 {
-    if(ui->tagTableView->currentIndex().isValid())
-        ui->tagTableView->selectionModel()->clearCurrentIndex();
-    ui->tagTableView->clearSelection();
     if(currentDate != QDate::currentDate())
     {
         update_count_categoryTreeView();
@@ -749,54 +720,6 @@ void MainWindow::category_item_change_handler(QStandardItem *item)
         questionSql->set_value("categories",id,"name",newName);
     }
     on_categoryTreeView_clicked(item->index());
-}
-
-//tag
-void MainWindow::on_addTagButton_clicked()
-{
-    int id = questionSql->get_max_id("tags") + 1;
-    QString name = ui->lineEdit->text();
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    query.prepare("SELECT * FROM tags WHERE name = ?");
-    query.bindValue(0,name);
-    query.exec();
-    if(query.next())
-        return;
-
-    questionSql->add_tag(id,name);
-    tagTableModel->select();
-}
-void MainWindow::on_delTagButton_clicked()
-{
-    QModelIndex index = ui->tagTableView->currentIndex();
-    int id = index.siblingAtColumn(0).data().toInt();
-    questionSql->del_tag(id);
-    tagTableModel->select();
-}
-void MainWindow::on_questionTagButton_clicked()
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-
-    int qId = index.siblingAtColumn(0).data().toInt();
-    questionTagEditDialog->set_question(qId);
-    questionTagEditDialog->exec();
-
-    questionTableModel->select();
-    tagTableModel->select();
-}
-void MainWindow::on_tagTableView_activated(const QModelIndex &index)
-{
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    int tagId = index.siblingAtColumn(0).data().toInt();
-    QString condString = QString("(tag GLOB '*,%1') OR (tag GLOB '*,%1,*') OR (tag GLOB '%1,*') OR (tag GLOB '%1')").arg(tagId);
-    questionTableModel->setFilter(condString);
-    currentSection = 1;
-}
-void MainWindow::on_tagTableView_clicked(const QModelIndex &index)
-{
-    on_tagTableView_activated(index);
 }
 
 //other

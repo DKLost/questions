@@ -26,10 +26,6 @@ public:
     void add_category(int id,QString name,int parent_id = 0);
     void del_category(int id);
 
-    //tag
-    void add_tag(int id, QString name);
-    void del_tag(int id);
-
     //answer
     void add_answer(int id);
     void del_answer(int id);
