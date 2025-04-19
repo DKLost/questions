@@ -59,7 +59,7 @@ void MainWindow::load_answer(int qId)
     {
         QJsonObject itemObject = array[row].toObject();
         QString type = itemObject["type"].toString();
-        QTreeWidgetItem *aitem = new QTreeWidgetItem{};//id:StatusTip,type:ToolTip,content:WhatsThis
+        QTreeWidgetItem *aitem = new QTreeWidgetItem(ui->answerTreeWidget);//id:StatusTip,type:ToolTip,content:WhatsThis
         aitem->setText(0,QString::number(row+1));
         if(type == "manual(image)")
         {
@@ -67,6 +67,7 @@ void MainWindow::load_answer(int qId)
             aitem->setIcon(1,icon);
         }else
             aitem->setText(1,itemObject["content"].toString());
+        aitem->setText(2,QString::number(itemObject["pool"].toInt()));
         ui->answerTreeWidget->addTopLevelItem(aitem);
     }
 }
@@ -96,10 +97,13 @@ void MainWindow::init_answerTreeWidget()
     //ui->answerTreeWidget->setHeaderLabels({"编号","内容"});
     ui->answerTreeWidget->setDragDropMode(QAbstractItemView::InternalMove);
     ui->answerTreeWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->answerTreeWidget->headerItem()->setHidden(true);
+    ui->answerTreeWidget->headerItem()->setHidden(false);
     ui->answerTreeWidget->setIndentation(0);
-    ui->answerTreeWidget->setHeaderLabels({"num","content"});
-    ui->answerTreeWidget->resizeColumnToContents(0);
+    ui->answerTreeWidget->setHeaderLabels({"num","content","pool"});
+    //ui->answerTreeWidget->resizeColumnToContents(0);
+    ui->answerTreeWidget->header()->setStretchLastSection(false);
+    ui->answerTreeWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->answerTreeWidget->header()->setSectionResizeMode(1,QHeaderView::Stretch);
 
     connect(ui->answerTreeWidget,&DragQTreeWidget::signalRowsMoved,
             this,&MainWindow::answerItemRowsMoved);
@@ -260,6 +264,7 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         questionSql->set_value("answers",aId,"goodTime",answerGoodTime);
         questionSql->update_question_state(qId);
 
+        item->setText(2,QString::number(answerPool));
         //保存
         aObj["content"] = answerContent;
         aObj["id"] = answerAId;
@@ -377,7 +382,7 @@ void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题�
     is_questionTextEdit_editable = false;
     ui->questionTextEdit->setHtml(questionHTML);
     is_questionTextEdit_editable = true;
-
+    ui->questionTableView->setCurrentIndex(index);
     load_answer(id);
 }
 void MainWindow::on_questionAddButton_clicked()
@@ -485,6 +490,10 @@ void MainWindow::on_questionRenameButton_clicked()
         questionTableModel->setData(index.siblingAtColumn(2),questionRenameDialog.getText());
         questionTableModel->submitAll();
     }
+}
+void MainWindow::on_questionResetButton_clicked()
+{
+
 }
 
 //learn
@@ -598,7 +607,10 @@ void MainWindow::on_htmlTableAddButton_clicked()
     htmlTableAddDialog->exec();
     QTextTableFormat tf;
     tf.setBorder(1);
+    tf.setBorderStyle(QTextFrameFormat::BorderStyle_Solid);
+    //tf.setBorderBrush(QBrush(Qt::black))    ;
     tf.setCellPadding(5);
+    tf.setBorderCollapse(false);
     int row = htmlTableAddDialog->getRetRow();
     int column = htmlTableAddDialog->getRetColumn();
     ui->questionTextEdit->textCursor().insertTable(row,column,tf);
@@ -672,6 +684,7 @@ void MainWindow::on_categoryAddButton_clicked()
     query.exec();
     reload_categoryTreeView();
     ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
+    ui->categoryTreeView->expand(categoryItemLists[parentId][0]->index());
 }
 void MainWindow::on_categoryDelButton_clicked()
 {
@@ -794,25 +807,6 @@ void MainWindow::on_setGoodTimeButton_clicked()
     ui->questionTableView->setCurrentIndex(newIndex);
     on_questionTableView_activated(newIndex);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

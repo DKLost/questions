@@ -135,7 +135,6 @@ void AnswerEditDialog::on_bindIdLineEdit_textChanged(const QString &arg1)
 }
 void AnswerEditDialog::on_poolComboBox_currentTextChanged(const QString &arg1)
 {
-    qDebug() << "arg1" << arg1;
     retPool = arg1.toInt();
 }
 

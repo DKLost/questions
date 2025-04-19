@@ -82,6 +82,7 @@ private slots:
     void on_questionTableView_activated(const QModelIndex &index);
     void on_questionTableView_pressed(const QModelIndex &index);
     void on_questionTableView_entered(const QModelIndex &index);
+    void on_questionResetButton_clicked();
 
     //learn
     void on_itemLearnButton_clicked();
@@ -111,6 +112,8 @@ private slots:
 
 
     void on_answerTreeWidget_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
+
+
 
 private:
     Ui::MainWindow *ui;
