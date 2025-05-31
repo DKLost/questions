@@ -74,7 +74,7 @@ void MainWindow::load_answer(int qId)
 void MainWindow::init_answerTableView()
 {
     answerTableModel = new QSqlTableModel(this,questionSql->getDb());
-    answerTableModel->setTable("answers");
+    answerTableModel->setTable("constructs");
     answerTableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
 
     ui->answerTableView->setModel(answerTableModel);
@@ -83,13 +83,13 @@ void MainWindow::init_answerTableView()
 }
 void MainWindow::set_answer_tableHeader()
 {
-    answerTableModel->setHeaderData(1, Qt::Horizontal, "状态");
-    answerTableModel->setHeaderData(2, Qt::Horizontal, "平均评分");
-    answerTableModel->setHeaderData(3, Qt::Horizontal, "良好用时");
-    answerTableModel->setHeaderData(4, Qt::Horizontal, "平均用时");
-    answerTableModel->setHeaderData(5, Qt::Horizontal, "最佳用时");
-    answerTableModel->setHeaderData(6, Qt::Horizontal, "到期");
-    answerTableModel->setHeaderData(7, Qt::Horizontal, "最近学习");
+    answerTableModel->setHeaderData(5, Qt::Horizontal, "状态");
+    answerTableModel->setHeaderData(6, Qt::Horizontal, "平均评分");
+    answerTableModel->setHeaderData(7, Qt::Horizontal, "良好用时");
+    answerTableModel->setHeaderData(8, Qt::Horizontal, "平均用时");
+    answerTableModel->setHeaderData(9, Qt::Horizontal, "最佳用时");
+    answerTableModel->setHeaderData(10, Qt::Horizontal, "到期");
+    answerTableModel->setHeaderData(11, Qt::Horizontal, "最近学习");
 }
 
 void MainWindow::init_answerTreeWidget()
@@ -185,10 +185,10 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     int row = ui->answerTreeWidget->currentIndex().row() + 1;
     QTreeWidgetItem *newItem = new QTreeWidgetItem{{QString::number(row + 1),"请输入答案"}};
     ui->answerTreeWidget->insertTopLevelItem(row,newItem);
-    int id = questionSql->get_max_id("answers") + 1;
-    questionSql->add_answer(id);
-    questionSql->inc_answer_bind_count(id);
-    questionSql->set_value<QString>("answers",id,"goodTime","00m:00s");
+    int id = questionSql->get_max_id("constructs") + 1;
+    questionSql->add_construct(id);
+    questionSql->inc_construct_bind_count(id);
+    questionSql->set_value<QString>("constructs",id,"goodTime","00m:00s");
 
     //保存
     QJsonArray array = questionSql->read_answerJSON(qId);
@@ -225,7 +225,7 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
     QJsonObject aObj = array[row].toObject();
 
     int aId = aObj["id"].toInt();
-    QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("answers",aId,"goodTime").toString());
+    QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("constructs",aId,"goodTime").toString());
     //QString type = aObj["type"].toString();
     //QString content = aObj["content"].toString();
     answerEditDialog->setQId(qId);
@@ -249,8 +249,8 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
 
         if(aId != answerAId)
         {
-            questionSql->inc_answer_bind_count(answerAId);
-            questionSql->del_answer(aId);
+            questionSql->inc_construct_bind_count(answerAId);
+            questionSql->del_construct(aId);
         }
 
 
@@ -261,7 +261,7 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         }else{
             item->setText(1,answerContent);
         }
-        questionSql->set_value("answers",aId,"goodTime",answerGoodTime);
+        questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
         questionSql->update_question_state(qId);
 
         item->setText(2,QString::number(answerPool));
@@ -287,7 +287,7 @@ void MainWindow::on_answerDelButton_clicked() //删除答案
 
     int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
     int row = item->text(0).toInt() - 1;
-    questionSql->del_answer(aId);
+    questionSql->del_construct(aId);
 
     QJsonArray array = questionSql->read_answerJSON(qId);
     array.removeAt(row);
@@ -796,7 +796,7 @@ void MainWindow::on_setGoodTimeButton_clicked()
         for(auto a : answerArray)
         {
             int aId = a.toObject().value("id").toInt();
-            questionSql->set_value("answers",aId,"goodTime",time.toString("mm'm':ss's'"));
+            questionSql->set_value("constructs",aId,"goodTime",time.toString("mm'm':ss's'"));
         }
         time =  QTime::fromMSecsSinceStartOfDay(time.msecsSinceStartOfDay()*answerArray.count());
         questionSql->set_value("questions",id,"goodTime",time.toString("mm'm':ss's'"));

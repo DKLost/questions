@@ -552,7 +552,7 @@ void LearningDialog::submit()
         }
         //int aId = answerLabel->statusTip().toInt();
 
-        questionSql->update_answer_state(aId,answerTime);
+        questionSql->update_construct_state(aId,answerTime);
         checkBox->setEnabled(false);
     }
 

@@ -12,26 +12,28 @@ QuestionSql::QuestionSql(QString fileName,QObject *parent)
 
     QSqlQuery query(db);
 
-    //categories
-    query.exec("CREATE TABLE IF NOT EXISTS categories("
+    //beings
+    query.exec("CREATE TABLE IF NOT EXISTS beings("
                "id INTEGER PRIMARY KEY,"
                "name TEXT,"
-               "parentId INTEGER)");
-    query.exec("INSERT INTO categories VALUES(0,'root',-1)");
-    query.exec("INSERT INTO categories VALUES(1,'未分类',0)");
+               "constructList TEXT)");
 
-    //answers
-    query.exec("CREATE TABLE IF NOT EXISTS answers("
+    //constructs
+    query.exec("CREATE TABLE IF NOT EXISTS constructs("
                "id INTEGER PRIMARY KEY,"
-               "state TEXT,"
+               "method INTEGER,"   //being
+               "inject TEXT,"      //data {"type":content} 例如{"being":1221} 1221即being id
+               "center INTEGER,"   //being
+               "result INTEGER,"   //being
+               "state TEXT,"       //for fsrs
                "avg10Rating TEXT,"
                "goodTime TEXT,"
                "avg10Time TEXT,"
                "bestTime TEXT,"
-               "nextDate TEXT,"
-               "lastDate TEXT,"
-               "lastD REAL,"
-               "lastS REAL,"
+               "nextDate TEXT,"    //for fsrs
+               "lastDate TEXT,"    //for fsrs
+               "lastD REAL,"       //for fsrs
+               "lastS REAL,"       //for fsrs
                "time0 TEXT,"
                "time1 TEXT,"
                "time2 TEXT,"
@@ -42,7 +44,17 @@ QuestionSql::QuestionSql(QString fileName,QObject *parent)
                "time7 TEXT,"
                "time8 TEXT,"
                "time9 TEXT,"
-               "bindCount INTEGER)");
+               "bindCount INTEGER,"
+               "bindQuestions TEXT)");
+
+    //categories
+    query.exec("CREATE TABLE IF NOT EXISTS categories("
+               "id INTEGER PRIMARY KEY,"
+               "name TEXT,"
+               "parentId INTEGER)");
+    query.exec("INSERT INTO categories VALUES(0,'root',-1)");
+    query.exec("INSERT INTO categories VALUES(1,'未分类',0)");
+
 
     //questions
     query.exec("CREATE TABLE IF NOT EXISTS questions("
@@ -106,51 +118,6 @@ void QuestionSql::_del_category(int id,int parentId)
     }
 }
 
-//answer
-void QuestionSql::add_answer(int id)
-{
-    QSqlQuery query(db);
-    query.prepare("INSERT INTO answers VALUES(?,?,?,?,?,?,?,?,?,?"
-                  ",?,?,?,?,?,?,?,?,?,?,?)");
-    query.bindValue(0,id); //id
-    query.bindValue(1,"new"); //state
-    query.bindValue(2,""); //avg10Rating
-    query.bindValue(3,"00m:00s"); //goodTime
-    query.bindValue(4,""); //avg10Time
-    query.bindValue(5,""); //bestTime
-    query.bindValue(6,QDate::currentDate().toString("yyyy/MM/dd")); //nextDate
-    query.bindValue(7,""); //lastDate
-    query.bindValue(8,-1); //lastD
-    query.bindValue(9,-1); //lastS
-    for(int i = 0;i < 10;i++) //time0-9
-        query.bindValue(10+i,"");
-    query.bindValue(20,0);
-    query.exec();
-}
-void QuestionSql::del_answer(int id)
-{
-    QSqlQuery query(db);
-    int bindCount = get_value("answers",id,"bindCount").toInt();
-    if(bindCount > 1)
-        dec_answer_bind_count(id);
-    else {
-        query.prepare("DELETE FROM answers WHERE id = ?");
-        query.bindValue(0,id);
-        query.exec();
-    }
-
-}
-void QuestionSql::inc_answer_bind_count(int aId)
-{
-    int bindCount = get_value("answers",aId,"bindCount").toInt();
-    set_value("answers",aId,"bindCount",bindCount+1);
-}
-void QuestionSql::dec_answer_bind_count(int aId)
-{
-    int bindCount = get_value("answers",aId,"bindCount").toInt();
-    set_value("answers",aId,"bindCount",bindCount-1);
-}
-
 //question
 void QuestionSql::add_question(int id, int categoryId,QString name)
 {
@@ -184,11 +151,11 @@ void QuestionSql::add_question(int id, int categoryId,QString name)
 void QuestionSql::del_question(int id)
 {
     QSqlQuery query(db);
-    QJsonArray array =read_answerJSON(id);
+    const QJsonArray array =read_answerJSON(id);
     for(auto item : array)
     {
         int aId = item.toObject().value("id").toInt();
-        del_answer(aId);
+        del_construct(aId);
     }
     query.prepare("DELETE FROM questions WHERE id = ?");
     query.bindValue(0,id);
@@ -218,6 +185,122 @@ int QuestionSql::count_total_questions(int categoryId)
     int qCount = query.value(0).toInt();
 
     return qCount;
+}
+
+//constructs
+void QuestionSql::add_construct(int id)
+{
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO constructs VALUES(:id,:method,:inject,:center,:result,"
+                  ":state,:avg10Rating,:goodTime,:avg10Time,:bestTime,:nextDate,:lastDate,:lastD,:lastS,"
+                  ":time0,:time1,:time2,:time3,:time4,:time5,:time6,:time7,:time8,:time9,"
+                  ":bindCount,:bindQuestions)");
+    query.bindValue(":id",id);
+    query.bindValue(":method",-1);
+    query.bindValue(":inject",-1);
+    query.bindValue(":center","");
+    query.bindValue(":result",-1);
+    query.bindValue(":state","new");
+    query.bindValue(":avg10Rating","");
+    query.bindValue(":goodTime","00m:00s");
+    query.bindValue(":avg10Time","");
+    query.bindValue(":bestTime","");
+    query.bindValue(":nextDate",QDate::currentDate().toString("yyyy/MM/dd"));
+    query.bindValue(":lastDate","");
+    query.bindValue(":lastD",-1);
+    query.bindValue(":lastS",-1);
+    for(int i = 0;i < 10;i++) //time0-9
+        query.bindValue(QString{":time"}+QString::number(i),"");
+    query.bindValue(":bindCount",0);
+    query.bindValue(":bindQuestions","");
+    query.exec();
+}
+void QuestionSql::del_construct(int id)
+{
+    QSqlQuery query(db);
+    int bindCount = get_value("constructs",id,"bindCount").toInt();
+    if(bindCount > 1)
+        dec_construct_bind_count(id);
+    else {
+        query.prepare("DELETE FROM constructs WHERE id = ?");
+        query.bindValue(0,id);
+        query.exec();
+    }
+}
+void QuestionSql::inc_construct_bind_count(int aId)
+{
+    int bindCount = get_value("constructs",aId,"bindCount").toInt();
+    set_value("constructs",aId,"bindCount",bindCount+1);
+}
+void QuestionSql::dec_construct_bind_count(int aId)
+{
+    int bindCount = get_value("constructs",aId,"bindCount").toInt();
+    set_value("constructs",aId,"bindCount",bindCount-1);
+}
+void QuestionSql::update_construct_state(int id,QTime myTime)
+{
+    QSqlQuery query(db);
+
+    QTime goodTime = QTime::fromString(get_value("constructs",id,"goodTime").toString(),"mm'm':ss's'");
+    QDate lastDate = QDate::fromString(get_value("constructs",id,"lastDate").toString(),"yyyy/MM/dd");
+
+    QString rating = FSRS::time2rating(myTime,goodTime);
+    QString state = get_value("constructs",id,"state").toString();
+    double d = get_value("constructs",id,"lastD").toDouble();
+    double s = get_value("constructs",id,"lastS").toDouble();
+    int interval = 0;
+    int elapsedDays = 0;
+    if(lastDate.isValid())
+        elapsedDays = lastDate.daysTo(QDate::currentDate());
+
+    if(goodTime.msecsSinceStartOfDay() == 0)
+    {
+        if(rating != "wrong")
+        {
+            myTime = QTime::fromMSecsSinceStartOfDay(myTime.msecsSinceStartOfDay()*1.5);
+            set_value("constructs",id,"goodTime",myTime.toString("mm'm':ss's'"));
+        }
+        return;
+    }
+
+    interval = FSRS::next_state(rating,elapsedDays,state,d,s);
+
+    set_value("constructs",id,"state",state);
+    set_value("constructs",id,"lastD",d);
+    set_value("constructs",id,"lastS",s);
+    set_value("constructs",id,"lastDate",QDate::currentDate().toString("yyyy/MM/dd"));
+    set_value("constructs",id,"nextDate",QDate::currentDate().addDays(interval).toString("yyyy/MM/dd"));
+
+    if(rating == "wrong")
+        return;
+
+    QString newTime = myTime.toString("mm:ss.zzz").chopped(1);
+    QString oldBestTime = get_value("constructs",id,"bestTime").toString();
+    if(oldBestTime == "" || newTime < oldBestTime)
+    {
+        set_value("constructs",id,"bestTime",newTime);
+    }
+
+    int count = 1;
+    int tSum = myTime.msecsSinceStartOfDay() ;
+    for(int i = 9;i > 0;i--)
+    {
+        QString tNameBefore = QString("time%1").arg(i-1);
+        QString tValueBefore = get_value("constructs",id,tNameBefore).toString();
+        QString tName = QString("time%1").arg(i);
+        QString tValue = get_value("constructs",id,tName).toString();
+        set_value("constructs",id,tName,tValueBefore);
+        if(tValue == "")
+            continue;
+        count++;
+        tSum += QTime::fromString(tValue,"mm:ss.zz").msecsSinceStartOfDay();
+    }
+    set_value("constructs",id,"time0",newTime);
+
+    int tAvg = tSum / count;
+    QTime newAvg10Time = QTime::fromMSecsSinceStartOfDay(tAvg);
+    set_value("constructs",id,"avg10Time",newAvg10Time.toString("mm:ss.zzz").chopped(1));
+    set_value("constructs",id,"avg10Rating",FSRS::time2rating(newAvg10Time,goodTime));
 }
 
 //other
@@ -297,71 +380,7 @@ int QuestionSql::get_max_id(QString table)
     return id;
 }
 
-void QuestionSql::update_answer_state(int id,QTime myTime)
-{
-    QSqlQuery query(db);
 
-    QTime goodTime = QTime::fromString(get_value("answers",id,"goodTime").toString(),"mm'm':ss's'");
-    QDate lastDate = QDate::fromString(get_value("answers",id,"lastDate").toString(),"yyyy/MM/dd");
-
-    QString rating = FSRS::time2rating(myTime,goodTime);
-    QString state = get_value("answers",id,"state").toString();
-    double d = get_value("answers",id,"lastD").toDouble();
-    double s = get_value("answers",id,"lastS").toDouble();
-    int interval = 0;
-    int elapsedDays = 0;
-    if(lastDate.isValid())
-        elapsedDays = lastDate.daysTo(QDate::currentDate());
-
-    if(goodTime.msecsSinceStartOfDay() == 0)
-    {
-        if(rating != "wrong")
-        {
-            myTime = QTime::fromMSecsSinceStartOfDay(myTime.msecsSinceStartOfDay()*1.5);
-            set_value("answers",id,"goodTime",myTime.toString("mm'm':ss's'"));
-        }
-        return;
-    }
-
-    interval = FSRS::next_state(rating,elapsedDays,state,d,s);
-
-    set_value("answers",id,"state",state);
-    set_value("answers",id,"lastD",d);
-    set_value("answers",id,"lastS",s);
-    set_value("answers",id,"lastDate",QDate::currentDate().toString("yyyy/MM/dd"));
-    set_value("answers",id,"nextDate",QDate::currentDate().addDays(interval).toString("yyyy/MM/dd"));
-
-    if(rating == "wrong")
-        return;
-
-    QString newTime = myTime.toString("mm:ss.zzz").chopped(1);
-    QString oldBestTime = get_value("answers",id,"bestTime").toString();
-    if(oldBestTime == "" || newTime < oldBestTime)
-    {
-        set_value("answers",id,"bestTime",newTime);
-    }
-
-    int count = 1;
-    int tSum = myTime.msecsSinceStartOfDay() ;
-    for(int i = 9;i > 0;i--)
-    {
-        QString tNameBefore = QString("time%1").arg(i-1);
-        QString tValueBefore = get_value("answers",id,tNameBefore).toString();
-        QString tName = QString("time%1").arg(i);
-        QString tValue = get_value("answers",id,tName).toString();
-        set_value("answers",id,tName,tValueBefore);
-        if(tValue == "")
-            continue;
-        count++;
-        tSum += QTime::fromString(tValue,"mm:ss.zz").msecsSinceStartOfDay();
-    }
-    set_value("answers",id,"time0",newTime);
-
-    int tAvg = tSum / count;
-    QTime newAvg10Time = QTime::fromMSecsSinceStartOfDay(tAvg);
-    set_value("answers",id,"avg10Time",newAvg10Time.toString("mm:ss.zzz").chopped(1));
-    set_value("answers",id,"avg10Rating",FSRS::time2rating(newAvg10Time,goodTime));
-}
 void QuestionSql::update_question_state(int id)
 {
     QSqlQuery query(db);
@@ -377,12 +396,12 @@ void QuestionSql::update_question_state(int id)
     for(auto a : answerArray)
     {
         int aId = a.toObject().value("id").toInt();
-        QString aState = get_value("answers",aId,"state").toString();
-        QTime aGoodTime = QTime::fromString(get_value("answers",aId,"goodTime").toString(),"mm'm':ss's'");
-        QTime aAvg10Time = QTime::fromString(get_value("answers",aId,"avg10Time").toString(),"mm:ss.zz");
-        QTime aBestTime = QTime::fromString(get_value("answers",aId,"bestTime").toString(),"mm:ss.zz");
-        QDate aNextDate = QDate::fromString(get_value("answers",aId,"nextDate").toString(),"yyyy/MM/dd");
-        QDate aLastDate = QDate::fromString(get_value("answers",aId,"lastDate").toString(),"yyyy/MM/dd");
+        QString aState = get_value("constructs",aId,"state").toString();
+        QTime aGoodTime = QTime::fromString(get_value("constructs",aId,"goodTime").toString(),"mm'm':ss's'");
+        QTime aAvg10Time = QTime::fromString(get_value("constructs",aId,"avg10Time").toString(),"mm:ss.zz");
+        QTime aBestTime = QTime::fromString(get_value("constructs",aId,"bestTime").toString(),"mm:ss.zz");
+        QDate aNextDate = QDate::fromString(get_value("constructs",aId,"nextDate").toString(),"yyyy/MM/dd");
+        QDate aLastDate = QDate::fromString(get_value("constructs",aId,"lastDate").toString(),"yyyy/MM/dd");
 
         if(FSRS::state[aState] < FSRS::state[state]) state = aState;
         goodTime = goodTime.addMSecs(aGoodTime.msecsSinceStartOfDay());

@@ -42,7 +42,7 @@ BindAnswerDialog::~BindAnswerDialog()
 void BindAnswerDialog::init_answerTableView()
 {
     answerTableModel = new QSqlTableModel(this,questionSql->getDb());
-    answerTableModel->setTable("answers");
+    answerTableModel->setTable("constructs");
     answerTableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
 
     ui->answerTableView->setModel(answerTableModel);

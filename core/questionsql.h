@@ -13,8 +13,6 @@
 #include <QJsonObject>
 #include <QStringList>
 #include <QDate>
-#include <QDir>
-#include <QFile>
 
 class QuestionSql : public QObject
 {
@@ -26,13 +24,6 @@ public:
     void add_category(int id,QString name,int parent_id = 0);
     void del_category(int id);
 
-    //answer
-    void add_answer(int id);
-    void del_answer(int id);
-    void update_answer_state(int id, QTime myTime);
-    void inc_answer_bind_count(int id);
-    void dec_answer_bind_count(int id);
-
     //question
     void add_question(int id,int categoryId,QString name);
     void del_question(int id);
@@ -43,7 +34,15 @@ public:
     QString get_toLearn_condString(int categoryId);
     QString get_toLearn_condString(QString currentFilter);
 
+    //construct
+    void add_construct(int id);
+    void del_construct(int id);
+    void inc_construct_bind_count(int id);
+    void dec_construct_bind_count(int id);
+    void update_construct_state(int id, QTime myTime);
+
     //other
+
     QVariant get_value(QString table, int id, QString column);
     template<typename T>void set_value(QString table, int id, QString column, T value);
     QJsonArray read_answerJSON(int id);
