@@ -21,19 +21,19 @@ double FSRS::forgetting_curve(int elpased_days, double stability) {
     return qPow(1 + FACTOR * elpased_days / stability, DECAY);
 }
 int FSRS::next_interval(double stability) {
-    double new_interval = stability / FACTOR * (qPow(requestRetention, 1 / DECAY) - 1);
-    return qMin(qMax(qRound(new_interval), 1), maximumInterval);
+    double newInterval = stability / FACTOR * (qPow(requestRetention, 1 / DECAY) - 1);
+    return qMin(qMax(qRound(newInterval), 1), maximumInterval);
 }
-double FSRS::linear_damping(double delta_d,double old_d)
+double FSRS::linear_damping(double deltaD,double oldD)
 {
-    return delta_d * (10 - old_d) / 9;
+    return deltaD * (10 - oldD) / 9;
 }
 double FSRS::next_difficulty(double d,int rating) {
-    double delta_d = d - w[6] * (rating - 3) ;
-    double next_d = d + linear_damping(delta_d,d);
-    return constrain_difficulty(mean_reversion(init_difficulty(4),next_d));
+    double deltaD = d - w[6] * (rating - 3) ;
+    double nextD = d + linear_damping(deltaD,d);
+    return constrain_difficulty(mean_reversion(init_difficulty(4),nextD));
 }
-double FSRS::mean_reversion(double init,double current) //w[7] * w[4] + (1 - w[7]) * next_d
+double FSRS::mean_reversion(double init,double current) //w[7] * w[4] + (1 - w[7]) * nextD
 {
     return w[7] * init + (1 - w[7]) * current;
 }

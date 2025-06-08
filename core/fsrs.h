@@ -22,7 +22,7 @@ public:
     static double init_difficulty(int rating);
     static double init_stability(int rating);
     static double forgetting_curve(int elpased_days, double stability);
-    static double linear_damping(double delta_d,double old_d);
+    static double linear_damping(double deltaD,double oldD);
     static double mean_reversion(double init,double current);
     static double next_difficulty(double d,int rating);
     static double next_recall_stability(double d, double s, double r, int rating);
