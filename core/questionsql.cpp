@@ -21,10 +21,10 @@ QuestionSql::QuestionSql(QString fileName,QObject *parent)
     //constructs
     query.exec("CREATE TABLE IF NOT EXISTS constructs("
                "id INTEGER PRIMARY KEY,"
-               "center INTEGER,"   //being
+               "center TEXT,"   //data {"type":content} 例如{"being":1221} 1221即being id
                "method INTEGER,"   //being
                "inject INTEGER,"   //being
-               "result INTEGER,"   //data {"type":content} 例如{"being":1221} 1221即being id
+               "result INTEGER,"   //being
                "state TEXT,"       //for fsrs
                "avg10Rating TEXT,"
                "goodTime TEXT,"
@@ -196,10 +196,10 @@ void QuestionSql::add_construct(int id)
                   ":time0,:time1,:time2,:time3,:time4,:time5,:time6,:time7,:time8,:time9,"
                   ":bindCount,:bindQuestions)");
     query.bindValue(":id",id);
-    query.bindValue(":center",-1);
+    query.bindValue(":center","");
     query.bindValue(":method",-1);
     query.bindValue(":inject",-1);
-    query.bindValue(":result","");
+    query.bindValue(":result",-1);
     query.bindValue(":state","new");
     query.bindValue(":avg10Rating","");
     query.bindValue(":goodTime","00m:00s");
