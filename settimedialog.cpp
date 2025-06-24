@@ -25,8 +25,13 @@ void SetTimeDialog::setTime(const QTime &newTime)
     ui->timeEdit->setTime(time);
 }
 
+void SetTimeDialog::initTime(const QTime &newTime)
+{
+    time = QTime::fromMSecsSinceStartOfDay(-1);
+    ui->timeEdit->setTime(newTime);
+}
+
 void SetTimeDialog::on_buttonBox_accepted()
 {
     time = ui->timeEdit->time();
 }
-

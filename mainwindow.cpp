@@ -782,10 +782,10 @@ void MainWindow::on_setGoodTimeButton_clicked()
     int firstId = indexes.begin()->siblingAtColumn(0).data().toInt();
     int id = firstId;
     QTime goodTime = QTime::fromString(questionSql->get_value("questions",id,"goodTime").toString(),"mm'm':ss's'");
-    setTimeDialog->setTime(goodTime);
+    setTimeDialog->initTime(goodTime);
     setTimeDialog->exec();
     QTime time = setTimeDialog->getTime();
-    if(time.msecsSinceStartOfDay() == 0)
+    if(!time.isValid())
         return;
 
     for(auto index : indexes)

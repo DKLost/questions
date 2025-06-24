@@ -18,6 +18,7 @@ public:
 
     QTime getTime() const;
     void setTime(const QTime &newTime);
+    void initTime(const QTime &newTime);
 
 private slots:
     void on_buttonBox_accepted();

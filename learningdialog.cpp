@@ -331,7 +331,7 @@ void LearningDialog::set_question(int id)
         newAnswerLabel->setToolTip(obj["type"].toString());
         newLineEdit->setToolTip(QString::number(i)); //row
 
-        QString timeString = ToolFunctions::ms2msz(questionSql->get_value("answers",obj["id"].toInt(),"goodTime").toString());
+        QString timeString = ToolFunctions::ms2msz(questionSql->get_value("constructs",obj["id"].toInt(),"goodTime").toString());
         newTimeLabel ->setText("00:00.00");
         newGoodTimeLabel->setText(timeString);
 
@@ -356,7 +356,7 @@ void LearningDialog::set_question(int id)
         newCheckLabel->setText("错误");
         newCheackBox->setChecked(false);
 
-        QString nextDateString = questionSql->get_value("answers",obj["id"].toInt(),"nextDate").toString();
+        QString nextDateString = questionSql->get_value("constructs",obj["id"].toInt(),"nextDate").toString();
         QDate nextDate = QDate::fromString(nextDateString,"yyyy/MM/dd");
 
         layout->addWidget(newLineNumberLabel,i,0);
