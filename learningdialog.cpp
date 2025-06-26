@@ -178,7 +178,7 @@ void LearningDialog::on_comboBox_currentTextChanged(const QString &arg1) //排�
             questionSql->set_value("questions",id,"orderNum",randNum);
         }
         ui->tableView->setSortingEnabled(true);
-        ui->tableView->sortByColumn(21,Qt::AscendingOrder);
+        ui->tableView->sortByColumn(10,Qt::AscendingOrder);
     }else if(arg1 == "默认排序")
     {
         int rowCount = tableModel->rowCount();
@@ -189,7 +189,7 @@ void LearningDialog::on_comboBox_currentTextChanged(const QString &arg1) //排�
             questionSql->set_value("questions",id,"orderNum",i * gap);
         }
         ui->tableView->setSortingEnabled(true);
-        ui->tableView->sortByColumn(21,Qt::AscendingOrder);
+        ui->tableView->sortByColumn(10,Qt::AscendingOrder);
     }
     ui->tableView->clearSelection();
     clear_question_display();
