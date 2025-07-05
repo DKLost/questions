@@ -106,7 +106,7 @@ void QuestionSql::_del_category(int id,int parentId)
     query.exec();
     while(query.next())
     {
-        set_value("categories",query.value(0).toInt(),"categoryId",parentId);
+        set_value("questions",query.value(0).toInt(),"categoryId",parentId);
     }
 
     query.prepare("SELECT id FROM categories WHERE parentId = ?");
