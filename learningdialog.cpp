@@ -124,11 +124,11 @@ void LearningDialog::setOnlyToLearn(bool newOnlyToLearn)
 void LearningDialog::set_tableHeader()
 {
     tableModel->setHeaderData(1, Qt::Horizontal, "类别");
-    tableModel->setHeaderData(2, Qt::Horizontal, "状态");
-    tableModel->setHeaderData(3, Qt::Horizontal, "名称");
+    tableModel->setHeaderData(2, Qt::Horizontal, "名称");
+    tableModel->setHeaderData(3, Qt::Horizontal, "状态");
     tableModel->setHeaderData(4, Qt::Horizontal, "平均评分");
-    tableModel->setHeaderData(6, Qt::Horizontal, "良好用时");
-    tableModel->setHeaderData(5, Qt::Horizontal, "平均用时");
+    tableModel->setHeaderData(5, Qt::Horizontal, "良好用时");
+    tableModel->setHeaderData(6, Qt::Horizontal, "平均用时");
     tableModel->setHeaderData(7, Qt::Horizontal, "最佳用时");
     tableModel->setHeaderData(8, Qt::Horizontal, "到期");
     tableModel->setHeaderData(9, Qt::Horizontal, "最近学习");
