@@ -345,6 +345,7 @@ void LearningDialog::set_question(int id)
             newLineEdit->setStyleSheet("QLineEdit {border: 1px solid red;}");
             newAnswerLabel->setText(obj["content"].toString());
             pixelWide = fm->horizontalAdvance(array[i].toObject().value("content").toString());
+            connect(newLineEdit,&QLineEdit::textChanged,this,&LearningDialog::answer_lineEdit_textChanged);
         }else if(obj["type"].toString() == "manual(image)")
         {
             newLineEdit->setStyleSheet("QLineEdit {border: 1px solid red;}");
@@ -363,6 +364,8 @@ void LearningDialog::set_question(int id)
         if(onlyToLearn && nextDate > QDate::currentDate())
         {
             layout->addWidget(newAnswerLabel,i,1);
+            newLineNumberLabel->hide();
+            newAnswerLabel->hide();
         }else
         {
             layout->addWidget(newLineEdit,i,1);
@@ -449,6 +452,11 @@ void LearningDialog::preSubmit()
     {
         if(layout->itemAtPosition(row,2) == nullptr)
         {
+            //显示被隐藏的不需复习的答案25/8/2
+            QLabel* lineNumberLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,0)->widget());
+            QLabel* answerLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,1)->widget());
+            lineNumberLabel->show();
+            answerLabel->show();
             continue;
         }
         QJsonArray array = questionSql->read_answerJSON(currentId);
