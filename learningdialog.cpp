@@ -3,6 +3,7 @@
 #include "toolfunctions.h"
 #include "core/fsrs.h"
 #include <QListView>
+#include <QSet>
 
 LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     : QDialog(parent)
@@ -228,7 +229,6 @@ void LearningDialog::poolComboBox_currentIndexChanged(const int &index)
     }
 
     //不和其他选框内容重复
-
     if(!senderComboBox->itemData(index).isValid())
         return;
 
@@ -303,6 +303,7 @@ void LearningDialog::set_question(int id)
     QString html = questionSql->read_questionHTML(id);
     currentArray = questionSql->read_answerJSON(id);
     QJsonArray &array = currentArray;
+    QSet<int> toLearnPoolSet; //记录需要复习的乱序池8/10
 
     clear_question_display();
     ui->textBrowser->setHtml(html);
@@ -360,9 +361,10 @@ void LearningDialog::set_question(int id)
         QString nextDateString = questionSql->get_value("constructs",obj["id"].toInt(),"nextDate").toString();
         QDate nextDate = QDate::fromString(nextDateString,"yyyy/MM/dd");
 
+
         layout->addWidget(newLineNumberLabel,i,0);
         if(onlyToLearn && nextDate > QDate::currentDate())
-        {
+        {//隐藏不需复习的答案25/8/2
             layout->addWidget(newAnswerLabel,i,1);
             newLineNumberLabel->hide();
             newAnswerLabel->hide();
@@ -376,6 +378,11 @@ void LearningDialog::set_question(int id)
 
             newAnswerLabel->hide();
             newCheackBox->hide();
+
+            //记录需要复习的乱序池8/10
+            int currentPool = array[i].toObject()["pool"].toInt();
+            if(currentPool != 0)
+                toLearnPoolSet.insert(currentPool);
         }
     }
 
@@ -383,7 +390,17 @@ void LearningDialog::set_question(int id)
     for(int row = 0;row < array.count();row++)
     {
         if(layout->itemAtPosition(row,2) == nullptr)
+        {
+            //显示被隐藏的需要复习的乱序池中，不需要复习的答案8/10
+            if(toLearnPoolSet.contains(array[row].toObject()["pool"].toInt()))
+            {
+                QLabel* lineNumberLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,0)->widget());
+                QLabel* answerLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,1)->widget());
+                lineNumberLabel->show();
+                answerLabel->show();
+            }
             continue;
+        }
 
         QJsonObject obj = array[row].toObject();
 
@@ -452,7 +469,7 @@ void LearningDialog::preSubmit()
     {
         if(layout->itemAtPosition(row,2) == nullptr)
         {
-            //显示被隐藏的不需复习的答案25/8/2
+            //显示被隐藏的答案25/8/2
             QLabel* lineNumberLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,0)->widget());
             QLabel* answerLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,1)->widget());
             lineNumberLabel->show();

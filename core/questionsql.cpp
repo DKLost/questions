@@ -257,7 +257,7 @@ void QuestionSql::update_construct_state(int id,QTime myTime)
     {
         if(rating != "wrong")
         {
-            myTime = QTime::fromMSecsSinceStartOfDay(myTime.msecsSinceStartOfDay()*1.5);
+            myTime = QTime::fromMSecsSinceStartOfDay(myTime.msecsSinceStartOfDay()*2);
             set_value("constructs",id,"goodTime",myTime.toString("mm'm':ss's'"));
         }
         return;
