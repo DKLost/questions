@@ -3,9 +3,9 @@
 
 示例：
 
-![1](F:\Code\Github\questions\1.png)
+![1](1.png)
 
-![3](F:\Code\Github\questions\3.png)
+![3](3.png)
 
 
 本项目FSRS算法实现主要来自该项目：https://github.com/open-spaced-repetition/fsrs4anki

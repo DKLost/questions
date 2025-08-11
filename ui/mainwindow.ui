@@ -300,6 +300,20 @@ border:1px solid black;
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="questionAutoBindInjectButton">
+        <property name="text">
+         <string>所有答案向上注入绑定</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="questionAutoGoodTimeButton">
+        <property name="text">
+         <string>按字数生成良好时间</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="label_6">
         <property name="text">
          <string>题目编辑</string>

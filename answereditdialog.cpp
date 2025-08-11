@@ -89,6 +89,7 @@ void AnswerEditDialog::setPool(const int &pool)
     ui->poolComboBox->setCurrentText(QString::number(pool));
 }
 
+
 //getter
 QTime AnswerEditDialog::getRetGoodTime() const
 {
@@ -123,8 +124,8 @@ void AnswerEditDialog::on_goodTimeEdit_userTimeChanged(const QTime &time)
 void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
 {
     int pixelWide = ui->lineEdit->fontMetrics().horizontalAdvance(arg1) + 35;
-    if(pixelWide < 175)
-        pixelWide = 175;
+    if(pixelWide < 200)
+        pixelWide = 200;
     setFixedWidth(pixelWide+30);
     //ui->lineEdit->setMaximumWidth(pixelWide);
     retContent = ui->lineEdit->text();
@@ -137,4 +138,28 @@ void AnswerEditDialog::on_poolComboBox_currentTextChanged(const QString &arg1)
 {
     retPool = arg1.toInt();
 }
+
+
+//添加简化的注入绑定功能8/11
+void AnswerEditDialog::on_injectBindButton_clicked()
+{
+    bindAnswerDialog->initDialog(qId,retAId);
+    bindAnswerDialog->exec();
+    int newAId = bindAnswerDialog->getRetAId();
+    if(newAId != -1 && newAId != retAId)
+        ui->injectLineEdit->setText(QString::number(newAId));
+}
+int AnswerEditDialog::getRetInjectBId() const
+{
+    return retInjectBId;
+}
+void AnswerEditDialog::setInjectBId(int injectBId)
+{
+    ui->injectLineEdit->setText(QString::number(injectBId));
+}
+void AnswerEditDialog::on_injectLineEdit_textChanged(const QString &arg1)
+{
+    retInjectBId = arg1.toInt();
+}
+//
 

@@ -108,12 +108,10 @@ private slots:
     void on_questionRenameButton_clicked();
 
 
-
-
-
     void on_answerTreeWidget_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
 
-
+    void on_questionAutoBindInjectButton_clicked(); //自动注入绑定上一个答案8/11
+    void on_questionAutoGoodTimeButton_clicked(); //自动设置良好时间8/11
 
 private:
     Ui::MainWindow *ui;
@@ -139,5 +137,6 @@ private:
     int currentSection;
     QDate currentDate;
 
+    int currentQId;
 };
 #endif // MAINWINDOW_H

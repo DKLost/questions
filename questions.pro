@@ -10,7 +10,6 @@ CONFIG += c++17
 
 SOURCES += \
     core/fsrs.cpp \
-    core/ontologysql.cpp \
     core/questionsql.cpp \
     answereditdialog.cpp \
     bindanswerdialog.cpp \
@@ -26,7 +25,6 @@ SOURCES += \
 
 HEADERS += \
     core/fsrs.h \
-    core/ontologysql.h \
     core/questionsql.h \
     answereditdialog.h \
     bindanswerdialog.h \

@@ -47,7 +47,6 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-
 //answer
 void MainWindow::load_answer(int qId)
 {
@@ -118,7 +117,8 @@ void MainWindow::on_answerTreeWidget_itemActivated(QTreeWidgetItem *item, int co
     QString condString = "";
     if(item != nullptr)
     {
-        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int qId = currentQId;
         int row = item->text(0).toInt() - 1;
         QJsonArray answerJson = questionSql->read_answerJSON(qId);
         int aId = answerJson[row].toObject()["id"].toInt();
@@ -137,7 +137,9 @@ void MainWindow::on_answerTreeWidget_itemClicked(QTreeWidgetItem *item, int colu
     if(item != nullptr)
     {
         int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int qId = currentQId;
+
         int row = item->text(0).toInt() - 1;
         QJsonArray answerJson = questionSql->read_answerJSON(qId);
         if(aId != answerJson[row].toObject()["id"].toInt())
@@ -149,7 +151,9 @@ void MainWindow::on_answerTreeWidget_itemChanged(QTreeWidgetItem *item, int colu
     if(item != nullptr)
     {
         int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int qId = currentQId;
+
         int row = item->text(0).toInt() - 1;
         QJsonArray answerJson = questionSql->read_answerJSON(qId);
         if(aId != answerJson[row].toObject()["id"].toInt())
@@ -162,7 +166,9 @@ void MainWindow::answerItemRowsMoved(int startIndex,int endIndex)
     if(!index.isValid())
         return;
 
-    int qId = index.siblingAtColumn(0).data().toInt();
+    //int qId = index.siblingAtColumn(0).data().toInt();
+    int qId = currentQId;
+
     QJsonArray array = questionSql->read_answerJSON(qId);
     QJsonObject obj = array[startIndex].toObject();
     if(endIndex >= array.count()) endIndex--;
@@ -180,7 +186,8 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     if(!qIndex.isValid())
         return;
 
-    int qId = qIndex.siblingAtColumn(0).data().toInt();
+    //int qId = qIndex.siblingAtColumn(0).data().toInt();
+    int qId = currentQId;
 
     int row = ui->answerTreeWidget->currentIndex().row() + 1;
     QTreeWidgetItem *newItem = new QTreeWidgetItem{{QString::number(row + 1),"请输入答案"}};
@@ -213,7 +220,8 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
     QModelIndex index = ui->questionTableView->currentIndex();
     if(!index.isValid())
         return;
-    int qId = index.siblingAtColumn(0).data().toInt();
+    //int qId = index.siblingAtColumn(0).data().toInt();
+    int qId = currentQId;
 
     QTreeWidgetItem *item = ui->answerTreeWidget->currentItem();
     if(item == NULL)
@@ -236,6 +244,7 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
     answerEditDialog->setPool(aObj["pool"].toInt());
     answerEditDialog->setContent(aObj["content"].toString());
     answerEditDialog->lineEdit_selectAll();
+    answerEditDialog->setInjectBId(questionSql->get_value("constructs",aId,"inject").toInt());//初始化要显示的注入绑定8/11
 
     //exec
     if(answerEditDialog->exec())
@@ -246,6 +255,7 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
         int answerAId = answerEditDialog->getRetAId();
         int answerPool = answerEditDialog->getRetPool();
+        int injectBId = answerEditDialog->getRetInjectBId();
 
         if(aId != answerAId)
         {
@@ -272,6 +282,9 @@ void MainWindow::on_answerEditButton_clicked() //修改答案
         aObj["pool"] = answerPool;
         array[row] = aObj;
         questionSql->write_answerJSON(qId,array);
+        questionSql->set_value("constructs",aId,"inject",injectBId);//保存注入绑定8/11
+
+        questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
     }
 }
 void MainWindow::on_answerDelButton_clicked() //删除答案
@@ -279,7 +292,8 @@ void MainWindow::on_answerDelButton_clicked() //删除答案
     QModelIndex index = ui->questionTableView->currentIndex();
     if(!index.isValid())
         return;
-    int qId = index.siblingAtColumn(0).data().toInt();
+    //int qId = index.siblingAtColumn(0).data().toInt();
+    int qId = currentQId;
 
     QTreeWidgetItem *item = ui->answerTreeWidget->currentItem();
     if(item == NULL)
@@ -349,7 +363,9 @@ void MainWindow::on_questionDirOpenButton_clicked()
 {
     if(ui->questionTableView->currentIndex().isValid())
     {
-        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int qId = currentQId;
+
         QString path = QString("%1/data/%2/question.html").arg(QDir::currentPath()).arg(qId);
         QStringList args;
         args << "/select," << QDir::toNativeSeparators(path);
@@ -375,15 +391,15 @@ void MainWindow::on_questionTableView_entered(const QModelIndex &index)
 }
 void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题目选取功能 2024/8/11
 {
-    int id = index.siblingAtColumn(0).data().toInt();
+    currentQId = index.siblingAtColumn(0).data().toInt();
 
     //load question.html
-    QString questionHTML = questionSql->read_questionHTML(id);
+    QString questionHTML = questionSql->read_questionHTML(currentQId);
     is_questionTextEdit_editable = false;
     ui->questionTextEdit->setHtml(questionHTML);
     is_questionTextEdit_editable = true;
     ui->questionTableView->setCurrentIndex(index);
-    load_answer(id);
+    load_answer(currentQId);
 }
 void MainWindow::on_questionAddButton_clicked()
 {
@@ -588,7 +604,9 @@ void MainWindow::on_htmlImgAddButton_clicked() //插入图片功能 2024/8/7
 {
     if(ui->questionTableView->currentIndex().isValid())
     {
-        int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int qId = currentQId;
+
         QString dirPath = QString("%1/data/%2/").arg(QDir::currentPath()).arg(qId);
         QString filePath = QFileDialog::getOpenFileName(this,
                                                         "打开图片", dirPath, tr("Image Files (*.jpg *.png *.gif)"));
@@ -810,4 +828,16 @@ void MainWindow::on_setGoodTimeButton_clicked()
 
 
 
+
+//自动绑定上一答案为注入，一般适用于文章背诵场景8/11
+void MainWindow::on_questionAutoBindInjectButton_clicked()
+{
+
+}
+
+//按每汉字1.5s自动设置良好时间8/11
+void MainWindow::on_questionAutoGoodTimeButton_clicked()
+{
+
+}
 

@@ -28,6 +28,7 @@ public:
     QTime getRetGoodTime() const;
     int getRetAId() const;
     int getRetPool() const;
+    int getRetInjectBId() const; //获取注入绑定8/11
 
     //setter
     void setQId(int newQId);
@@ -39,7 +40,7 @@ public:
     void setGoodTime(const QTime &goodTime);
     void setAId(const int &aId);
     void setPool(const int &pool);
-
+    void setInjectBId(int injectBId); //设置注入绑定8/11
 
 private slots:
     void on_lineEdit_textChanged(const QString &arg1);
@@ -49,6 +50,10 @@ private slots:
     void on_bindButton_clicked();
     void on_bindIdLineEdit_textChanged(const QString &arg1);
     void on_poolComboBox_currentTextChanged(const QString &arg1);
+
+    void on_injectBindButton_clicked();
+
+    void on_injectLineEdit_textChanged(const QString &arg1);
 
 private:
     Ui::AnswerEditDialog *ui;
@@ -60,6 +65,7 @@ private:
     QTime retGoodTime;
     int retAId;
     int retPool;
+    int retInjectBId;
 
     QMap<QString,QString> type{{"自动检查","auto"},{"手动检查","manual"},{"手动检查(图片)","manual(image)"}};
     QMap<QString,QString> typeName{{"auto","自动检查"},{"manual","手动检查"},{"manual(image)","手动检查(图片)"}};
