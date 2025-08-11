@@ -507,10 +507,7 @@ void MainWindow::on_questionRenameButton_clicked()
         questionTableModel->submitAll();
     }
 }
-void MainWindow::on_questionResetButton_clicked()
-{
 
-}
 
 //learn
 void MainWindow::on_itemLearnButton_clicked()//单项学习
@@ -826,18 +823,40 @@ void MainWindow::on_setGoodTimeButton_clicked()
     on_questionTableView_activated(newIndex);
 }
 
-
-
-
 //自动绑定上一答案为注入，一般适用于文章背诵场景8/11
 void MainWindow::on_questionAutoBindInjectButton_clicked()
 {
-
+    QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
+    int lastCId,nowCId;
+    for(int i = 1;i < answerArray.count();i++)
+    {
+        lastCId = answerArray[i-1].toObject()["id"].toInt();
+        nowCId = answerArray[i].toObject()["id"].toInt();
+        questionSql->set_value("constructs",nowCId,"inject",lastCId);
+    }
 }
 
 //按每汉字1.5s自动设置良好时间8/11
 void MainWindow::on_questionAutoGoodTimeButton_clicked()
 {
-
+    QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
+    QRegularExpression regex("[A-Za-z0-9]");
+    for(int i = 0;i < answerArray.count();i++)
+    {
+        int cId = answerArray[i].toObject()["id"].toInt();
+        QString answerContent = answerArray[i].toObject()["content"].toString();
+        double goodTimeSec = 0;
+        QTime answerGoodTime;
+        goodTimeSec += 0.5*(answerContent.count(regex));
+        goodTimeSec += 1.5*(answerContent.count() - answerContent.count(regex));
+        answerGoodTime = QTime::fromMSecsSinceStartOfDay(qRound(goodTimeSec)*1000);
+        questionSql->set_value("constructs",cId,"goodTime",answerGoodTime.toString("mm'm':ss's'"));
+    }
+    questionSql->update_question_state(currentQId);
 }
 
+//重置题目学习数据8/11
+void MainWindow::on_questionResetButton_clicked()
+{
+
+}

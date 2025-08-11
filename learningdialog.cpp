@@ -304,6 +304,7 @@ void LearningDialog::set_question(int id)
     currentArray = questionSql->read_answerJSON(id);
     QJsonArray &array = currentArray;
     QSet<int> toLearnPoolSet; //记录需要复习的乱序池8/10
+    QSet<int> toLearnInjectSet; //记录需要显示的注入答案8/10
 
     clear_question_display();
     ui->textBrowser->setHtml(html);
@@ -380,19 +381,23 @@ void LearningDialog::set_question(int id)
             newCheackBox->hide();
 
             //记录需要复习的乱序池8/10
-            int currentPool = array[i].toObject()["pool"].toInt();
+            int currentPool = obj["pool"].toInt();
             if(currentPool != 0)
                 toLearnPoolSet.insert(currentPool);
+
+            //记录需要显示的注入8/11
+            int inject = questionSql->get_value("constructs",obj["id"].toInt(),"inject").toInt();
+            toLearnInjectSet.insert(inject);
         }
     }
 
-    //乱序池
+
     for(int row = 0;row < array.count();row++)
     {
         if(layout->itemAtPosition(row,2) == nullptr)
         {
-            //显示被隐藏的需要复习的乱序池中，不需要复习的答案8/10
-            if(toLearnPoolSet.contains(array[row].toObject()["pool"].toInt()))
+            if(toLearnPoolSet.contains(array[row].toObject()["pool"].toInt()) || //显示被隐藏的需要复习的乱序池中，不需要复习的答案8/10
+                toLearnInjectSet.contains(array[row].toObject()["id"].toInt()))  //显示不许复习但需要显示的作为注入的答案8/11
             {
                 QLabel* lineNumberLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,0)->widget());
                 QLabel* answerLabel = qobject_cast<QLabel*>(layout->itemAtPosition(row,1)->widget());
@@ -402,6 +407,7 @@ void LearningDialog::set_question(int id)
             continue;
         }
 
+        //乱序池
         QJsonObject obj = array[row].toObject();
 
         if(obj["pool"].toInt() != 0)
