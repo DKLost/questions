@@ -52,6 +52,7 @@ public:
     QSqlDatabase getDb() const;
     int get_max_id(QString table);
 
+    void resetFSRSData(int constructId); //重置FSRS数据8/12
 private:
     QSqlDatabase db;
     QString dbFileName;

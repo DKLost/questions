@@ -10,6 +10,7 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     , ui(new Ui::LearningDialog)
 {
     ui->setupUi(this);
+    setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
 
     //init timer
     timer = new QTimer(this);

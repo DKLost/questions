@@ -468,3 +468,21 @@ QString QuestionSql::get_toLearn_condString(int categoryId)
                              .arg(QString("(%1)").arg(get_category_condString(categoryId)));
     return condString;
 }
+
+void QuestionSql::resetFSRSData(int constructId) //重置FSRS数据8/12
+{
+    set_value("constructs",constructId,"state","new");
+    set_value("constructs",constructId,"avg10Rating","");
+    set_value("constructs",constructId,"avg10Time","");
+    set_value("constructs",constructId,"goodTime","00m:00s");
+    set_value("constructs",constructId,"bestTime","");
+    set_value("constructs",constructId,"nextDate",QDate::currentDate().toString("yyyy/MM/dd"));
+    set_value("constructs",constructId,"lastDate","");
+    set_value("constructs",constructId,"lastD",-1);
+    set_value("constructs",constructId,"lastS",-1);
+    for(int i = 0;i < 10;i++) //time0-9
+        set_value("constructs",constructId,QString{"time"}+QString::number(i),"");
+
+    return;
+}
+

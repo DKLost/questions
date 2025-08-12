@@ -858,5 +858,10 @@ void MainWindow::on_questionAutoGoodTimeButton_clicked()
 //重置题目学习数据8/11
 void MainWindow::on_questionResetButton_clicked()
 {
-
+    QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
+    for(int i = 0;i < answerArray.count();i++)
+    {
+        int cId = answerArray[i].toObject()["id"].toInt();
+        questionSql->resetFSRSData(cId);
+    }
 }

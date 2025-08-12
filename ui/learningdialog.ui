@@ -19,6 +19,9 @@
   <property name="windowTitle">
    <string>答题</string>
   </property>
+  <property name="sizeGripEnabled">
+   <bool>false</bool>
+  </property>
   <layout class="QHBoxLayout" name="horizontalLayout_2">
    <item>
     <widget class="QSplitter" name="splitter_2">
