@@ -489,10 +489,10 @@ void MainWindow::on_questionTextEdit_textChanged()
     QModelIndex index = ui->questionTableView->currentIndex();
     if(!index.isValid())
         return;
-    int id = index.siblingAtColumn(0).data().toInt();
+    int qId = currentQId;
     QString questionHTML;
     questionHTML = ui->questionTextEdit->toHtml();
-    questionSql->write_questionHTML(id,questionHTML);
+    questionSql->write_questionHTML(qId,questionHTML);
     on_categoryTreeView_clicked(ui->categoryTreeView->currentIndex());
     ui->questionTableView->selectRow(index.row());
 }
