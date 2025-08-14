@@ -847,9 +847,9 @@ void MainWindow::on_questionAutoGoodTimeButton_clicked()
         QString answerContent = answerArray[i].toObject()["content"].toString();
         double goodTimeSec = 0;
         QTime answerGoodTime;
-        goodTimeSec += 0.5*(answerContent.count(regex));
+        goodTimeSec += 0.6*(answerContent.count(regex));
         goodTimeSec += 1.5*(answerContent.count() - answerContent.count(regex));
-        answerGoodTime = QTime::fromMSecsSinceStartOfDay(qRound(goodTimeSec)*1000);
+        answerGoodTime = QTime::fromMSecsSinceStartOfDay(qCeil(goodTimeSec)*1000); //向上取整8/14
         questionSql->set_value("constructs",cId,"goodTime",answerGoodTime.toString("mm'm':ss's'"));
     }
     questionSql->update_question_state(currentQId);
