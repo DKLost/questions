@@ -198,10 +198,12 @@ void LearningDialog::on_comboBox_currentTextChanged(const QString &arg1) //排�
 }
 void LearningDialog::answer_lineEdit_textChanged(const QString &arg1) //自动扩充输入框
 {
-    QLineEdit* senderLineEdit = (QLineEdit*)sender();
-    int pixelWide = senderLineEdit->fontMetrics().horizontalAdvance(arg1) + 15;
-    senderLineEdit->setFixedWidth(pixelWide);
-    //ui->lineEdit->setMaximumWidth(pixelWide);
+    currentLineEdit = (QLineEdit*)sender();
+    int pixelWide = currentLineEdit->fontMetrics().horizontalAdvance(arg1) + 15;
+    if(pixelWide > currentLineEdit->statusTip().toInt()) //设置最小宽度为初始宽度8/14
+        currentLineEdit->setFixedWidth(pixelWide);
+    else
+        currentLineEdit->setFixedWidth(currentLineEdit->statusTip().toInt());
 }
 
 void LearningDialog::on_tableView_clicked(const QModelIndex &index)
@@ -299,6 +301,7 @@ void LearningDialog::set_question(int id)
     preSubmited = false;
     submited = false;
     currentId = id;
+    currentLineEdit = nullptr; //最初currentLineEdit设为nullptr 8/14
     ui->idLabel->setText(QString("id:%1").arg(currentId));
 
     QString html = questionSql->read_questionHTML(id);
@@ -318,7 +321,7 @@ void LearningDialog::set_question(int id)
     for(int i = 0;i < array.count();i++)
     {
         QLabel* newLineNumberLabel = new QLabel(this);
-        QLineEdit* newLineEdit = new QLineEdit(this);
+        QLineEdit* newLineEdit = new QLineEdit(this); //StatusTip:FixedWidth
         QLabel* newAnswerLabel = new QLabel(this); //StatusTip:id ToolTip:type
         QCheckBox* newCheackBox = new QCheckBox(this);
         QLabel* newCheckLabel = new QLabel(this);
@@ -334,6 +337,7 @@ void LearningDialog::set_question(int id)
         newAnswerLabel->setToolTip(obj["type"].toString());
         newLineEdit->setToolTip(QString::number(i)); //row
 
+
         QString timeString = ToolFunctions::ms2msz(questionSql->get_value("constructs",obj["id"].toInt(),"goodTime").toString());
         newTimeLabel ->setText("00:00.00");
         newGoodTimeLabel->setText(timeString);
@@ -348,14 +352,14 @@ void LearningDialog::set_question(int id)
             newLineEdit->setStyleSheet("QLineEdit {border: 1px solid red;}");
             newAnswerLabel->setText(obj["content"].toString());
             pixelWide = fm->horizontalAdvance(array[i].toObject().value("content").toString());
-            connect(newLineEdit,&QLineEdit::textChanged,this,&LearningDialog::answer_lineEdit_textChanged);
         }else if(obj["type"].toString() == "manual(image)")
         {
             newLineEdit->setStyleSheet("QLineEdit {border: 1px solid red;}");
             newAnswerLabel->setPixmap(QPixmap{obj["content"].toString()});
-            connect(newLineEdit,&QLineEdit::textChanged,this,&LearningDialog::answer_lineEdit_textChanged);
         }
+        connect(newLineEdit,&QLineEdit::textChanged,this,&LearningDialog::answer_lineEdit_textChanged);
 
+        newLineEdit->setStatusTip(QString::number(pixelWide + 15)); //记录LineEdit初始长度到StatusTip 8/14
         newLineEdit->setFixedWidth(pixelWide + 15);
         newCheckLabel->setText("错误");
         newCheackBox->setChecked(false);
@@ -389,6 +393,9 @@ void LearningDialog::set_question(int id)
             //记录需要显示的注入8/11
             int inject = questionSql->get_value("constructs",obj["id"].toInt(),"inject").toInt();
             toLearnInjectSet.insert(inject);
+
+            //初始化currentLineEdit 8/14
+            if(currentLineEdit == nullptr) currentLineEdit = newLineEdit;
         }
     }
 
@@ -549,6 +556,9 @@ void LearningDialog::preSubmit()
             answerComboBox->show();
         }
     }
+
+    if(currentLineEdit != nullptr) //提交时聚焦到currentLineEdit 8/14
+        ui->scrollArea->ensureWidgetVisible(currentLineEdit);
 }
 void LearningDialog::submit()
 {

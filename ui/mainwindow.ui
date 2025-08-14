@@ -382,6 +382,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <property name="text">
          <string>添加答案</string>
         </property>
+        <property name="shortcut">
+         <string>F1</string>
+        </property>
        </widget>
       </item>
       <item>

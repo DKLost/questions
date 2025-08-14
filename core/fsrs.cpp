@@ -85,6 +85,7 @@ int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,dou
         nextS = next_short_term_stability(s,FSRS::rating[rating]);
         interval = next_interval(s);
 
+        if(rating == "wrong") interval = 0;
         if(rating == "good") state = "review";
         if(rating == "easy")
         {
@@ -100,6 +101,11 @@ int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,dou
         nextS = next_recall_stability(d,s,r,FSRS::rating[rating]);
         interval = next_interval(nextS);
 
+        if(rating == "wrong")
+        {
+            state = "learning";
+            interval = 0;
+        }
         if(rating == "hard")
         {
             double goodS = next_short_term_stability(s,FSRS::rating["good"]);
@@ -119,11 +125,6 @@ int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,dou
             interval = qMax(interval,goodInterval + 1);
         }
 
-        if(rating == "wrong")
-        {
-            state = "learning";
-            interval = 0;
-        }
     }
 
     d = nextD;

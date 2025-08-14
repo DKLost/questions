@@ -103,6 +103,8 @@ private:
     int rowCount;
     void preSubmit();
     void submit();
+
+    QLineEdit* currentLineEdit;
 };
 
 #endif // LEARNINGDIALOG_H
