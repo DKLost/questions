@@ -557,8 +557,10 @@ void LearningDialog::preSubmit()
         }
     }
 
-    if(currentLineEdit != nullptr) //提交时聚焦到currentLineEdit 8/14
-        ui->scrollArea->ensureWidgetVisible(currentLineEdit);
+    QTimer::singleShot(2, this, [this](){ //延迟2ms后再进行聚焦以避免布局更新未完成8/15
+        if(currentLineEdit != nullptr) //提交时聚焦到currentLineEdit 8/14
+            ui->scrollArea->ensureWidgetVisible(currentLineEdit);
+    });
 }
 void LearningDialog::submit()
 {
@@ -712,7 +714,9 @@ void LearningDialog::on_pushButton_clicked()
     }
 
     if(!preSubmited)
+    {
         preSubmit();
+    }
     else if(!submited)
     {
         preSubmited = false;
