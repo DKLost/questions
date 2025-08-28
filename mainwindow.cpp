@@ -836,19 +836,19 @@ void MainWindow::on_questionAutoBindInjectButton_clicked()
     }
 }
 
-//按每汉字1.5s自动设置良好时间8/11
+//按每汉字0.8s自动设置良好时间8/11
 void MainWindow::on_questionAutoGoodTimeButton_clicked()
 {
     QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
-    QRegularExpression regex("[A-Za-z0-9]");
+    QRegularExpression regex("[a-z0-9]");
     for(int i = 0;i < answerArray.count();i++)
     {
         int cId = answerArray[i].toObject()["id"].toInt();
         QString answerContent = answerArray[i].toObject()["content"].toString();
-        double goodTimeSec = 0;
+        double goodTimeSec = 3.5; //添加3.5s前置时间一般用于读题
         QTime answerGoodTime;
         goodTimeSec += 0.6*(answerContent.count(regex));
-        goodTimeSec += 1.5*(answerContent.count() - answerContent.count(regex));
+        goodTimeSec += 0.8*(answerContent.count() - answerContent.count(regex));
         answerGoodTime = QTime::fromMSecsSinceStartOfDay(qCeil(goodTimeSec)*1000); //向上取整8/14
         questionSql->set_value("constructs",cId,"goodTime",answerGoodTime.toString("mm'm':ss's'"));
     }

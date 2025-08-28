@@ -349,7 +349,7 @@ void LearningDialog::set_question(int id)
         }
         else if(obj["type"].toString() == "manual")
         {
-            newLineEdit->setStyleSheet("QLineEdit {border: 1px solid red;}");
+            newLineEdit->setStyleSheet("QLineEdit {border: 1px solid blue;}");
             newAnswerLabel->setText(obj["content"].toString());
             pixelWide = fm->horizontalAdvance(array[i].toObject().value("content").toString());
         }else if(obj["type"].toString() == "manual(image)")
@@ -490,6 +490,7 @@ void LearningDialog::preSubmit()
             answerLabel->show();
             continue;
         }
+
         QJsonArray array = questionSql->read_answerJSON(currentId);
         QLineEdit *lineEdit = (QLineEdit *)layout->itemAtPosition(row,1)->widget();
         QCheckBox *checkBox = (QCheckBox *)layout->itemAtPosition(row,3)->widget();
@@ -500,13 +501,18 @@ void LearningDialog::preSubmit()
         if(array[row].toObject()["pool"].toInt() == 0)
         {
             QLabel *answerLabel = (QLabel *)layout->itemAtPosition(row,2)->widget();
-            if(answerLabel->toolTip() == "auto")
+            if(answerLabel->toolTip() == "auto" ||
+                answerLabel->toolTip() == "manual") //如果是非图片手动检查，默认也检查一下是否匹配25/8/21
             {
                 if(lineEdit->text() == answerLabel->text())
                     checkBox->setChecked(true);
                 else
                     checkBox->setChecked(false);
                 checkBox->setEnabled(false);
+            }
+            if(answerLabel->toolTip() == "manual" && !checkBox->isChecked()) //如果是非图片手动检查，则不匹配时重新启用cheackbox
+            {
+                checkBox->setEnabled(true);
             }
             answerLabel->show();
         }
@@ -535,7 +541,6 @@ void LearningDialog::preSubmit()
                 }
                 checkBox->setEnabled(false);
 
-
                 if(checkBox->isChecked())
                 {
                     answerComboBox->setEnabled(false);
@@ -553,6 +558,7 @@ void LearningDialog::preSubmit()
                     }
                 }
             }
+
             answerComboBox->show();
         }
     }
@@ -672,8 +678,9 @@ void LearningDialog::on_pushButton_clicked()
             tableModel->select();
         }else if(ui->comboBox->currentText() == "默认排序" && newCurrentId == currentId)
         {
-            QString state = tableModel->index(oldRow,2).data().toString();
-            if(state == "learning")
+            QString state = tableModel->index(oldRow,3).data().toString();
+            qDebug() << state;
+            if(state == "learning" || state == "new")
             {
                 int shortTimeCount = 0;
                 int row = oldRow + 1;
@@ -683,13 +690,14 @@ void LearningDialog::on_pushButton_clicked()
                     shortTimeCount += gTime.msecsSinceStartOfDay()/1000;
                     row++;
                 }
-                int orderNum1 = tableModel->index(row - 1,21).data().toInt();
+                int orderNum1 = tableModel->index(row - 1,QuestionSql::headerColumnMap["orderNum"]).data().toInt();
                 int orderNum2 = 32767;
                 if(row < tableModel->rowCount())
                 {
-                    orderNum2 = tableModel->index(row,21).data().toInt();
+                    orderNum2 = tableModel->index(row,QuestionSql::headerColumnMap["orderNum"]).data().toInt();
                 }
                 int newOrderNum = (orderNum1 + orderNum2) / 2;
+                qDebug() << orderNum1 << orderNum2 << newOrderNum;
                 questionSql->set_value("questions",newCurrentId,"orderNum",newOrderNum);
                 tableModel->select();
             }

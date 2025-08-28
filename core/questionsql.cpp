@@ -2,6 +2,11 @@
 #include "core/fsrs.h"
 #include "toolfunctions.h"
 
+QMap<QString,int> QuestionSql::headerColumnMap = {{"id",1},{"categoryId",2},{"name",3},
+                                                  {"state",4},{"avg10Rating",5},{"goodTime",6},
+                                                  {"avg10Time",7},{"bestTime",8},{"nextDate",9},
+                                                  {"orderNum",10}};
+
 QuestionSql::QuestionSql(QString fileName,QObject *parent)
     : QObject{parent}
 {

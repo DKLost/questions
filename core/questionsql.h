@@ -13,12 +13,16 @@
 #include <QJsonObject>
 #include <QStringList>
 #include <QDate>
+#include <QMap>
 
 class QuestionSql : public QObject
 {
     Q_OBJECT
 public:
     explicit QuestionSql(QString fileName,QObject *parent = nullptr);
+
+    //static
+    static QMap<QString,int> headerColumnMap;
 
     //category
     void add_category(int id,QString name,int parent_id = 0);
@@ -51,6 +55,7 @@ public:
     void write_questionHTML(int id, QString html);
     QSqlDatabase getDb() const;
     int get_max_id(QString table);
+
 
     void resetFSRSData(int constructId); //重置FSRS数据8/12
 private:
