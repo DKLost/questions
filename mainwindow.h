@@ -65,7 +65,6 @@ private slots:
     //answer
     void on_answerAddButton_clicked();
     void on_answerDelButton_clicked();
-    void on_answerEditButton_clicked();
     void on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, int column);
     void on_answerTreeWidget_itemChanged(QTreeWidgetItem *item, int column);
     void on_answerTreeWidget_itemActivated(QTreeWidgetItem *item, int column);
@@ -112,6 +111,8 @@ private slots:
 
     void on_questionAutoBindInjectButton_clicked(); //自动注入绑定上一个答案8/11
     void on_questionAutoGoodTimeButton_clicked(); //自动设置良好时间8/11
+
+    void on_autoNumber_clicked();
 
 private:
     Ui::MainWindow *ui;

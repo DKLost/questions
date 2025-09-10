@@ -110,7 +110,74 @@ void MainWindow::init_answerTreeWidget()
 
 void MainWindow::on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, int column)
 {
-    on_answerEditButton_clicked();
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
+        return;
+    //int qId = index.siblingAtColumn(0).data().toInt();
+    int qId = currentQId;
+
+    if(item == NULL)
+        return;
+
+    //init
+    int row = item->text(0).toInt() - 1;
+    QJsonArray array = questionSql->read_answerJSON(qId);
+    QJsonObject aObj = array[row].toObject();
+
+    int aId = aObj["id"].toInt();
+    QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("constructs",aId,"goodTime").toString());
+    //QString type = aObj["type"].toString();
+    //QString content = aObj["content"].toString();
+    answerEditDialog->setQId(qId);
+    answerEditDialog->resetEdit();
+    answerEditDialog->setGoodTime(goodTime);
+    answerEditDialog->setAId(aId);
+    answerEditDialog->setType(aObj["type"].toString());
+    answerEditDialog->setPool(aObj["pool"].toInt());
+    answerEditDialog->setContent(aObj["content"].toString());
+    answerEditDialog->lineEdit_selectAll();
+    answerEditDialog->setInjectBId(questionSql->get_value("constructs",aId,"inject").toInt());//初始化要显示的注入绑定8/11
+
+    //exec
+    if(answerEditDialog->exec())
+    {
+        //return
+        QString answerType = answerEditDialog->getRetType();
+        QString answerContent = answerEditDialog->getRetContent();
+        QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
+        int answerAId = answerEditDialog->getRetAId();
+        int answerPool = answerEditDialog->getRetPool();
+        int injectBId = answerEditDialog->getRetInjectBId();
+
+        if(aId != answerAId)
+        {
+            questionSql->inc_construct_bind_count(answerAId);
+            questionSql->del_construct(aId);
+        }
+
+
+        if(answerType == "manual(image)")
+        {
+            item->setIcon(1,QIcon{answerContent});
+            item->setText(1,"");
+        }else{
+            item->setText(1,answerContent);
+        }
+        questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
+        questionSql->update_question_state(qId);
+
+        item->setText(2,QString::number(answerPool));
+        //保存
+        aObj["content"] = answerContent;
+        aObj["id"] = answerAId;
+        aObj["type"] = answerType;
+        aObj["pool"] = answerPool;
+        array[row] = aObj;
+        questionSql->write_answerJSON(qId,array);
+        questionSql->set_value("constructs",aId,"inject",injectBId);//保存注入绑定8/11
+
+        questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
+    }
 }
 void MainWindow::on_answerTreeWidget_itemActivated(QTreeWidgetItem *item, int column)
 {
@@ -213,80 +280,9 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     //on_answerTreeWidget_itemActivated(newItem)
 
     //修改
-    on_answerEditButton_clicked();
+    on_answerTreeWidget_itemDoubleClicked(newItem,0);
 }
-void MainWindow::on_answerEditButton_clicked() //修改答案
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    //int qId = index.siblingAtColumn(0).data().toInt();
-    int qId = currentQId;
 
-    QTreeWidgetItem *item = ui->answerTreeWidget->currentItem();
-    if(item == NULL)
-        return;
-
-    //init
-    int row = item->text(0).toInt() - 1;
-    QJsonArray array = questionSql->read_answerJSON(qId);
-    QJsonObject aObj = array[row].toObject();
-
-    int aId = aObj["id"].toInt();
-    QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("constructs",aId,"goodTime").toString());
-    //QString type = aObj["type"].toString();
-    //QString content = aObj["content"].toString();
-    answerEditDialog->setQId(qId);
-    answerEditDialog->resetEdit();
-    answerEditDialog->setGoodTime(goodTime);
-    answerEditDialog->setAId(aId);
-    answerEditDialog->setType(aObj["type"].toString());
-    answerEditDialog->setPool(aObj["pool"].toInt());
-    answerEditDialog->setContent(aObj["content"].toString());
-    answerEditDialog->lineEdit_selectAll();
-    answerEditDialog->setInjectBId(questionSql->get_value("constructs",aId,"inject").toInt());//初始化要显示的注入绑定8/11
-
-    //exec
-    if(answerEditDialog->exec())
-    {
-        //return
-        QString answerType = answerEditDialog->getRetType();
-        QString answerContent = answerEditDialog->getRetContent();
-        QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
-        int answerAId = answerEditDialog->getRetAId();
-        int answerPool = answerEditDialog->getRetPool();
-        int injectBId = answerEditDialog->getRetInjectBId();
-
-        if(aId != answerAId)
-        {
-            questionSql->inc_construct_bind_count(answerAId);
-            questionSql->del_construct(aId);
-        }
-
-
-        if(answerType == "manual(image)")
-        {
-            item->setIcon(1,QIcon{answerContent});
-            item->setText(1,"");
-        }else{
-            item->setText(1,answerContent);
-        }
-        questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
-        questionSql->update_question_state(qId);
-
-        item->setText(2,QString::number(answerPool));
-        //保存
-        aObj["content"] = answerContent;
-        aObj["id"] = answerAId;
-        aObj["type"] = answerType;
-        aObj["pool"] = answerPool;
-        array[row] = aObj;
-        questionSql->write_answerJSON(qId,array);
-        questionSql->set_value("constructs",aId,"inject",injectBId);//保存注入绑定8/11
-
-        questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
-    }
-}
 void MainWindow::on_answerDelButton_clicked() //删除答案
 {
     QModelIndex index = ui->questionTableView->currentIndex();
@@ -404,7 +400,6 @@ void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题�
 void MainWindow::on_questionAddButton_clicked()
 {
     int id = questionSql->get_max_id("questions") + 1;
-    qDebug() << id;
     QModelIndex index =ui->categoryTreeView->currentIndex();
     int categoryId = index.siblingAtColumn(1).data().toInt();
     QString name = ui->lineEdit->text();
@@ -564,10 +559,11 @@ void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
     //update categoryTreeView
     QModelIndex index = ui->categoryTreeView->currentIndex();
     int categoryId = index.siblingAtColumn(1).data().toInt();
-    reload_categoryTreeView();
+    update_count_categoryTreeView();  //questions学习后不会自动重置列表展开 9/1
+    //reload_categoryTreeView();
     if(!index.isValid())
         return;
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
+    //ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
 
     questionTableModel->select();
     if(learningDialog->getLastId() != -1)
@@ -631,7 +627,72 @@ void MainWindow::on_htmlTableAddButton_clicked()
     ui->questionTextEdit->textCursor().insertTable(row,column,tf);
 }
 
+int get_cursor_number(QTextCursor *cursor)
+{
+    int num = -1;
+    //向左移动到下划线文本的最左侧
+    bool flg = false;
+    while(cursor->charFormat().fontUnderline())
+    {
+        if(!cursor->movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1))
+        {
+            flg = true;
+            break;
+        }
+    }
+    if(!flg)
+        cursor->movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1);
+
+    //向右选择到下划线文本的最右侧
+    flg = false;
+    while(cursor->charFormat().fontUnderline())
+    {
+        if(!cursor->movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1))
+        {
+            flg = true;
+            break;
+        }
+    }
+    if(!flg)
+        cursor->movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
+
+    QString targetText = cursor->selectedText();
+
+    QRegularExpression regex("^\\s{3}[0-9]+\\s{3}$");
+    QRegularExpressionMatch match;
+    match = regex.match(targetText);
+    if(match.hasMatch())
+    {
+        regex.setPattern("[0-9]+");
+        match = regex.match(targetText);
+        num = match.capturedTexts()[0].toInt();
+    }else
+    {
+        regex.setPattern("^\\s{3}\\s{3}$");
+        match = regex.match(targetText);
+        if(match.hasMatch())
+            num = 0;
+    }
+
+    return num;
+}
+void MainWindow::on_autoNumber_clicked() //自动编号下一填空9/8
+{
+    QTextCursor cursor = ui->questionTextEdit->textCursor();
+    int originalPosition = cursor.position();
+    int number = get_cursor_number(&cursor);
+    qDebug() << number;
+    if(number != -1)
+    {
+
+    }
+    cursor.setPosition(originalPosition);
+    ui->questionTextEdit->setTextCursor(cursor);
+}
+
+
 //category
+
 void MainWindow::reload_categoryTreeView()
 {
     categoryItemLists.clear();
@@ -645,6 +706,7 @@ void MainWindow::reload_categoryTreeView()
     ui->categoryTreeView->header()->setSectionResizeMode(0,QHeaderView::Stretch);
     ui->categoryTreeView->hideColumn(1);
 }
+
 void MainWindow::update_count_categoryTreeView()
 {
     QSqlQuery query(QSqlDatabase::database("connection1"));
@@ -734,11 +796,14 @@ void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
     questionTableModel->setFilter(condString);
     currentSection = 0;
 }
+
 void MainWindow::on_categoryEditButton_clicked()
 {
     QModelIndex index = ui->categoryTreeView->currentIndex();
     ui->categoryTreeView->edit(index);
 }
+
+
 void MainWindow::category_item_change_handler(QStandardItem *item)
 {
     if(item->column() == 0)
@@ -865,3 +930,4 @@ void MainWindow::on_questionResetButton_clicked()
         questionSql->resetFSRSData(cId);
     }
 }
+

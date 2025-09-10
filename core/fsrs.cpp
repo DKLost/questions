@@ -58,17 +58,22 @@ double FSRS::init_stability(int rating) {
 
 int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,double &s)
 {
-    double nextD = -1;
-    double nextS = -1;
+    double nextD = d;
+    double nextS = s;
     int interval = 0;
+
     if(state == "new")
     {
-        if(rating != "wrong")
+
+        if(d == -1 ||s == -1)
         {
             nextD = init_difficulty(FSRS::rating[rating]);
             nextS = init_stability(FSRS::rating[rating]);
-            interval = next_interval(nextS);
+        }
 
+        if(rating != "wrong")
+        {
+            interval = next_interval(nextS);
             state = "learning";
             if(rating == "easy")
             {

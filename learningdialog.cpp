@@ -588,11 +588,6 @@ void LearningDialog::submit()
         QString answerTimeString = qobject_cast<QLabel*>(layout->itemAtPosition(row,4)->widget())->text();
         QTime answerTime = ToolFunctions::msz2QTime(answerTimeString);
 
-        if(checkBox->isChecked() == false)
-        {
-            wrong = true;
-            answerTime = QTime::fromMSecsSinceStartOfDay(0);
-        }
         int aId = currentObj["id"].toInt();
         if(currentObj["pool"] != 0) //如果答案属于乱序池则根据乱序选框确定aId
         {
@@ -602,8 +597,19 @@ void LearningDialog::submit()
         }
         //int aId = answerLabel->statusTip().toInt();
 
-        questionSql->update_construct_state(aId,answerTime);
         checkBox->setEnabled(false);
+
+        if(answerTime.msecsSinceStartOfDay() == 0)
+            continue; //如果myTime为0则认为未学习该构造，跳过状态更新 25/9/2
+
+        //更新状态
+        if(checkBox->isChecked() == false)
+        {
+            wrong = true;
+            answerTime = QTime::fromMSecsSinceStartOfDay(0);
+        }
+        questionSql->update_construct_state(aId,answerTime);
+        //
     }
 
     //QLabel *timeLabel = (QLabel *)layout->itemAtPosition(row,0)->widget();
@@ -679,7 +685,6 @@ void LearningDialog::on_pushButton_clicked()
         }else if(ui->comboBox->currentText() == "默认排序" && newCurrentId == currentId)
         {
             QString state = tableModel->index(oldRow,3).data().toString();
-            qDebug() << state;
             if(state == "learning" || state == "new")
             {
                 int shortTimeCount = 0;
@@ -697,7 +702,6 @@ void LearningDialog::on_pushButton_clicked()
                     orderNum2 = tableModel->index(row,QuestionSql::headerColumnMap["orderNum"]).data().toInt();
                 }
                 int newOrderNum = (orderNum1 + orderNum2) / 2;
-                qDebug() << orderNum1 << orderNum2 << newOrderNum;
                 questionSql->set_value("questions",newCurrentId,"orderNum",newOrderNum);
                 tableModel->select();
             }
