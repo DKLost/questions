@@ -10,7 +10,7 @@ class FSRS : public QObject
     Q_OBJECT
 public:
     explicit FSRS(QObject *parent = nullptr);
-    static double w[20];
+    static double w[21];
     static double requestRetention;
     static int maximumInterval;
     static double DECAY;

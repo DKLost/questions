@@ -1,10 +1,11 @@
 #include "core/fsrs.h"
-//v5.3.4
-double FSRS::w[20] = {0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925,
-                      1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621};
+//v6.1.1
+double FSRS::w[21] = {0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796,
+                      1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542};
+
 double FSRS::requestRetention = 0.9;
 int FSRS::maximumInterval = 36500;
-double FSRS::DECAY = -0.5;
+double FSRS::DECAY = -w[20];
 double FSRS::FACTOR = qPow(0.9,(1 / DECAY)) - 1;
 QMap<QString,int> FSRS::rating = {{"wrong",1},{"hard",2},{"good",3},{"easy",4}};
 QMap<QString,int> FSRS::state = {{"new",1},{"learning",2},{"review",3}};
@@ -47,7 +48,12 @@ double FSRS::next_forget_stability(double d,double s,double r) {
     return qMin(w[11] * qPow(d, -w[12]) * (qPow(s + 1, w[13]) - 1) * qExp((1 - r) * w[14]), sMin);
 }
 double FSRS::next_short_term_stability(double s,int rating) {
-    return s * qExp(w[17] * (rating - 3 + w[18]));
+    double sinc = qExp(w[17] * (rating - 3 + w[18])) * qPow(s,-w[19]);
+    if (rating >= 3) {
+        sinc = qMax(sinc, 1.0);
+    }
+    return s * sinc;
+
 }
 double FSRS::init_difficulty(int rating) {
     return constrain_difficulty(w[4] - qExp(w[5] * (rating - 1))  + 1);
@@ -65,7 +71,7 @@ int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,dou
     if(state == "new")
     {
 
-        if(d == -1 ||s == -1)
+        if(d == -1 || s == -1)
         {
             nextD = init_difficulty(FSRS::rating[rating]);
             nextS = init_stability(FSRS::rating[rating]);
@@ -108,6 +114,7 @@ int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,dou
 
         if(rating == "wrong")
         {
+            nextS = next_forget_stability(d,s,r);
             state = "learning";
             interval = 0;
         }

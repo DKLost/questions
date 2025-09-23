@@ -320,6 +320,9 @@ border:1px solid black;
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
+              <property name="contextMenuPolicy">
+               <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
+              </property>
               <property name="styleSheet">
                <string notr="true">QTableView{
 border-width:1px;

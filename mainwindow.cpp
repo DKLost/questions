@@ -10,7 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
     QApplication::setFont(font);
     currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
-
+    
     init_questionTableView();
     init_answerTableView();
     init_answerTreeWidget();
@@ -627,7 +627,7 @@ void MainWindow::on_htmlTableAddButton_clicked()
     ui->questionTextEdit->textCursor().insertTable(row,column,tf);
 }
 
-int get_cursor_number(QTextCursor *cursor)
+int get_cursor_number(QTextCursor *cursor) //获取当前cursor所在填空的编号9/8
 {
     int num = -1;
     //向左移动到下划线文本的最左侧
@@ -676,7 +676,7 @@ int get_cursor_number(QTextCursor *cursor)
 
     return num;
 }
-void MainWindow::on_autoNumber_clicked() //自动编号下一填空9/8
+void MainWindow::on_autoNumber_clicked() //自动编号下一填空9/9
 {
     QTextCursor cursor = ui->questionTextEdit->textCursor();
     int originalPosition = cursor.position();

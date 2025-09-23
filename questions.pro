@@ -35,6 +35,33 @@ HEADERS += \
     questionmovedialog.h \
     questionrenamedialog.h \
     settimedialog.h \
+    third_party/cppjieba/DictTrie.hpp \
+    third_party/cppjieba/FullSegment.hpp \
+    third_party/cppjieba/HMMModel.hpp \
+    third_party/cppjieba/HMMSegment.hpp \
+    third_party/cppjieba/Jieba.hpp \
+    third_party/cppjieba/KeywordExtractor.hpp \
+    third_party/cppjieba/MPSegment.hpp \
+    third_party/cppjieba/MixSegment.hpp \
+    third_party/cppjieba/PosTagger.hpp \
+    third_party/cppjieba/PreFilter.hpp \
+    third_party/cppjieba/QuerySegment.hpp \
+    third_party/cppjieba/SegmentBase.hpp \
+    third_party/cppjieba/SegmentTagged.hpp \
+    third_party/cppjieba/TextRankExtractor.hpp \
+    third_party/cppjieba/Trie.hpp \
+    third_party/cppjieba/Unicode.hpp \
+    third_party/limonp/ArgvContext.hpp \
+    third_party/limonp/Closure.hpp \
+    third_party/limonp/Colors.hpp \
+    third_party/limonp/Condition.hpp \
+    third_party/limonp/Config.hpp \
+    third_party/limonp/ForcePublic.hpp \
+    third_party/limonp/LocalVector.hpp \
+    third_party/limonp/Logging.hpp \
+    third_party/limonp/NonCopyable.hpp \
+    third_party/limonp/StdExtension.hpp \
+    third_party/limonp/StringUtil.hpp \
     toolfunctions.h
 
 FORMS += \
@@ -51,3 +78,5 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+DISTFILES += \
