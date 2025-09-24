@@ -6,7 +6,7 @@ double FSRS::w[21] = {0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.0
 double FSRS::requestRetention = 0.9;
 int FSRS::maximumInterval = 36500;
 double FSRS::DECAY = -w[20];
-double FSRS::FACTOR = qPow(0.9,(1 / DECAY)) - 1;
+double FSRS::FACTOR = qPow(0.9,(1.0 / DECAY)) - 1.0;
 QMap<QString,int> FSRS::rating = {{"wrong",1},{"hard",2},{"good",3},{"easy",4}};
 QMap<QString,int> FSRS::state = {{"new",1},{"learning",2},{"review",3}};
 
@@ -19,28 +19,28 @@ double FSRS::constrain_difficulty(double difficulty) {
     return qMin(qMax(difficulty,1.0), 10.0);
 }
 double FSRS::forgetting_curve(int elpased_days, double stability) {
-    return qPow(1 + FACTOR * elpased_days / stability, DECAY);
+    return qPow(1.0 + FACTOR * elpased_days / stability, DECAY);
 }
 int FSRS::next_interval(double stability) {
-    double newInterval = stability / FACTOR * (qPow(requestRetention, 1 / DECAY) - 1);
+    double newInterval = stability / FACTOR * (qPow(requestRetention, 1.0 / DECAY) - 1.0);
     return qMin(qMax(qRound(newInterval), 1), maximumInterval);
 }
 double FSRS::linear_damping(double deltaD,double oldD)
 {
-    return deltaD * (10 - oldD) / 9;
+    return deltaD * (10.0 - oldD) / 9.0;
 }
 double FSRS::next_difficulty(double d,int rating) {
-    double deltaD = d - w[6] * (rating - 3) ;
+    double deltaD = -w[6] * (rating - 3) ;
     double nextD = d + linear_damping(deltaD,d);
-    return constrain_difficulty(mean_reversion(init_difficulty(4),nextD));
+    return constrain_difficulty(mean_reversion(init_difficulty(rating["easy"]),nextD));
 }
 double FSRS::mean_reversion(double init,double current) //w[7] * w[4] + (1 - w[7]) * nextD
 {
     return w[7] * init + (1 - w[7]) * current;
 }
 double FSRS::next_recall_stability(double d,double s,double r,int rating) {
-    double hardPenalty = rating == 2 ? w[15] : 1;
-    double easyBonus = rating == 4 ? w[16] : 1;
+    double hardPenalty = rating == rating["hard"] ? w[15] : 1;
+    double easyBonus = rating == rating["easy"] ? w[16] : 1;
     return s * (1 + qExp(w[8]) * (11 - d) * qPow(s, -w[9]) * (qExp((1 - r) * w[10]) - 1) * hardPenalty * easyBonus);
 }
 double FSRS::next_forget_stability(double d,double s,double r) {
@@ -49,7 +49,7 @@ double FSRS::next_forget_stability(double d,double s,double r) {
 }
 double FSRS::next_short_term_stability(double s,int rating) {
     double sinc = qExp(w[17] * (rating - 3 + w[18])) * qPow(s,-w[19]);
-    if (rating >= 3) {
+    if (rating >= rating["good"]) {
         sinc = qMax(sinc, 1.0);
     }
     return s * sinc;
@@ -120,19 +120,19 @@ int FSRS::next_state(QString rating,int elapsedDays,QString &state,double &d,dou
         }
         if(rating == "hard")
         {
-            double goodS = next_short_term_stability(s,FSRS::rating["good"]);
+            double goodS = next_recall_stability(d,s,r,FSRS::rating["good"]);
             int goodInterval = next_interval(goodS);
             interval = qMin(interval,goodInterval);
         }
         if(rating == "good")
         {
-            double hardS = next_short_term_stability(s,FSRS::rating["hard"]);
+            double hardS = next_recall_stability(d,s,r,FSRS::rating["hard"]);
             int hardInterval = next_interval(hardS);
             interval = qMax(interval,hardInterval + 1);
         }
         if(rating == "easy")
         {
-            double goodS = next_short_term_stability(s,FSRS::rating["good"]);
+            double goodS = next_recall_stability(d,s,r,FSRS::rating["good"]);
             int goodInterval = next_interval(goodS);
             interval = qMax(interval,goodInterval + 1);
         }
