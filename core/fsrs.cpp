@@ -161,7 +161,7 @@ QString FSRS::time2rating(QTime myTime, QTime goodTime)
     {
         rating = "hard";
     }
-    else if(myTimeMs < goodTimeMs * 0.4)
+    else if(myTimeMs < goodTimeMs * 0.5)
     {
         rating = "easy";
     }

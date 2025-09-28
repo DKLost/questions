@@ -515,6 +515,12 @@ void LearningDialog::preSubmit()
                 checkBox->setEnabled(true);
             }
             answerLabel->show();
+
+            //如果myTime为0则认为未学习该构造，不显示答案 25/9/24
+            QString answerTimeString = qobject_cast<QLabel*>(layout->itemAtPosition(row,4)->widget())->text();
+            QTime answerTime = ToolFunctions::msz2QTime(answerTimeString);
+            if(answerTime.msecsSinceStartOfDay() == 0)
+                answerLabel->hide();
         }
 
         //乱序池答案，自动检查通过的从其他乱序池答案的选框项中移除
@@ -560,6 +566,12 @@ void LearningDialog::preSubmit()
             }
 
             answerComboBox->show();
+
+            //如果myTime为0则认为未学习该构造，不显示答案 25/9/24
+            QString answerTimeString = qobject_cast<QLabel*>(layout->itemAtPosition(row,4)->widget())->text();
+            QTime answerTime = ToolFunctions::msz2QTime(answerTimeString);
+            if(answerTime.msecsSinceStartOfDay() == 0)
+                answerComboBox->hide();
         }
     }
 

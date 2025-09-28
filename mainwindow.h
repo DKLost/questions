@@ -112,7 +112,10 @@ private slots:
     void on_questionAutoBindInjectButton_clicked(); //自动注入绑定上一个答案8/11
     void on_questionAutoGoodTimeButton_clicked(); //自动设置良好时间8/11
 
-    void on_autoNumber_clicked();
+    void on_autoNumberButton_clicked();
+
+    void on_underlineToggleButton_clicked();
+
 
 private:
     Ui::MainWindow *ui;
@@ -139,5 +142,8 @@ private:
     QDate currentDate;
 
     int currentQId;
+
+    //func
+    int select_current_underline_text(QTextCursor *cursor);
 };
 #endif // MAINWINDOW_H

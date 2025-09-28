@@ -630,31 +630,7 @@ void MainWindow::on_htmlTableAddButton_clicked()
 int get_cursor_number(QTextCursor *cursor) //获取当前cursor所在填空的编号9/8
 {
     int num = -1;
-    //向左移动到下划线文本的最左侧
-    bool flg = false;
-    while(cursor->charFormat().fontUnderline())
-    {
-        if(!cursor->movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1))
-        {
-            flg = true;
-            break;
-        }
-    }
-    if(!flg)
-        cursor->movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1);
-
-    //向右选择到下划线文本的最右侧
-    flg = false;
-    while(cursor->charFormat().fontUnderline())
-    {
-        if(!cursor->movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1))
-        {
-            flg = true;
-            break;
-        }
-    }
-    if(!flg)
-        cursor->movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
+    ToolFunctions::select_current_underline_text(cursor);
 
     QString targetText = cursor->selectedText();
 
@@ -676,7 +652,8 @@ int get_cursor_number(QTextCursor *cursor) //获取当前cursor所在填空的�
 
     return num;
 }
-void MainWindow::on_autoNumber_clicked() //自动编号下一填空9/9
+
+void MainWindow::on_autoNumberButton_clicked() //自动编号下一填空9/9
 {
     QTextCursor cursor = ui->questionTextEdit->textCursor();
     int originalPosition = cursor.position();
@@ -930,4 +907,35 @@ void MainWindow::on_questionResetButton_clicked()
         questionSql->resetFSRSData(cId);
     }
 }
+
+//切换选定部分下划线(快捷键F6) 9/28
+void MainWindow::on_underlineToggleButton_clicked()
+{
+    QTextCursor cursor = ui->questionTextEdit->textCursor();
+    int originalPosition = cursor.position();
+
+    qDebug() << cursor.charFormat().underlineStyle();
+
+    if(!cursor.hasSelection()) //若无选择
+        ToolFunctions::select_current_underline_text(&cursor);
+
+    if (cursor.hasSelection()) //若有选择
+    {
+        QTextCharFormat format;
+        qDebug() << cursor.selectionStart() << cursor.selectionEnd() << cursor.position();
+        if(cursor.position() < cursor.selectionEnd())
+        {
+            cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor);
+            format = cursor.charFormat();
+            cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor);
+        }else
+        {
+            format = cursor.charFormat();
+        }
+        format.setFontUnderline(!format.underlineStyle());
+        cursor.mergeCharFormat(format);
+    }
+}
+
+
 

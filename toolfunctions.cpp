@@ -47,3 +47,35 @@ QLineEdit* ToolFunctions::get_active_LineEdit() {
     return nullptr;
 }
 
+
+
+void ToolFunctions::select_current_underline_text(QTextCursor *cursor) //选择当前光标所在下划线文本
+{
+    //向左移动到下划线文本的最左侧
+    bool flg = false;
+    while(cursor->charFormat().fontUnderline())
+    {
+        if(!cursor->movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1))
+        {
+            flg = true;
+            break;
+        }
+    }
+    if(!flg)
+        cursor->movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1);
+
+    //向右选择到下划线文本的最右侧
+    flg = false;
+    while(cursor->charFormat().fontUnderline())
+    {
+        if(!cursor->movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1))
+        {
+            flg = true;
+            break;
+        }
+    }
+    if(!flg)
+        cursor->movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
+}
+
+

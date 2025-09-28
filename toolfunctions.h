@@ -16,6 +16,7 @@ public:
     static QTime ms2QTime(QString timeString);
     static QLineEdit *get_active_LineEdit();
     static QTime msz2QTime(QString timeString);
+    static void select_current_underline_text(QTextCursor *cursor);
 };
 
 #endif // TOOLFUNCTIONS_H

@@ -182,9 +182,19 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="autoNumber">
+       <widget class="QPushButton" name="autoNumberButton">
         <property name="text">
-         <string>自动编号填空</string>
+         <string>自动编号后续填空</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="underlineToggleButton">
+        <property name="text">
+         <string>切换选定部分下划线</string>
+        </property>
+        <property name="shortcut">
+         <string>F6</string>
         </property>
        </widget>
       </item>
@@ -195,23 +205,6 @@
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="answerAddButton">
-        <property name="text">
-         <string>添加答案</string>
-        </property>
-        <property name="shortcut">
-         <string>F1</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="answerDelButton">
-        <property name="text">
-         <string>删除答案</string>
         </property>
        </widget>
       </item>
@@ -422,8 +415,52 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <property name="title">
              <string>答案</string>
             </property>
-            <layout class="QHBoxLayout" name="horizontalLayout">
-             <item>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="1" column="2">
+              <widget class="QPushButton" name="answerAddButton">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>30</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>+</string>
+               </property>
+               <property name="shortcut">
+                <string>F1</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="3">
+              <widget class="QPushButton" name="answerDelButton">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>30</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="layoutDirection">
+                <enum>Qt::LayoutDirection::LeftToRight</enum>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="4">
               <widget class="DragQTreeWidget" name="answerTreeWidget">
                <property name="dragDropMode">
                 <enum>QAbstractItemView::DragDropMode::InternalMove</enum>
