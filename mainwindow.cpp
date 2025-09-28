@@ -631,7 +631,6 @@ int get_cursor_number(QTextCursor *cursor) //获取当前cursor所在填空的�
 {
     int num = -1;
     ToolFunctions::select_current_underline_text(cursor);
-
     QString targetText = cursor->selectedText();
 
     QRegularExpression regex("^\\s{3}[0-9]+\\s{3}$");
@@ -658,13 +657,35 @@ void MainWindow::on_autoNumberButton_clicked() //自动编号下一填空9/9
     QTextCursor cursor = ui->questionTextEdit->textCursor();
     int originalPosition = cursor.position();
     int number = get_cursor_number(&cursor);
-    qDebug() << number;
-    if(number != -1)
+    if(number != -1)//找到下一个，第一个下划线数字文本，并修改为number+1
     {
-
+        bool flg = false;
+        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        while(!cursor.charFormat().fontUnderline())
+        {
+            if(!cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1))
+            {
+                flg = true;
+                break;
+            }
+        }
+        if(!flg)
+        {
+            int nextNumber = get_cursor_number(&cursor);
+            if(nextNumber != -1)
+            {
+                QTextCharFormat format = cursor.charFormat();
+                format.setFontUnderline(true);
+                cursor.removeSelectedText();
+                cursor.mergeCharFormat(format);
+                cursor.insertText("   "+QString::number(number+1)+"   ");
+                ui->questionTextEdit->setTextCursor(cursor);
+            }
+        }
     }
-    cursor.setPosition(originalPosition);
-    ui->questionTextEdit->setTextCursor(cursor);
+    //cursor.setPosition(originalPosition);
+    //ui->questionTextEdit->setTextCursor(cursor);
 }
 
 
@@ -914,7 +935,6 @@ void MainWindow::on_underlineToggleButton_clicked()
     QTextCursor cursor = ui->questionTextEdit->textCursor();
     int originalPosition = cursor.position();
 
-    qDebug() << cursor.charFormat().underlineStyle();
 
     if(!cursor.hasSelection()) //若无选择
         ToolFunctions::select_current_underline_text(&cursor);
@@ -922,7 +942,6 @@ void MainWindow::on_underlineToggleButton_clicked()
     if (cursor.hasSelection()) //若有选择
     {
         QTextCharFormat format;
-        qDebug() << cursor.selectionStart() << cursor.selectionEnd() << cursor.position();
         if(cursor.position() < cursor.selectionEnd())
         {
             cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor);

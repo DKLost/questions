@@ -14,6 +14,9 @@
 #include <QFileDialog>
 #include <QFontDialog>
 #include <QJsonObject>
+#include <QTextDocument>
+#include <QTextFragment>
+#include <QTextDocumentFragment>
 #include "learningdialog.h"
 #include "core/questionsql.h"
 #include "questionmovedialog.h"

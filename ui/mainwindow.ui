@@ -184,7 +184,10 @@
       <item>
        <widget class="QPushButton" name="autoNumberButton">
         <property name="text">
-         <string>自动编号后续填空</string>
+         <string>自动编号下一填空</string>
+        </property>
+        <property name="shortcut">
+         <string>F5</string>
         </property>
        </widget>
       </item>
@@ -195,16 +198,6 @@
         </property>
         <property name="shortcut">
          <string>F6</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string> 答案</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
         </property>
        </widget>
       </item>
@@ -485,6 +478,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="0" column="1">
        <widget class="QLabel" name="bugFixedLabel">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
         <property name="text">
          <string>已修复记忆漏洞：</string>
         </property>
@@ -492,6 +488,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
       </item>
       <item row="0" column="3">
        <widget class="QLabel" name="newLearntLabel">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
         <property name="text">
          <string>新收获记忆节点：</string>
         </property>
@@ -499,6 +498,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
       </item>
       <item row="0" column="0">
        <widget class="QLabel" name="bugFoundLabel">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
         <property name="text">
          <string>已发现记忆漏洞：</string>
         </property>

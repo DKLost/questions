@@ -55,7 +55,8 @@ void ToolFunctions::select_current_underline_text(QTextCursor *cursor) //选择�
     bool flg = false;
     while(cursor->charFormat().fontUnderline())
     {
-        if(!cursor->movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1))
+        if(cursor->atBlockStart() ||
+            !cursor->movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1))
         {
             flg = true;
             break;
@@ -68,7 +69,8 @@ void ToolFunctions::select_current_underline_text(QTextCursor *cursor) //选择�
     flg = false;
     while(cursor->charFormat().fontUnderline())
     {
-        if(!cursor->movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1))
+        if(cursor->atBlockEnd() ||
+            !cursor->movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1))
         {
             flg = true;
             break;
