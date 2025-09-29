@@ -17,6 +17,7 @@
 #include <QTextDocument>
 #include <QTextFragment>
 #include <QTextDocumentFragment>
+#include <QQueue>
 #include "learningdialog.h"
 #include "core/questionsql.h"
 #include "questionmovedialog.h"
@@ -26,6 +27,7 @@
 #include "toolfunctions.h"
 #include "questionrenamedialog.h"
 #include "bindanswerdialog.h"
+#include "descadddialog.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -119,6 +121,19 @@ private slots:
 
     void on_underlineToggleButton_clicked();
 
+    void on_descAddButton_clicked();
+
+    void on_questionSearchButton_clicked();
+
+    void on_idLineEdit_returnPressed();
+
+    void on_lineEdit_returnPressed();
+
+    void on_prevQButton_clicked();
+
+    void on_nextQButton_clicked();
+
+    void on_autoNumberAllButton_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -136,6 +151,7 @@ private:
     HtmlTableAddDialog *htmlTableAddDialog;
     QuestionRenameDialog questionRenameDialog;
     BindAnswerDialog *bindAnswerDialog;
+    DescAddDialog *descAddDialog;
 
     //other
     QuestionSql *questionSql;
@@ -144,9 +160,15 @@ private:
     int currentSection;
     QDate currentDate;
 
+    //Qid record
     int currentQId;
+    QQueue<int> qIdHistoryQueue;
+    int qIdHistoryPos;
+
 
     //func
     int select_current_underline_text(QTextCursor *cursor);
+    void setCurrentQId(int qId);
+    int autoNumberNext(QTextCursor &cursor);
 };
 #endif // MAINWINDOW_H

@@ -34,12 +34,16 @@ MainWindow::MainWindow(QWidget *parent)
                                             ui->categoryTreeView,
                                             this};
     answerEditDialog = new AnswerEditDialog(bindAnswerDialog,this);                 //init answer edit dialog
+    descAddDialog = new DescAddDialog();
 
     //init current section
     currentSection = -1;
 
     //init splitter
     ui->splitter->setSizes({600,250});
+
+    //init qIdHistoryPos
+    qIdHistoryPos = 0;
 }
 
 MainWindow::~MainWindow()
@@ -387,7 +391,7 @@ void MainWindow::on_questionTableView_entered(const QModelIndex &index)
 }
 void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题目选取功能 2024/8/11
 {
-    currentQId = index.siblingAtColumn(0).data().toInt();
+    setCurrentQId(index.siblingAtColumn(0).data().toInt());
 
     //load question.html
     QString questionHTML = questionSql->read_questionHTML(currentQId);
@@ -652,14 +656,13 @@ int get_cursor_number(QTextCursor *cursor) //获取当前cursor所在填空的�
     return num;
 }
 
-void MainWindow::on_autoNumberButton_clicked() //自动编号下一填空9/9
+int MainWindow::autoNumberNext(QTextCursor &cursor) //自动编号下一填空9/29
 {
-    QTextCursor cursor = ui->questionTextEdit->textCursor();
-    int originalPosition = cursor.position();
     int number = get_cursor_number(&cursor);
+    bool flg = true;
     if(number != -1)//找到下一个，第一个下划线数字文本，并修改为number+1
     {
-        bool flg = false;
+        flg = false;
         cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
         cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
         while(!cursor.charFormat().fontUnderline())
@@ -684,8 +687,26 @@ void MainWindow::on_autoNumberButton_clicked() //自动编号下一填空9/9
             }
         }
     }
-    //cursor.setPosition(originalPosition);
-    //ui->questionTextEdit->setTextCursor(cursor);
+    if(flg)
+        return -1;
+    else
+        return number + 1;
+}
+
+void MainWindow::on_autoNumberButton_clicked() //自动编号下一填空9/9
+{
+    QTextCursor cursor = ui->questionTextEdit->textCursor();
+    autoNumberNext(cursor);
+}
+
+void MainWindow::on_autoNumberAllButton_clicked() //自动编号后续所有填空9/29
+{
+    QTextCursor cursor = ui->questionTextEdit->textCursor();
+    while(autoNumberNext(cursor) != -1)
+    {
+        QTextCursor cursor = ui->questionTextEdit->textCursor();
+        autoNumberNext(cursor);
+    }
 }
 
 
@@ -792,6 +813,8 @@ void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
     int categoryId = index.siblingAtColumn(1).data().toInt();
     QString condString = questionSql->get_category_condString(categoryId);
     questionTableModel->setFilter(condString);
+    qDebug() << questionTableModel->filter();
+    questionTableModel->select();
     currentSection = 0;
 }
 
@@ -935,7 +958,6 @@ void MainWindow::on_underlineToggleButton_clicked()
     QTextCursor cursor = ui->questionTextEdit->textCursor();
     int originalPosition = cursor.position();
 
-
     if(!cursor.hasSelection()) //若无选择
         ToolFunctions::select_current_underline_text(&cursor);
 
@@ -956,5 +978,82 @@ void MainWindow::on_underlineToggleButton_clicked()
     }
 }
 
+
+
+//添加描述条目 25/9/29
+void MainWindow::on_descAddButton_clicked()
+{
+    descAddDialog->exec();
+}
+
+void MainWindow::on_questionSearchButton_clicked()
+{
+    QString condString = QString("questions.name LIKE '\%%1\%'").arg(ui->lineEdit->text());
+    questionTableModel->setFilter(condString);
+    questionTableModel->select();
+}
+
+
+//添加id跳转 25/9/29
+void MainWindow::on_idLineEdit_returnPressed()
+{
+    int qId = ui->idLineEdit->text().toInt();
+    QSqlQuery query(QSqlDatabase::database("connection1"));
+    QString queryString = QString("SELECT categoryId FROM questions WHERE id = %1").arg(qId);
+    qDebug() <<  queryString;
+    query.exec(queryString);
+    if(query.next())
+    {
+        int cId  = query.value(0).toInt();
+        qDebug() <<cId;
+        ui->categoryTreeView->setCurrentIndex(categoryItemLists[cId][0]->index());
+        on_categoryTreeView_clicked(categoryItemLists[cId][0]->index());
+        select_question_by_id(qId);
+    }
+
+}
+
+//添加题目搜索 25/9/29
+void MainWindow::on_lineEdit_returnPressed()
+{
+    on_questionSearchButton_clicked();
+}
+
+//添加题目历史跳转功能 25/9/29
+void MainWindow::setCurrentQId(int qId)
+{
+    currentQId = qId;
+    ui->idLineEdit->setText(QString::number(qId));
+    if(qIdHistoryPos == 0 ||
+        qId != qIdHistoryQueue[qIdHistoryPos - 1])
+    {
+        qIdHistoryQueue.insert(qIdHistoryPos,qId);
+        qIdHistoryPos = qIdHistoryPos >= 100? 100 : qIdHistoryPos + 1;
+        if(qIdHistoryQueue.size() > 100)
+            qIdHistoryQueue.dequeue();
+    }
+}
+
+//添加题目历史跳转功能 向前 25/9/29
+void MainWindow::on_prevQButton_clicked()
+{
+    if(qIdHistoryPos == 0)
+        return;
+    qIdHistoryPos = qIdHistoryPos <= 1? 1 : qIdHistoryPos - 1;
+    QString prevQId = QString::number(qIdHistoryQueue[qIdHistoryPos-1]);
+    ui->idLineEdit->setText(prevQId);
+    on_idLineEdit_returnPressed();
+}
+
+//添加题目历史跳转功能 向后 25/9/29
+void MainWindow::on_nextQButton_clicked()
+{
+    if(qIdHistoryPos == 0)
+        return;
+    qIdHistoryPos = qIdHistoryPos >= qIdHistoryQueue.size()? qIdHistoryQueue.size() : qIdHistoryPos + 1;
+    QString nextQId = QString::number(qIdHistoryQueue[qIdHistoryPos-1]);
+    ui->idLineEdit->setText(nextQId);
+    on_idLineEdit_returnPressed();
+}
 
 
