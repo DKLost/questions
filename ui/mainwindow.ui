@@ -196,6 +196,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
                <property name="dragDropMode">
                 <enum>QAbstractItemView::DragDropMode::InternalMove</enum>
                </property>
+               <property name="verticalScrollMode">
+                <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
+               </property>
                <column>
                 <property name="text">
                  <string notr="true">1</string>

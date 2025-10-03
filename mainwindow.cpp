@@ -444,6 +444,12 @@ void MainWindow::on_questionAddButton_clicked()
 
 void MainWindow::on_questionDelButton_clicked()
 {
+    int ret = QMessageBox::warning(this, "删除确认",
+                                   "即将删除该题目及其文件夹中所有内容\n"
+                                   "确定要删除吗?",
+                                   QMessageBox::Yes | QMessageBox::No);
+    if(ret == QMessageBox::No)
+        return;
     QModelIndex index = ui->questionTableView->currentIndex();
     int id = index.siblingAtColumn(0).data().toInt();
     ui->questionTableView->clearSelection();
@@ -793,7 +799,6 @@ void MainWindow::get_categoryItemTree(QStandardItem* parent,int parentId)
 
 void MainWindow::on_categoryAddButton_clicked()
 {
-
     int id = questionSql->get_max_id("categories") + 1;
     QModelIndex index =ui->categoryTreeView->currentIndex();
     QString name = ui->lineEdit->text();
@@ -814,6 +819,12 @@ void MainWindow::on_categoryAddButton_clicked()
 
 void MainWindow::on_categoryDelButton_clicked()
 {
+    int ret = QMessageBox::warning(this, "删除确认",
+                                   "即将删除该分类及其下所有子分类\n"
+                                   "确定要删除吗?",
+                                   QMessageBox::Yes | QMessageBox::No);
+    if(ret == QMessageBox::No)
+        return;
     QModelIndex index =ui->categoryTreeView->currentIndex();
     int id = index.siblingAtColumn(1).data().toInt();
     if(id == 1)
