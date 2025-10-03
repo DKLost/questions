@@ -6,7 +6,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    QFont font("Source Sans Pro",12);
+    QFont font({"PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
     QApplication::setFont(font);
     currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
@@ -24,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     //init question html text edit
     ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*4);
+    ui->questionTextEdit->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
 
     //init dialogs
     learningDialog = new LearningDialog(questionSql,this);                          //init learning dialog
@@ -74,6 +75,7 @@ void MainWindow::load_answer(int qId)
         ui->answerTreeWidget->addTopLevelItem(aitem);
     }
 }
+
 void MainWindow::init_answerTableView()
 {
     answerTableModel = new QSqlTableModel(this,questionSql->getDb());
@@ -84,6 +86,7 @@ void MainWindow::init_answerTableView()
     ui->answerTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     set_answer_tableHeader();
 }
+
 void MainWindow::set_answer_tableHeader()
 {
     answerTableModel->setHeaderData(5, Qt::Horizontal, "状态");
@@ -183,6 +186,7 @@ void MainWindow::on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, in
         questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
     }
 }
+
 void MainWindow::on_answerTreeWidget_itemActivated(QTreeWidgetItem *item, int column)
 {
     QString condString = "";
@@ -199,10 +203,12 @@ void MainWindow::on_answerTreeWidget_itemActivated(QTreeWidgetItem *item, int co
     answerTableModel->select();
     ui->answerTableView->selectRow(0);
 }
+
 void MainWindow::on_answerTreeWidget_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous)
 {
     on_answerTreeWidget_itemClicked(current,0);
 }
+
 void MainWindow::on_answerTreeWidget_itemClicked(QTreeWidgetItem *item, int column)
 {
     if(item != nullptr)
@@ -217,6 +223,7 @@ void MainWindow::on_answerTreeWidget_itemClicked(QTreeWidgetItem *item, int colu
             on_answerTreeWidget_itemActivated(item,column);
     }
 }
+
 void MainWindow::on_answerTreeWidget_itemChanged(QTreeWidgetItem *item, int column)
 {
     if(item != nullptr)
@@ -231,6 +238,7 @@ void MainWindow::on_answerTreeWidget_itemChanged(QTreeWidgetItem *item, int colu
             on_answerTreeWidget_itemActivated(item,column);
     }
 }
+
 void MainWindow::answerItemRowsMoved(int startIndex,int endIndex)
 {
     QModelIndex index = ui->questionTableView->currentIndex();
@@ -337,6 +345,7 @@ void MainWindow::init_questionTableView()
     set_quesion_tableHeader();
     ui->questionTableView->installEventFilter(this);
 }
+
 void MainWindow::set_quesion_tableHeader()
 {
     questionTableModel->setHeaderData(1, Qt::Horizontal, "类别");
@@ -349,6 +358,7 @@ void MainWindow::set_quesion_tableHeader()
     questionTableModel->setHeaderData(8, Qt::Horizontal, "到期");
     questionTableModel->setHeaderData(9, Qt::Horizontal, "最近学习");
 }
+
 int MainWindow::select_question_by_id(int id) //选取问题，成功返回1，失败返回0
 {
     auto indexList = questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,id);
@@ -359,6 +369,7 @@ int MainWindow::select_question_by_id(int id) //选取问题，成功返回1，�
     on_questionTableView_activated(index);
     return 1;
 }
+
 void MainWindow::on_questionDirOpenButton_clicked()
 {
     if(ui->questionTableView->currentIndex().isValid())
@@ -373,14 +384,17 @@ void MainWindow::on_questionDirOpenButton_clicked()
         process.startDetached("explorer",args);
     }
 }
+
 void MainWindow::on_questionTableView_clicked(const QModelIndex &index)
 {
     on_questionTableView_activated(index);
 }
+
 void MainWindow::on_questionTableView_pressed(const QModelIndex &index)
 {
     //on_questionTableView_activated(index);
 }
+
 void MainWindow::on_questionTableView_entered(const QModelIndex &index)
 {
     if(QGuiApplication::mouseButtons() == Qt::NoButton)
@@ -389,6 +403,7 @@ void MainWindow::on_questionTableView_entered(const QModelIndex &index)
         return;
     on_questionTableView_activated(index);
 }
+
 void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题目选取功能 2024/8/11
 {
     setCurrentQId(index.siblingAtColumn(0).data().toInt());
@@ -401,6 +416,7 @@ void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题�
     ui->questionTableView->setCurrentIndex(index);
     load_answer(currentQId);
 }
+
 void MainWindow::on_questionAddButton_clicked()
 {
     int id = questionSql->get_max_id("questions") + 1;
@@ -425,6 +441,7 @@ void MainWindow::on_questionAddButton_clicked()
     ui->questionTableView->selectRow(row);
     on_questionTableView_clicked(ui->questionTableView->currentIndex());
 }
+
 void MainWindow::on_questionDelButton_clicked()
 {
     QModelIndex index = ui->questionTableView->currentIndex();
@@ -448,6 +465,7 @@ void MainWindow::on_questionDelButton_clicked()
         on_questionTableView_clicked(ui->questionTableView->currentIndex());
     }
 }
+
 void MainWindow::on_questionMoveButton_clicked()
 {
     QModelIndexList indexes = ui->questionTableView->selectionModel()->selectedIndexes();
@@ -481,6 +499,7 @@ void MainWindow::on_questionMoveButton_clicked()
     ui->questionTableView->setCurrentIndex(newIndex);
     on_questionTableView_activated(newIndex);
 }
+
 void MainWindow::on_questionTextEdit_textChanged()
 {
     if(!is_questionTextEdit_editable)
@@ -489,12 +508,17 @@ void MainWindow::on_questionTextEdit_textChanged()
     if(!index.isValid())
         return;
     int qId = currentQId;
-    QString questionHTML;
+    QString questionHTML,questionMd;
     questionHTML = ui->questionTextEdit->toHtml();
     questionSql->write_questionHTML(qId,questionHTML);
+
+    questionMd = ui->questionTextEdit->toMarkdown();
+    questionSql->write_questionMd(qId,questionMd);
+
     on_categoryTreeView_clicked(ui->categoryTreeView->currentIndex());
     ui->questionTableView->selectRow(index.row());
 }
+
 void MainWindow::on_questionRenameButton_clicked()
 {
     QModelIndex index = ui->questionTableView->currentIndex();
@@ -506,7 +530,6 @@ void MainWindow::on_questionRenameButton_clicked()
         questionTableModel->submitAll();
     }
 }
-
 
 //learn
 void MainWindow::on_itemLearnButton_clicked()//单项学习
@@ -532,6 +555,7 @@ void MainWindow::on_itemLearnButton_clicked()//单项学习
         select_question_by_id(learningDialog->getLastId());
     }
 }
+
 void MainWindow::on_speedLearnButton_clicked()// 标签学习（不重复）
 {
     learningDialog->setOnlyToLearn(false);
@@ -553,6 +577,7 @@ void MainWindow::on_speedLearnButton_clicked()// 标签学习（不重复）
         select_question_by_id(learningDialog->getLastId());
     }
 }
+
 void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
 {
     learningDialog->clear_question_display();
@@ -575,6 +600,7 @@ void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
         select_question_by_id(learningDialog->getLastId());
     }
 }
+
 void MainWindow::on_categoryLearnButton_clicked() //表项学习（全部）
 {
     learningDialog->set_items_table(questionTableModel->filter());
@@ -611,10 +637,13 @@ void MainWindow::on_htmlImgAddButton_clicked() //插入图片功能 2024/8/7
             return;
         QDir dir("./");
         QTextCursor cursor = ui->questionTextEdit->textCursor();
-        QString imgHtml = QString("<img src=\"./%1\">").arg(dir.relativeFilePath(filePath));
-        cursor.insertHtml(imgHtml);
+        QTextImageFormat imageFormat;
+        imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
+        imageFormat.setName(dir.relativeFilePath(filePath));
+        cursor.insertImage(imageFormat);
     }
 }
+
 void MainWindow::on_htmlTableAddButton_clicked()
 {
     htmlTableAddDialog->setRetRow(0);
@@ -652,7 +681,6 @@ int get_cursor_number(QTextCursor *cursor) //获取当前cursor所在填空的�
         if(match.hasMatch())
             num = 0;
     }
-
     return num;
 }
 
@@ -663,8 +691,8 @@ int MainWindow::autoNumberNext(QTextCursor &cursor) //自动编号下一填空9/
     if(number != -1)//找到下一个，第一个下划线数字文本，并修改为number+1
     {
         flg = false;
-        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
-        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        flg = !cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        flg = !cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
         while(!cursor.charFormat().fontUnderline())
         {
             if(!cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1))
@@ -704,11 +732,10 @@ void MainWindow::on_autoNumberAllButton_clicked() //自动编号后续所有填�
     QTextCursor cursor = ui->questionTextEdit->textCursor();
     while(autoNumberNext(cursor) != -1)
     {
-        QTextCursor cursor = ui->questionTextEdit->textCursor();
+        cursor = ui->questionTextEdit->textCursor();
         autoNumberNext(cursor);
     }
 }
-
 
 //category
 
@@ -742,6 +769,7 @@ void MainWindow::update_count_categoryTreeView()
         categoryItemLists[id][3]->setText(QString::number(qCount));
     }
 }
+
 void MainWindow::get_categoryItemTree(QStandardItem* parent,int parentId)
 {
     QSqlQuery query(QSqlDatabase::database("connection1"));
@@ -762,6 +790,7 @@ void MainWindow::get_categoryItemTree(QStandardItem* parent,int parentId)
         get_categoryItemTree(categoryItemLists[id][0],id);
     }
 }
+
 void MainWindow::on_categoryAddButton_clicked()
 {
 
@@ -782,6 +811,7 @@ void MainWindow::on_categoryAddButton_clicked()
     ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
     ui->categoryTreeView->expand(categoryItemLists[parentId][0]->index());
 }
+
 void MainWindow::on_categoryDelButton_clicked()
 {
     QModelIndex index =ui->categoryTreeView->currentIndex();
@@ -802,6 +832,7 @@ void MainWindow::on_categoryDelButton_clicked()
     ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
     on_categoryTreeView_clicked(categoryItemLists[parentId][0]->index());
 }
+
 void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
 {
     if(currentDate != QDate::currentDate())
@@ -809,11 +840,9 @@ void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
         update_count_categoryTreeView();
         currentDate = QDate::currentDate();
     }
-
     int categoryId = index.siblingAtColumn(1).data().toInt();
     QString condString = questionSql->get_category_condString(categoryId);
     questionTableModel->setFilter(condString);
-    qDebug() << questionTableModel->filter();
     questionTableModel->select();
     currentSection = 0;
 }
@@ -823,7 +852,6 @@ void MainWindow::on_categoryEditButton_clicked()
     QModelIndex index = ui->categoryTreeView->currentIndex();
     ui->categoryTreeView->edit(index);
 }
-
 
 void MainWindow::category_item_change_handler(QStandardItem *item)
 {
@@ -844,6 +872,7 @@ void MainWindow::on_setFontButton_clicked()
     if(ok)
         ui->questionTextEdit->setCurrentFont(font);
 }
+
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == ui->questionTableView) {
@@ -875,6 +904,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         return QMainWindow::eventFilter(watched, event);
     }
 }
+
 void MainWindow::on_setGoodTimeButton_clicked()
 {
     QModelIndexList indexes = ui->questionTableView->selectionModel()->selectedIndexes();
@@ -978,8 +1008,6 @@ void MainWindow::on_underlineToggleButton_clicked()
     }
 }
 
-
-
 //添加描述条目 25/9/29
 void MainWindow::on_descAddButton_clicked()
 {
@@ -993,24 +1021,20 @@ void MainWindow::on_questionSearchButton_clicked()
     questionTableModel->select();
 }
 
-
 //添加id跳转 25/9/29
 void MainWindow::on_idLineEdit_returnPressed()
 {
     int qId = ui->idLineEdit->text().toInt();
     QSqlQuery query(QSqlDatabase::database("connection1"));
     QString queryString = QString("SELECT categoryId FROM questions WHERE id = %1").arg(qId);
-    qDebug() <<  queryString;
     query.exec(queryString);
     if(query.next())
     {
         int cId  = query.value(0).toInt();
-        qDebug() <<cId;
         ui->categoryTreeView->setCurrentIndex(categoryItemLists[cId][0]->index());
         on_categoryTreeView_clicked(categoryItemLists[cId][0]->index());
         select_question_by_id(qId);
     }
-
 }
 
 //添加题目搜索 25/9/29
@@ -1055,5 +1079,3 @@ void MainWindow::on_nextQButton_clicked()
     ui->idLineEdit->setText(nextQId);
     on_idLineEdit_returnPressed();
 }
-
-

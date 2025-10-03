@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1200</width>
-    <height>788</height>
+    <height>799</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -139,7 +139,6 @@ border:1px solid black;
            <widget class="QTextEdit" name="questionTextEdit">
             <property name="font">
              <font>
-              <family>Source Sans Pro</family>
               <pointsize>12</pointsize>
              </font>
             </property>
@@ -155,8 +154,8 @@ p, li { white-space: pre-wrap; }
 hr { height: 1px; border-width: 0; }
 li.unchecked::marker { content: &quot;\2610&quot;; }
 li.checked::marker { content: &quot;\2612&quot;; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Source Sans Pro'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Microsoft YaHei UI'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'Source Sans Pro';&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
            <widget class="QGroupBox" name="groupBox_2">
@@ -426,6 +425,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="questionDirOpenButton">
+        <property name="text">
+         <string>打开题目文件夹</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="htmlTableAddButton">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -446,16 +452,26 @@ li.checked::marker { content: &quot;\2612&quot;; }
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="questionDirOpenButton">
+       <widget class="QPushButton" name="setFontButton">
         <property name="text">
-         <string>打开题目文件夹</string>
+         <string>设置字体</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="setFontButton">
+       <widget class="QPushButton" name="descAddButton">
         <property name="text">
-         <string>设置字体</string>
+         <string>添加描述条目</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="underlineToggleButton">
+        <property name="text">
+         <string>切换选定部分下划线</string>
+        </property>
+        <property name="shortcut">
+         <string>F6</string>
         </property>
        </widget>
       </item>
@@ -473,23 +489,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
        <widget class="QPushButton" name="autoNumberAllButton">
         <property name="text">
          <string>自动编号后续所有填空</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="underlineToggleButton">
-        <property name="text">
-         <string>切换选定部分下划线</string>
-        </property>
-        <property name="shortcut">
-         <string>F6</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="descAddButton">
-        <property name="text">
-         <string>添加描述条目</string>
         </property>
        </widget>
       </item>

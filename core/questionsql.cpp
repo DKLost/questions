@@ -350,6 +350,15 @@ void QuestionSql::write_answerJSON(int qId,QJsonArray jsonArray)
     fileIO << document.toJson();
     file.close();
 }
+QString QuestionSql::read_questionMd(int id)
+{
+    QString filePath = QString("./data/%1/question.md").arg(id);
+    QFile file(filePath);
+    file.open(QIODevice::ReadOnly);
+    QString md = file.readAll();
+    file.close();
+    return md;
+}
 QString QuestionSql::read_questionHTML(int id)
 {
     QString filePath = QString("./data/%1/question.html").arg(id);
@@ -367,6 +376,16 @@ void QuestionSql::write_questionHTML(int id,QString html)
     file.resize(0);
     QTextStream fileIO(&file);
     fileIO << html;
+    file.close();
+}
+void QuestionSql::write_questionMd(int id,QString markdown)
+{
+    QString filePath = QString("./data/%1/question.md").arg(id);
+    QFile file(filePath);
+    file.open(QIODevice::ReadWrite);
+    file.resize(0);
+    QTextStream fileIO(&file);
+    fileIO << markdown;
     file.close();
 }
 QSqlDatabase QuestionSql::getDb() const

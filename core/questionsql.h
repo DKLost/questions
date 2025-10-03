@@ -52,7 +52,9 @@ public:
     QJsonArray read_answerJSON(int id);
     void write_answerJSON(int id, QJsonArray jsonArray);
     QString read_questionHTML(int id);
+    QString read_questionMd(int id);
     void write_questionHTML(int id, QString html);
+    void write_questionMd(int id,QString markdown);
     QSqlDatabase getDb() const;
     int get_max_id(QString table);
 
