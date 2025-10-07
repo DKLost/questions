@@ -6,7 +6,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    QFont font({"PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
+    QFont font({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
     QApplication::setFont(font);
     currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
@@ -25,6 +25,7 @@ MainWindow::MainWindow(QWidget *parent)
     //init question html text edit
     ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*4);
     ui->questionTextEdit->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
+    ui->questionTextEdit->setFont(font);
 
     //init dialogs
     learningDialog = new LearningDialog(questionSql,this);                          //init learning dialog

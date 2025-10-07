@@ -45,6 +45,7 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
 
     //set text broswer
     ui->textBrowser->setTabStopDistance(ui->textBrowser->fontMetrics().horizontalAdvance(' ')*4);
+    ui->textBrowser->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
 
     //init isSpeedLearn
     isSpeedLearn = false;
