@@ -140,6 +140,7 @@ void LearningDialog::set_items_table(QString filter) //设置表过滤
 {
     totalTime = QTime::fromMSecsSinceStartOfDay(0);
     tableModel->setFilter(filter);
+    tableModel->select();
     totalCount = 0;
     correctCount = 0;
     if(isSpeedLearn)
@@ -147,6 +148,18 @@ void LearningDialog::set_items_table(QString filter) //设置表过滤
     clear_question_display();
     ui->tableView->sortByColumn(0,Qt::AscendingOrder);
     on_comboBox_currentTextChanged(ui->comboBox->currentText());
+
+    int rowCount = tableModel->rowCount();  // 获取过滤后的行数
+
+    QTime totalGoodTime = QTime::fromMSecsSinceStartOfDay(0);
+    for (int row = 0; row < rowCount; row++) {
+        QModelIndex index = tableModel->index(row,0);
+        int qId = index.data().toInt();
+        QTime qGoodTime = questionSql->get_question_learn_time(qId);
+        totalGoodTime = totalGoodTime.addMSecs(qGoodTime.msecsSinceStartOfDay());
+    }
+    totalGoodTime=totalGoodTime.addMSecs(totalGoodTime.msecsSinceStartOfDay()*0.6);
+    ui->totalGoodTimeLabel->setText(totalGoodTime.toString("hh'h':mm'm':ss's'"));
 }
 
 //checked
@@ -455,7 +468,7 @@ void LearningDialog::set_question(int id)
     QLabel* newCheckLabel = new QLabel(this);
     timeLabel->setText("00:00.00");
     timeLabel->setFixedWidth(80);
-    QString timeString = ToolFunctions::ms2msz(questionSql->get_value("questions",id,"goodTime").toString());
+    QString timeString = questionSql->get_question_learn_time(id).toString("mm'm':ss's'");
     newGoodTimeLabel->setText(timeString);
     newCheckLabel->setText("良好");
 

@@ -74,6 +74,26 @@
           </widget>
          </item>
          <item>
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>良好用时:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="totalGoodTimeLabel">
+           <property name="font">
+            <font>
+             <family>文泉驿等宽微米黑</family>
+             <pointsize>14</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>00:00:00.00</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <spacer name="horizontalSpacer_2">
            <property name="orientation">
             <enum>Qt::Orientation::Horizontal</enum>

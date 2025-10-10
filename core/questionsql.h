@@ -37,6 +37,7 @@ public:
     QString get_category_condString(int categoryId);
     QString get_toLearn_condString(int categoryId);
     QString get_toLearn_condString(QString currentFilter);
+    QTime get_question_learn_time(int qId);
 
     //construct
     void add_construct(int id);

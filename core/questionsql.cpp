@@ -483,6 +483,26 @@ QString QuestionSql::get_toLearn_condString(QString currentFilter)
                              .arg(QString("(%1)").arg(currentFilter));
     return condString;
 }
+
+QTime QuestionSql::get_question_learn_time(int qId) //统计待学问题的时长
+{
+    QTime time = QTime::fromMSecsSinceStartOfDay(0);
+    QJsonArray answerArray = read_answerJSON(qId);
+    for(auto a : answerArray)
+    {
+        int aId = a.toObject().value("id").toInt();
+        QString aState = get_value("constructs",aId,"state").toString();
+        QTime aGoodTime = QTime::fromString(get_value("constructs",aId,"goodTime").toString(),"mm'm':ss's'");
+        QDate aNextDate = QDate::fromString(get_value("constructs",aId,"nextDate").toString(),"yyyy/MM/dd");
+
+        if(aNextDate <= QDate::currentDate())
+        {
+            time = time.addMSecs(aGoodTime.msecsSinceStartOfDay());
+        }
+    }
+    return time;
+}
+
 QString QuestionSql::get_toLearn_condString(int categoryId)
 {
     QString currentDate = QDate::currentDate().toString("yyyy/MM/dd");
