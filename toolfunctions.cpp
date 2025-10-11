@@ -120,7 +120,7 @@ void ToolFunctions::watch_typst_start(QProcess &process,const QString &inputFile
 }
 void ToolFunctions::watch_typst_stop(QProcess &process) {
     if (process.state() == QProcess::Running) {
-        process.terminate();
+        process.kill();
     }
 }
 

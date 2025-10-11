@@ -18,6 +18,7 @@
 #include <QTextFragment>
 #include <QTextDocumentFragment>
 #include <QQueue>
+#include <QInputDialog>
 #include "learningdialog.h"
 #include "core/questionsql.h"
 #include "questionmovedialog.h"
@@ -28,6 +29,7 @@
 #include "questionrenamedialog.h"
 #include "bindanswerdialog.h"
 #include "descadddialog.h"
+#include "htmltypstadddialog.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -135,6 +137,8 @@ private slots:
 
     void on_autoNumberAllButton_clicked();
 
+    void on_htmlTypstAddButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 
@@ -152,6 +156,7 @@ private:
     QuestionRenameDialog questionRenameDialog;
     BindAnswerDialog *bindAnswerDialog;
     DescAddDialog *descAddDialog;
+    HtmlTypstAddDialog *htmlTypstAddDialog;
 
     //other
     QuestionSql *questionSql;

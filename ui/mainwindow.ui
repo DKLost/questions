@@ -452,6 +452,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="htmlTypstAddButton">
+        <property name="text">
+         <string>插入typst公式</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="setFontButton">
         <property name="text">
          <string>设置字体</string>

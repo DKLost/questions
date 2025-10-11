@@ -36,7 +36,8 @@ MainWindow::MainWindow(QWidget *parent)
                                             ui->categoryTreeView,
                                             this};
     answerEditDialog = new AnswerEditDialog(bindAnswerDialog,this);                 //init answer edit dialog
-    descAddDialog = new DescAddDialog();
+    descAddDialog = new DescAddDialog(this);
+    htmlTypstAddDialog = new HtmlTypstAddDialog(this);
 
     //init current section
     currentSection = -1;
@@ -1105,3 +1106,23 @@ void MainWindow::on_nextQButton_clicked()
     ui->idLineEdit->setText(nextQId);
     on_idLineEdit_returnPressed();
 }
+
+//添加插入typst数学公式功能 25/10/1
+void MainWindow::on_htmlTypstAddButton_clicked()
+{
+    htmlTypstAddDialog->reset();
+    htmlTypstAddDialog->setQId(currentQId);
+    htmlTypstAddDialog->exec();
+    QString filePath  = htmlTypstAddDialog->getRetPath();
+    if(ui->questionTableView->currentIndex().isValid() && !filePath.isEmpty())
+    {
+        QDir dir("./");
+        QTextCursor cursor = ui->questionTextEdit->textCursor();
+        QTextImageFormat imageFormat;
+        imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
+        imageFormat.setName(dir.relativeFilePath(filePath));
+        cursor.insertImage(imageFormat);
+    }
+    htmlTypstAddDialog->reset();
+}
+

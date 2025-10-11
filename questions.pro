@@ -16,6 +16,7 @@ SOURCES += \
     descadddialog.cpp \
     dragqtreewidget.cpp \
     htmltableadddialog.cpp \
+    htmltypstadddialog.cpp \
     learningdialog.cpp \
     main.cpp \
     mainwindow.cpp \
@@ -33,6 +34,7 @@ HEADERS += \
     descradddialog.h \
     dragqtreewidget.h \
     htmltableadddialog.h \
+    htmltypstadddialog.h \
     learningdialog.h \
     mainwindow.h \
     questionmovedialog.h \
@@ -42,6 +44,7 @@ HEADERS += \
 
 FORMS += \
     descadddialog.ui \
+    htmltypstadddialog.ui \
     ui/answereditdialog.ui \
     ui/bindanswerdialog.ui \
     ui/htmltableadddialog.ui \

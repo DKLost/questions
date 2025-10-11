@@ -141,10 +141,9 @@ void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
     {
         QString typst = "#set page(height: auto,width: auto,margin: 0cm);";
         typst = typst + "$ " + ui->lineEdit->text() + " $";
-        ToolFunctions::write_typst(typst,"temp.typ");
         if(typstWatchProcess.state() == QProcess::NotRunning)
             ToolFunctions::watch_typst_start(typstWatchProcess,"temp.typ","temp.png");
-
+        ToolFunctions::write_typst(typst,"temp.typ");
     }else
     {
         if(typstWatchProcess.state() != QProcess::NotRunning)

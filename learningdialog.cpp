@@ -238,10 +238,9 @@ void LearningDialog::answer_lineEdit_textChanged(const QString &arg1) //自动�
     {
         QString typst = "#set page(height: auto,width: auto,margin: 0cm);";
         typst = typst + "$ " + currentLineEdit->text() + " $";
-        ToolFunctions::write_typst(typst,"temp.typ");
         if(typstWatchProcess.state() == QProcess::NotRunning)
             ToolFunctions::watch_typst_start(typstWatchProcess,"temp.typ","temp.png");
-
+        ToolFunctions::write_typst(typst,"temp.typ");
     }else
     {
         if(typstWatchProcess.state() != QProcess::NotRunning)
@@ -386,6 +385,7 @@ void LearningDialog::set_question(int id)
         int pixelWide = 10;
 
         newLineNumberLabel->setText(QString::number(i+1));
+        newLineNumberLabel->setFixedWidth(20);
 
         newLineEditVBoxLayout->addWidget(newTypstPreviewLabel); //添加typst公式预览 25/10/11
         newLineEditVBoxLayout->addWidget(newLineEdit);
@@ -528,9 +528,9 @@ void LearningDialog::set_question(int id)
     newGoodTimeLabel->setText(timeString);
     newCheckLabel->setText("良好");
 
-    layout->addWidget(timeLabel,array.count(),0);
-    layout->addWidget(newGoodTimeLabel,array.count(),1);
-    layout->addWidget(newCheckLabel,array.count(),2);
+    layout->addWidget(timeLabel,array.count(),4);
+    layout->addWidget(newGoodTimeLabel,array.count(),5);
+    layout->addWidget(newCheckLabel,array.count(),3);
 
     newCheckLabel->hide();
 
@@ -706,8 +706,8 @@ void LearningDialog::submit()
     }
 
     //QLabel *timeLabel = (QLabel *)layout->itemAtPosition(row,0)->widget();
-    QLabel *goodTimeLabel = (QLabel *)layout->itemAtPosition(row,1)->widget();
-    QLabel *checkLabel = (QLabel *)layout->itemAtPosition(row,2)->widget();
+    QLabel *goodTimeLabel = (QLabel *)layout->itemAtPosition(row,5)->widget();
+    QLabel *checkLabel = (QLabel *)layout->itemAtPosition(row,3)->widget();
 
     QTime goodTime = QTime::fromString(goodTimeLabel->text(),"mm:ss.zz");
     rating = FSRS::time2rating(time,goodTime);
