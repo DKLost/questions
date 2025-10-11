@@ -18,6 +18,8 @@
 #include <QSqlRecord>
 #include <QJsonObject>
 #include <QCheckBox>
+#include <QLayout>
+#include <QProcess>
 
 namespace Ui {
 class LearningDialog;
@@ -71,6 +73,7 @@ private slots:
 
     void answer_lineEdit_textChanged(const QString &arg1);
     void poolComboBox_currentIndexChanged(const int &index);
+    void onTypstWatcher_standard_output();
 
 private:
     Ui::LearningDialog *ui;
@@ -105,6 +108,7 @@ private:
     void submit();
 
     QLineEdit* currentLineEdit;
+    QProcess typstWatchProcess{this};
 };
 
 #endif // LEARNINGDIALOG_H

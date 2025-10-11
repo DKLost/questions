@@ -70,6 +70,11 @@ void MainWindow::load_answer(int qId)
         {
             QIcon icon{itemObject["content"].toString()};
             aitem->setIcon(1,icon);
+        }else if(type == "auto(typst)") //添加typst数学公式显示功能 25/10/11
+        {
+            QString imgPath = QString("./data/%1/%2.png").arg(qId).arg(itemObject["id"].toInt());
+            QIcon icon{imgPath};
+            aitem->setIcon(1,icon);
         }else
             aitem->setText(1,itemObject["content"].toString());
         aitem->setText(2,QString::number(itemObject["pool"].toInt()));
@@ -153,6 +158,7 @@ void MainWindow::on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, in
         QString answerType = answerEditDialog->getRetType();
         QString answerContent = answerEditDialog->getRetContent();
         QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
+        QString answerDisplay = "";
         int answerAId = answerEditDialog->getRetAId();
         int answerPool = answerEditDialog->getRetPool();
         int injectBId = answerEditDialog->getRetInjectBId();
@@ -168,6 +174,12 @@ void MainWindow::on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, in
         {
             item->setIcon(1,QIcon{answerContent});
             item->setText(1,"");
+        }else if(answerType == "auto(typst)") //添加typst数学公式显示功能 25/10/11
+        {
+            QString imgPath = QString("./data/%1/%2.png").arg(qId).arg(aObj["id"].toInt());
+            QIcon icon{imgPath};
+            item->setIcon(1,icon);
+            item->setText(1,"");
         }else{
             item->setText(1,answerContent);
         }
@@ -180,6 +192,7 @@ void MainWindow::on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, in
         aObj["id"] = answerAId;
         aObj["type"] = answerType;
         aObj["pool"] = answerPool;
+        aObj["display"] = answerDisplay;
         array[row] = aObj;
         questionSql->write_answerJSON(qId,array);
         questionSql->set_value("constructs",aId,"inject",injectBId);//保存注入绑定8/11
@@ -284,6 +297,7 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     aObj["id"] = id;
     aObj["type"] = "auto";
     aObj["pool"] = 0;
+    aObj["display"] = "";
     array.insert(row,aObj);
     questionSql->write_answerJSON(qId,array);
     questionSql->update_question_state(qId);
@@ -716,7 +730,7 @@ int MainWindow::autoNumberNext(QTextCursor &cursor) //自动编号下一填空9/
                 QTextCharFormat format = cursor.charFormat();
                 format.setFontUnderline(true);
                 cursor.removeSelectedText();
-                cursor.mergeCharFormat(format);
+                cursor.setCharFormat(format);
                 cursor.insertText("   "+QString::number(number+1)+"   ");
                 ui->questionTextEdit->setTextCursor(cursor);
             }

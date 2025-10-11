@@ -80,4 +80,50 @@ void ToolFunctions::select_current_underline_text(QTextCursor *cursor) //选择�
         cursor->movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
 }
 
+void ToolFunctions::compile_typst(const QString &inputFile, const QString &outputFile)
+{
+    QProcess process;
+
+    // 设置命令和参数
+    QStringList arguments;
+    arguments << "compile" << inputFile << outputFile;
+
+    // 启动 typst 进程
+    process.start("typst", arguments);
+
+    // 等待进程完成
+    if (process.waitForFinished()) {
+        if (process.exitCode() == 0) {
+            qDebug() << "编译成功";
+        } else {
+            qDebug() << "编译失败：" << process.readAllStandardError();
+        }
+    } else {
+        qDebug() << "进程执行超时或出错";
+    }
+}
+
+void ToolFunctions::write_typst(const QString &typstString, const QString &filePath)
+{
+    QFile file(filePath);
+    file.open(QIODevice::ReadWrite);
+    file.resize(0);
+    QTextStream fileIO(&file);
+    fileIO << typstString;
+    file.close();
+}
+
+void ToolFunctions::watch_typst_start(QProcess &process,const QString &inputFile, const QString &outputFile) {
+    QStringList arguments;
+    arguments << "watch" << inputFile << outputFile;
+    process.start("typst", arguments);
+}
+void ToolFunctions::watch_typst_stop(QProcess &process) {
+    if (process.state() == QProcess::Running) {
+        process.terminate();
+    }
+}
+
+
+
 

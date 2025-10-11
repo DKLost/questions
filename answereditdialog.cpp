@@ -8,6 +8,9 @@ AnswerEditDialog::AnswerEditDialog(BindAnswerDialog *mainBindAnswerDialog,QWidge
     ui->setupUi(this);
     bindAnswerDialog = mainBindAnswerDialog;
     retPool = 0;
+    ui->displayLabel->hide();
+    typstWatchProcess.setProcessChannelMode(QProcess::MergedChannels);
+    connect(&typstWatchProcess, &QProcess::readyReadStandardOutput, this, &AnswerEditDialog::onTypstWatcher_standard_output);
 }
 
 AnswerEditDialog::~AnswerEditDialog()
@@ -116,6 +119,10 @@ int AnswerEditDialog::getRetPool() const
 void AnswerEditDialog::on_comboBox_currentTextChanged(const QString &arg1)
 {
     retType = type[ui->comboBox->currentText()];
+    if(retType == "auto(typst)")
+        ui->displayLabel->show();
+    else
+        ui->displayLabel->hide();
 }
 void AnswerEditDialog::on_goodTimeEdit_userTimeChanged(const QTime &time)
 {
@@ -129,7 +136,26 @@ void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
     setFixedWidth(pixelWide+30);
     //ui->lineEdit->setMaximumWidth(pixelWide);
     retContent = ui->lineEdit->text();
+
+    if(type[ui->comboBox->currentText()] == "auto(typst)")
+    {
+        QString typst = "#set page(height: auto,width: auto,margin: 0cm);";
+        typst = typst + "$ " + ui->lineEdit->text() + " $";
+        ToolFunctions::write_typst(typst,"temp.typ");
+        if(typstWatchProcess.state() == QProcess::NotRunning)
+            ToolFunctions::watch_typst_start(typstWatchProcess,"temp.typ","temp.png");
+
+    }else
+    {
+        if(typstWatchProcess.state() != QProcess::NotRunning)
+            ToolFunctions::watch_typst_stop(typstWatchProcess);
+    }
 }
+void AnswerEditDialog::onTypstWatcher_standard_output()
+{
+    ui->displayLabel->setPixmap(QPixmap{"temp.png"});
+}
+
 void AnswerEditDialog::on_bindIdLineEdit_textChanged(const QString &arg1)
 {
     retAId = arg1.toInt();
@@ -161,5 +187,12 @@ void AnswerEditDialog::on_injectLineEdit_textChanged(const QString &arg1)
 {
     retInjectBId = arg1.toInt();
 }
-//
+
+void AnswerEditDialog::on_buttonBox_accepted()
+{
+    if(typstWatchProcess.state() != QProcess::NotRunning)
+        ToolFunctions::watch_typst_stop(typstWatchProcess);
+    QString filePath = QString("./data/%1/%2.png").arg(qId).arg(retAId);
+    ToolFunctions::compile_typst("temp.typ",filePath);
+}
 

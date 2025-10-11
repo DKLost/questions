@@ -5,6 +5,7 @@
 #include <QMap>
 #include <QFileDialog>
 #include "bindanswerdialog.h"
+#include <QProcess>
 
 namespace Ui {
 class AnswerEditDialog;
@@ -54,10 +55,14 @@ private slots:
     void on_injectBindButton_clicked();
 
     void on_injectLineEdit_textChanged(const QString &arg1);
+    void onTypstWatcher_standard_output();
+
+    void on_buttonBox_accepted();
 
 private:
     Ui::AnswerEditDialog *ui;
     int qId;
+    QProcess typstWatchProcess{this};
 
     //ret
     QString retType;
@@ -67,8 +72,14 @@ private:
     int retPool;
     int retInjectBId;
 
-    QMap<QString,QString> type{{"自动检查","auto"},{"手动检查","manual"},{"手动检查(图片)","manual(image)"}};
-    QMap<QString,QString> typeName{{"auto","自动检查"},{"manual","手动检查"},{"manual(image)","手动检查(图片)"}};
+    QMap<QString,QString> type{{"自动检查","auto"},
+                                {"手动检查","manual"},
+                                {"手动检查(图片)","manual(image)"},
+                                {"自动检查(typst)","auto(typst)"}};
+    QMap<QString,QString> typeName{{"auto","自动检查"},
+                                    {"manual","手动检查"},
+                                    {"manual(image)","手动检查(图片)"},
+                                    {"auto(typst)","自动检查(typst)"}};
     BindAnswerDialog *bindAnswerDialog;
 };
 

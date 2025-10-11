@@ -52,6 +52,10 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
 
     //init answer grid layout
     QGridLayout *answerBoxLayout = qobject_cast<QGridLayout*>(ui->groupBox->layout());
+
+    //init typst preview
+    typstWatchProcess.setProcessChannelMode(QProcess::MergedChannels);
+    connect(&typstWatchProcess, &QProcess::readyReadStandardOutput, this, &LearningDialog::onTypstWatcher_standard_output);
 }
 
 LearningDialog::~LearningDialog()
@@ -175,7 +179,17 @@ void LearningDialog::clear_question_display()
     QLayoutItem *child;
     while ((child = layout->takeAt(0)) != nullptr)
     {
-        delete child->widget();
+        if(child->layout())
+        {
+            QVBoxLayout *vbox = qobject_cast<QVBoxLayout*>(child->layout());
+            QLayoutItem *cchild;
+            while ((cchild = vbox->takeAt(0)) != nullptr)
+            {
+                delete cchild->widget();
+                delete cchild;
+            }
+        }else
+            delete child->widget();
         delete child;
     }
 }
@@ -218,6 +232,21 @@ void LearningDialog::answer_lineEdit_textChanged(const QString &arg1) //自动�
         currentLineEdit->setFixedWidth(pixelWide);
     else
         currentLineEdit->setFixedWidth(currentLineEdit->statusTip().toInt());
+
+    //更新typst预览 25/10/11
+    if(currentLineEdit->styleSheet().contains("green"))
+    {
+        QString typst = "#set page(height: auto,width: auto,margin: 0cm);";
+        typst = typst + "$ " + currentLineEdit->text() + " $";
+        ToolFunctions::write_typst(typst,"temp.typ");
+        if(typstWatchProcess.state() == QProcess::NotRunning)
+            ToolFunctions::watch_typst_start(typstWatchProcess,"temp.typ","temp.png");
+
+    }else
+    {
+        if(typstWatchProcess.state() != QProcess::NotRunning)
+            ToolFunctions::watch_typst_stop(typstWatchProcess);
+    }
 }
 
 void LearningDialog::on_tableView_clicked(const QModelIndex &index)
@@ -309,6 +338,16 @@ void LearningDialog::poolComboBox_currentIndexChanged(const int &index)
     }
 }
 
+void LearningDialog::onTypstWatcher_standard_output()
+{
+    QGridLayout* layout = qobject_cast<QGridLayout*>(currentLineEdit->parentWidget()->layout());
+    int row = currentLineEdit->toolTip().toInt();
+    QVBoxLayout* vbox = (QVBoxLayout *)layout->itemAtPosition(row,1);
+    QLabel* currentTypstPreviewLabel = (QLabel*)(vbox->itemAt(0)->widget());
+    if(currentTypstPreviewLabel)
+        currentTypstPreviewLabel->setPixmap(QPixmap{"temp.png"});
+}
+
 //核心功能
 void LearningDialog::set_question(int id)
 {
@@ -335,8 +374,10 @@ void LearningDialog::set_question(int id)
     for(int i = 0;i < array.count();i++)
     {
         QLabel* newLineNumberLabel = new QLabel(this);
-        QLineEdit* newLineEdit = new QLineEdit(this); //StatusTip:FixedWidth
-        QLabel* newAnswerLabel = new QLabel(this); //StatusTip:id ToolTip:type
+        QVBoxLayout* newLineEditVBoxLayout = new QVBoxLayout();
+        QLabel* newTypstPreviewLabel = new QLabel(this);
+        QLineEdit* newLineEdit = new QLineEdit(); //StatusTip:FixedWidth
+        QLabel* newAnswerLabel = new QLabel(); //StatusTip:id
         QCheckBox* newCheackBox = new QCheckBox(this);
         QLabel* newCheckLabel = new QLabel(this);
         QLabel* newTimeLabel = new QLabel(this);
@@ -346,9 +387,13 @@ void LearningDialog::set_question(int id)
 
         newLineNumberLabel->setText(QString::number(i+1));
 
+        newLineEditVBoxLayout->addWidget(newTypstPreviewLabel); //添加typst公式预览 25/10/11
+        newLineEditVBoxLayout->addWidget(newLineEdit);
+        newTypstPreviewLabel->hide();
+
         QJsonObject obj = array[i].toObject();
         newAnswerLabel->setStatusTip(QString::number(obj["id"].toInt()));
-        newAnswerLabel->setToolTip(obj["type"].toString());
+        //newAnswerLabel->setToolTip(obj["type"].toString());
         newLineEdit->setToolTip(QString::number(i)); //row
 
 
@@ -370,6 +415,17 @@ void LearningDialog::set_question(int id)
         {
             newLineEdit->setStyleSheet("QLineEdit {border: 1px solid red;}");
             newAnswerLabel->setPixmap(QPixmap{obj["content"].toString()});
+        }else if(obj["type"].toString() == "auto(typst)")
+        {
+            newLineEdit->setStyleSheet("QLineEdit {border: 1px solid green;}");
+            QString imgPath = QString("./data/%1/%2.png").arg(currentId).arg(obj["id"].toInt());
+            newAnswerLabel->setPixmap(QPixmap{imgPath});
+            newAnswerLabel->setToolTip(obj["content"].toString());
+            newTypstPreviewLabel->show();
+            //newAnswerLabel->setToolTipDuration(0);
+            //newAnswerLabel->setAttribute(Qt::WA_AlwaysShowToolTips);
+            //newAnswerLabel->setText(obj["content"].toString());
+            pixelWide = fm->horizontalAdvance(array[i].toObject().value("content").toString());
         }
         connect(newLineEdit,&QLineEdit::textChanged,this,&LearningDialog::answer_lineEdit_textChanged);
 
@@ -390,7 +446,7 @@ void LearningDialog::set_question(int id)
             newAnswerLabel->hide();
         }else
         {
-            layout->addWidget(newLineEdit,i,1);
+            layout->addLayout(newLineEditVBoxLayout,i,1);
             layout->addWidget(newAnswerLabel,i,2);
             layout->addWidget(newCheackBox,i,3);
             layout->addWidget(newTimeLabel,i,4);
@@ -506,8 +562,9 @@ void LearningDialog::preSubmit()
         }
 
         QJsonArray array = questionSql->read_answerJSON(currentId);
-        QLineEdit *lineEdit = (QLineEdit *)layout->itemAtPosition(row,1)->widget();
-        QCheckBox *checkBox = (QCheckBox *)layout->itemAtPosition(row,3)->widget();
+        QVBoxLayout *lineEditVBoxLayout = qobject_cast<QVBoxLayout*>(layout->itemAtPosition(row,1)->layout());
+        QLineEdit *lineEdit = qobject_cast<QLineEdit*>(lineEditVBoxLayout->itemAt(1)->widget());
+        QCheckBox *checkBox = qobject_cast<QCheckBox*>(layout->itemAtPosition(row,3)->widget());
         lineEdit->setEnabled(false);
         checkBox->show();
 
@@ -515,16 +572,25 @@ void LearningDialog::preSubmit()
         if(array[row].toObject()["pool"].toInt() == 0)
         {
             QLabel *answerLabel = (QLabel *)layout->itemAtPosition(row,2)->widget();
-            if(answerLabel->toolTip() == "auto" ||
-                answerLabel->toolTip() == "manual") //如果是非图片手动检查，默认也检查一下是否匹配25/8/21
+            if(array[row].toObject()["type"].toString()  == "auto" ||
+                array[row].toObject()["type"].toString()  == "manual") //如果是非图片手动检查，默认也检查一下是否匹配25/8/21
             {
                 if(lineEdit->text() == answerLabel->text())
                     checkBox->setChecked(true);
                 else
                     checkBox->setChecked(false);
                 checkBox->setEnabled(false);
+            }else if(array[row].toObject()["type"].toString()  == "auto(typst)")
+            {
+                if(lineEdit->text() == answerLabel->toolTip())
+                    checkBox->setChecked(true);
+                else
+                    checkBox->setChecked(false);
+                checkBox->setEnabled(false);
             }
-            if(answerLabel->toolTip() == "manual" && !checkBox->isChecked()) //如果是非图片手动检查，则不匹配时重新启用cheackbox
+
+            if(array[row].toObject()["type"].toString() == "manual" &&
+                !checkBox->isChecked()) //如果是非图片手动检查，则不匹配时重新启用cheackbox
             {
                 checkBox->setEnabled(true);
             }
@@ -544,15 +610,16 @@ void LearningDialog::preSubmit()
 
             QJsonObject currentObj = array[row].toObject();
 
-            if(currentObj["type"].toString() == "auto")
+            if(currentObj["type"].toString() == "auto" ||
+                currentObj["type"].toString() == "auto(typst)")
             {
                 checkBox->setChecked(false);
                 for(int i = 0;i < answerComboBox->count();i++) //遍历所有乱序池以检查答案
                 {
                     int _row = answerComboBox->itemData(i).toInt();
                     QJsonObject _obj = array[_row].toObject();
-                    if(_obj["type"].toString() == "auto" &&
-                       lineEdit->text() == _obj["content"].toString())
+                    if((_obj["type"].toString() == "auto" &&
+                         lineEdit->text() == _obj["content"].toString()))
                     {
                         checkBox->setChecked(true);
                         answerComboBox->setCurrentIndex(i);

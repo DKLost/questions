@@ -21,6 +21,13 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <widget class="QLabel" name="displayLabel">
+     <property name="text">
+      <string>Display image Label</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLineEdit" name="lineEdit">
@@ -64,6 +71,11 @@
      <item>
       <property name="text">
        <string>自动检查</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>自动检查(typst)</string>
       </property>
      </item>
      <item>
