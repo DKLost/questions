@@ -120,7 +120,10 @@ void AnswerEditDialog::on_comboBox_currentTextChanged(const QString &arg1)
 {
     retType = type[ui->comboBox->currentText()];
     if(retType == "auto(typst)")
+    {
         ui->displayLabel->show();
+        on_lineEdit_textChanged(ui->lineEdit->text());
+    }
     else
         ui->displayLabel->hide();
 }

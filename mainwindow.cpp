@@ -47,6 +47,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     //init qIdHistoryPos
     qIdHistoryPos = 0;
+
+    ui->descAddButton->hide();
 }
 
 MainWindow::~MainWindow()

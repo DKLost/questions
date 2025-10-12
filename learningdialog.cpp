@@ -181,9 +181,9 @@ void LearningDialog::clear_question_display()
     {
         if(child->layout())
         {
-            QVBoxLayout *vbox = qobject_cast<QVBoxLayout*>(child->layout());
+            QHBoxLayout *hbox = qobject_cast<QHBoxLayout*>(child->layout());
             QLayoutItem *cchild;
-            while ((cchild = vbox->takeAt(0)) != nullptr)
+            while ((cchild = hbox->takeAt(0)) != nullptr)
             {
                 delete cchild->widget();
                 delete cchild;
@@ -263,7 +263,7 @@ void LearningDialog::poolComboBox_currentIndexChanged(const int &index)
     {
         QSize sz = senderComboBox->itemIcon(index).actualSize(QSize{1000,1000});
         sz.setWidth(35 + sz.width());
-        sz.setHeight(3 + sz.height());
+        sz.setHeight(10 + sz.height());
         senderComboBox->setFixedSize(sz);
         senderComboBox->setIconSize(senderComboBox->itemIcon(index).actualSize(QSize{1000,1000}));
         senderComboBox->view()->setIconSize(QSize{1000,1000});
@@ -283,6 +283,9 @@ void LearningDialog::poolComboBox_currentIndexChanged(const int &index)
     int pool = ComboxObj["pool"].toInt();
     int currentRow;
     QMap<int,int> used_row;
+
+    senderComboBox->setToolTip(ComboxObj["content"].toString()); //设置新tooltip
+
     for(int i = 0;i < senderComboBox->count();i++) //统计该乱序池中所有的答案行号
     {
         int answerRow = senderComboBox->itemData(i).toInt();
@@ -341,8 +344,8 @@ void LearningDialog::onTypstWatcher_standard_output()
 {
     QGridLayout* layout = qobject_cast<QGridLayout*>(currentLineEdit->parentWidget()->layout());
     int row = currentLineEdit->toolTip().toInt();
-    QVBoxLayout* vbox = (QVBoxLayout *)layout->itemAtPosition(row,1);
-    QLabel* currentTypstPreviewLabel = (QLabel*)(vbox->itemAt(0)->widget());
+    QHBoxLayout* hbox = (QHBoxLayout *)layout->itemAtPosition(row,1);
+    QLabel* currentTypstPreviewLabel = (QLabel*)(hbox->itemAt(1)->widget());
     if(currentTypstPreviewLabel)
         currentTypstPreviewLabel->setPixmap(QPixmap{"temp.png"});
 }
@@ -373,7 +376,7 @@ void LearningDialog::set_question(int id)
     for(int i = 0;i < array.count();i++)
     {
         QLabel* newLineNumberLabel = new QLabel(this);
-        QVBoxLayout* newLineEditVBoxLayout = new QVBoxLayout();
+        QHBoxLayout* newLineEditHBoxLayout = new QHBoxLayout();
         QLabel* newTypstPreviewLabel = new QLabel(this);
         QLineEdit* newLineEdit = new QLineEdit(); //StatusTip:FixedWidth
         QLabel* newAnswerLabel = new QLabel(); //StatusTip:id
@@ -387,8 +390,9 @@ void LearningDialog::set_question(int id)
         newLineNumberLabel->setText(QString::number(i+1));
         newLineNumberLabel->setFixedWidth(20);
 
-        newLineEditVBoxLayout->addWidget(newTypstPreviewLabel); //添加typst公式预览 25/10/11
-        newLineEditVBoxLayout->addWidget(newLineEdit);
+        newLineEditHBoxLayout->addWidget(newLineEdit,0,Qt::AlignLeft);
+        newLineEditHBoxLayout->addWidget(newTypstPreviewLabel); //添加typst公式预览 25/10/11
+
         newTypstPreviewLabel->hide();
 
         QJsonObject obj = array[i].toObject();
@@ -446,8 +450,8 @@ void LearningDialog::set_question(int id)
             newAnswerLabel->hide();
         }else
         {
-            layout->addLayout(newLineEditVBoxLayout,i,1);
-            layout->addWidget(newAnswerLabel,i,2);
+            layout->addLayout(newLineEditHBoxLayout,i,1);
+            layout->addWidget(newAnswerLabel,i,2,Qt::AlignLeft);
             layout->addWidget(newCheackBox,i,3);
             layout->addWidget(newTimeLabel,i,4);
             layout->addWidget(newGoodTimeLabel,i,5);
@@ -505,12 +509,17 @@ void LearningDialog::set_question(int id)
                     if(pool_obj["type"].toString() == "manual(image)")
                     {
                         newAnswerComboBox->addItem(QIcon{pool_obj["content"].toString()},"",row);
+                    }else if(pool_obj["type"].toString() == "auto(typst)") //typst公式乱序池中显示
+                    {
+                        QString imgPath = QString("./data/%1/%2.png").arg(currentId).arg(pool_obj["id"].toInt());
+                        newAnswerComboBox->addItem(QIcon{imgPath},"",row);
                     }else
                     {
                         newAnswerComboBox->addItem(pool_obj["content"].toString(),row);
                     }
                 }
             }
+            newAnswerComboBox->setToolTip(array[row].toObject()["content"].toString());
             newAnswerComboBox->setCurrentIndex(newAnswerComboBox->findData(row));
             layout->removeItem(layout->itemAtPosition(row,2));
             layout->addWidget(newAnswerComboBox,row,2);
@@ -562,8 +571,8 @@ void LearningDialog::preSubmit()
         }
 
         QJsonArray array = questionSql->read_answerJSON(currentId);
-        QVBoxLayout *lineEditVBoxLayout = qobject_cast<QVBoxLayout*>(layout->itemAtPosition(row,1)->layout());
-        QLineEdit *lineEdit = qobject_cast<QLineEdit*>(lineEditVBoxLayout->itemAt(1)->widget());
+        QHBoxLayout *lineEditHBoxLayout = qobject_cast<QHBoxLayout*>(layout->itemAtPosition(row,1)->layout());
+        QLineEdit *lineEdit = qobject_cast<QLineEdit*>(lineEditHBoxLayout->itemAt(0)->widget());
         QCheckBox *checkBox = qobject_cast<QCheckBox*>(layout->itemAtPosition(row,3)->widget());
         lineEdit->setEnabled(false);
         checkBox->show();
@@ -618,8 +627,9 @@ void LearningDialog::preSubmit()
                 {
                     int _row = answerComboBox->itemData(i).toInt();
                     QJsonObject _obj = array[_row].toObject();
-                    if((_obj["type"].toString() == "auto" &&
-                         lineEdit->text() == _obj["content"].toString()))
+                    if((_obj["type"].toString() == "auto" ||
+                         _obj["type"].toString() == "auto(typst)") &&
+                         lineEdit->text() == _obj["content"].toString())
                     {
                         checkBox->setChecked(true);
                         answerComboBox->setCurrentIndex(i);
@@ -640,7 +650,11 @@ void LearningDialog::preSubmit()
                             layout->itemAtPosition(_row,2) != nullptr)
                         {
                             QComboBox *_answerComboBox = (QComboBox *)layout->itemAtPosition(_row,2)->widget();
-                            _answerComboBox->removeItem(_answerComboBox->findText(answerComboBox->currentText()));
+                            if(_obj["type"].toString() == "auto(typst)")
+                            {//若是auto(typst)类型，则根据tooltip寻找并删除
+                                _answerComboBox->removeItem(_answerComboBox->findData(answerComboBox->toolTip(),Qt::ToolTipRole));
+                            }else
+                                _answerComboBox->removeItem(_answerComboBox->findText(answerComboBox->currentText()));
                         }
                     }
                 }
