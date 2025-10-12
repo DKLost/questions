@@ -961,15 +961,17 @@ void MainWindow::on_questionAutoBindInjectButton_clicked()
 void MainWindow::on_questionAutoGoodTimeButton_clicked()
 {
     QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
-    QRegularExpression regex("[a-z0-9]");
+    QRegularExpression regex1("[a-z0-9]");
+    QRegularExpression regex2(R"([_\^()\{\}\[\]/])");
     for(int i = 0;i < answerArray.count();i++)
     {
         int cId = answerArray[i].toObject()["id"].toInt();
         QString answerContent = answerArray[i].toObject()["content"].toString();
         double goodTimeSec = 3.5; //添加3.5s前置时间一般用于读题
         QTime answerGoodTime;
-        goodTimeSec += 0.6*(answerContent.count(regex));
-        goodTimeSec += 0.8*(answerContent.count() - answerContent.count(regex));
+        goodTimeSec += 0.6*(answerContent.count(regex1));
+        goodTimeSec += 1.4*(answerContent.count(regex2));
+        goodTimeSec += 0.8*(answerContent.count() - answerContent.count(regex1) - answerContent.count(regex2));
         answerGoodTime = QTime::fromMSecsSinceStartOfDay(qCeil(goodTimeSec)*1000); //向上取整8/14
         questionSql->set_value("constructs",cId,"goodTime",answerGoodTime.toString("mm'm':ss's'"));
     }

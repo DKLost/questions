@@ -125,7 +125,9 @@ void AnswerEditDialog::on_comboBox_currentTextChanged(const QString &arg1)
         on_lineEdit_textChanged(ui->lineEdit->text());
     }
     else
+    {
         ui->displayLabel->hide();
+    }
 }
 void AnswerEditDialog::on_goodTimeEdit_userTimeChanged(const QTime &time)
 {
@@ -133,10 +135,15 @@ void AnswerEditDialog::on_goodTimeEdit_userTimeChanged(const QTime &time)
 }
 void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
 {
-    int pixelWide = ui->lineEdit->fontMetrics().horizontalAdvance(arg1) + 35;
-    if(pixelWide < 200)
-        pixelWide = 200;
-    setFixedWidth(pixelWide+30);
+    int pixelWide = ui->lineEdit->fontMetrics().horizontalAdvance(arg1) + 20;
+    int imgPixelWide = ui->displayLabel->pixmap().width();
+    if(ui->displayLabel->isHidden())
+        imgPixelWide = 0;
+    if(pixelWide < 180)
+        pixelWide = 180;
+    ui->lineEdit->setFixedWidth(pixelWide);
+    setFixedWidth(qMax(imgPixelWide,pixelWide)+50);
+
     //ui->lineEdit->setMaximumWidth(pixelWide);
     retContent = ui->lineEdit->text();
 
@@ -156,6 +163,14 @@ void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
 void AnswerEditDialog::onTypstWatcher_standard_output()
 {
     ui->displayLabel->setPixmap(QPixmap{"temp.png"});
+    ui->displayLabel->setFixedHeight(ui->displayLabel->pixmap().height());
+    ui->displayLabel->setFixedWidth(ui->displayLabel->pixmap().width());
+    int pixelWide = ui->lineEdit->fontMetrics().horizontalAdvance(ui->lineEdit->text()) + 20;
+    int imgPixelWide = ui->displayLabel->pixmap().width();
+    if(pixelWide < 180)
+        pixelWide = 180;
+    ui->lineEdit->setFixedWidth(pixelWide);
+    setFixedWidth(qMax(imgPixelWide + 20,pixelWide + 50));
 }
 
 void AnswerEditDialog::on_bindIdLineEdit_textChanged(const QString &arg1)

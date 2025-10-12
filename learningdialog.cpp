@@ -140,7 +140,7 @@ void LearningDialog::highlight_blank_by_number(int number)
     {
         ui->textBrowser->setTextCursor(highlightCursor);
     }
-   // qDebug() << number << cursor.position() << highlightCursor.position();
+    //qDebug() << number << cursor.position() << highlightCursor.position();
 }
 
 void LearningDialog::set_tableHeader()
@@ -875,29 +875,34 @@ void LearningDialog::on_LearningDialog_finished(int result)
 bool LearningDialog::eventFilter(QObject *watched, QEvent *event) {
     static bool focused = false;
     QLineEdit *edit = qobject_cast<QLineEdit*>(watched);
-    if(!preSubmited && edit)
+    if(preSubmited)
     {
-        switch (event->type()) {
-        case QEvent::FocusIn:
-            if(!edit->toolTip().isEmpty())
-            {
-                highlight_blank_by_number(edit->toolTip().toInt() + 1);
-                focused = true;
+        focused = false;
+    }else
+    {
+        if(edit)
+        {
+            switch (event->type()) {
+            case QEvent::FocusIn:
+                if(!edit->toolTip().isEmpty())
+                {
+                    highlight_blank_by_number(edit->toolTip().toInt() + 1);
+                    focused = true;
+                }
+                break;
+            case QEvent::FocusOut:
+                focused = false;
+                break;
+            case QEvent::MouseMove:
+                if(!focused)
+                {
+                    highlight_blank_by_number(edit->toolTip().toInt() + 1);
+                }
+                break;
+            default:
+                break;
             }
-            break;
-        case QEvent::FocusOut:
-            focused = false;
-            break;
-        case QEvent::MouseMove:
-            if(!focused)
-            {
-                highlight_blank_by_number(edit->toolTip().toInt() + 1);
-            }
-            break;
-        default:
-            break;
         }
-
     }
 
     return QDialog::eventFilter(watched,event);
