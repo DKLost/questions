@@ -684,33 +684,9 @@ void MainWindow::on_htmlTableAddButton_clicked()
     ui->questionTextEdit->textCursor().insertTable(row,column,tf);
 }
 
-int get_cursor_number(QTextCursor *cursor) //获取当前cursor所在填空的编号9/8
-{
-    int num = -1;
-    ToolFunctions::select_current_underline_text(cursor);
-    QString targetText = cursor->selectedText();
-
-    QRegularExpression regex("^\\s{3}[0-9]+\\s{3}$");
-    QRegularExpressionMatch match;
-    match = regex.match(targetText);
-    if(match.hasMatch())
-    {
-        regex.setPattern("[0-9]+");
-        match = regex.match(targetText);
-        num = match.capturedTexts()[0].toInt();
-    }else
-    {
-        regex.setPattern("^\\s{3}\\s{3}$");
-        match = regex.match(targetText);
-        if(match.hasMatch())
-            num = 0;
-    }
-    return num;
-}
-
 int MainWindow::autoNumberNext(QTextCursor &cursor) //自动编号下一填空9/29
 {
-    int number = get_cursor_number(&cursor);
+    int number = ToolFunctions::get_cursor_number(&cursor);
     bool flg = true;
     if(number != -1)//找到下一个，第一个下划线数字文本，并修改为number+1
     {
@@ -727,7 +703,7 @@ int MainWindow::autoNumberNext(QTextCursor &cursor) //自动编号下一填空9/
         }
         if(!flg)
         {
-            int nextNumber = get_cursor_number(&cursor);
+            int nextNumber = ToolFunctions::get_cursor_number(&cursor);
             if(nextNumber != -1)
             {
                 QTextCharFormat format = cursor.charFormat();
@@ -1121,10 +1097,14 @@ void MainWindow::on_htmlTypstAddButton_clicked()
         QDir dir("./");
         QTextCursor cursor = ui->questionTextEdit->textCursor();
         QTextImageFormat imageFormat;
-        imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
         imageFormat.setName(dir.relativeFilePath(filePath));
+
+        if(QImage{imageFormat.name()}.height() <= 20)
+            imageFormat.setVerticalAlignment(QTextCharFormat::AlignBaseline); //居中对齐插入图片25/10/13
+        else
+            imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
+
         cursor.insertImage(imageFormat);
     }
     htmlTypstAddDialog->reset();
 }
-

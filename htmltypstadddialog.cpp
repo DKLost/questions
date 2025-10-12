@@ -31,7 +31,7 @@ void HtmlTypstAddDialog::on_lineEdit_textChanged(const QString &arg1)
     setFixedWidth(pixelWide+30);
     //ui->lineEdit->setMaximumWidth(pixelWide);
     retContent = ui->lineEdit->text();
-    QString typst = "#set page(height: auto,width: auto,margin: 0cm);";
+    QString typst = ToolFunctions::typstMathPrefix;
     typst = typst + "$ " + ui->lineEdit->text() + " $";
     if(typstWatchProcess.state() == QProcess::NotRunning)
         ToolFunctions::watch_typst_start(typstWatchProcess,"temp.typ","temp.png");

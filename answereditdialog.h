@@ -6,6 +6,7 @@
 #include <QFileDialog>
 #include "bindanswerdialog.h"
 #include <QProcess>
+#include "toolfunctions.h"
 
 namespace Ui {
 class AnswerEditDialog;

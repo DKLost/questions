@@ -1,5 +1,7 @@
 #include "toolfunctions.h"
 
+QString ToolFunctions::typstMathPrefix = "#set page(height: auto,width: auto,margin: 0.5pt);";
+
 ToolFunctions::ToolFunctions() {}
 
 QString ToolFunctions::sec2string(int seconds)
@@ -124,6 +126,56 @@ void ToolFunctions::watch_typst_stop(QProcess &process) {
     }
 }
 
+int ToolFunctions::get_cursor_number(QTextCursor *cursor) //获取当前cursor所在填空的编号9/8
+{
+    int num = -1;
+    ToolFunctions::select_current_underline_text(cursor);
+    QString targetText = cursor->selectedText();
 
+    QRegularExpression regex("^\\s{3}[0-9]+\\s{3}$");
+    QRegularExpressionMatch match;
+    match = regex.match(targetText);
+    if(match.hasMatch())
+    {
+        regex.setPattern("[0-9]+");
+        match = regex.match(targetText);
+        num = match.capturedTexts()[0].toInt();
+    }else
+    {
+        regex.setPattern("^\\s{3}\\s{3}$");
+        match = regex.match(targetText);
+        if(match.hasMatch())
+            num = 0;
+    }
+    return num;
+}
 
-
+QTextCursor ToolFunctions::find_blank_by_number(int number,QTextCursor &_cursor)
+{
+    QTextCursor cursor = _cursor;
+    cursor.movePosition(QTextCursor::Start);
+    //int number = get_cursor_number(&cursor);
+    bool flg = false;
+    while(!flg)
+    {
+        flg = !cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        flg = !cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        while(!cursor.charFormat().fontUnderline())
+        {
+            if(!cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1))
+            {
+                flg = true;
+                break;
+            }
+        }
+        if(!flg)
+        {
+            int nextNumber = get_cursor_number(&cursor);
+            if(nextNumber == number)
+            {
+                return cursor;
+            }
+        }
+    }
+    return _cursor;
+}

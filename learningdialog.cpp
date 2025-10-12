@@ -56,6 +56,7 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     //init typst preview
     typstWatchProcess.setProcessChannelMode(QProcess::MergedChannels);
     connect(&typstWatchProcess, &QProcess::readyReadStandardOutput, this, &LearningDialog::onTypstWatcher_standard_output);
+
 }
 
 LearningDialog::~LearningDialog()
@@ -128,6 +129,20 @@ void LearningDialog::setOnlyToLearn(bool newOnlyToLearn)
 {
     onlyToLearn = newOnlyToLearn;
 }
+
+void LearningDialog::highlight_blank_by_number(int number)
+{
+    QTextCursor cursor = ui->textBrowser->textCursor();
+    if(ToolFunctions::get_cursor_number(&cursor) == number)
+        return;
+    QTextCursor highlightCursor = ToolFunctions::find_blank_by_number(number,cursor);
+    if(cursor.position() != highlightCursor.position())
+    {
+        ui->textBrowser->setTextCursor(highlightCursor);
+    }
+   // qDebug() << number << cursor.position() << highlightCursor.position();
+}
+
 void LearningDialog::set_tableHeader()
 {
     tableModel->setHeaderData(1, Qt::Horizontal, "类别");
@@ -236,7 +251,7 @@ void LearningDialog::answer_lineEdit_textChanged(const QString &arg1) //自动�
     //更新typst预览 25/10/11
     if(currentLineEdit->styleSheet().contains("green"))
     {
-        QString typst = "#set page(height: auto,width: auto,margin: 0cm);";
+        QString typst = ToolFunctions::typstMathPrefix;
         typst = typst + "$ " + currentLineEdit->text() + " $";
         if(typstWatchProcess.state() == QProcess::NotRunning)
             ToolFunctions::watch_typst_start(typstWatchProcess,"temp.typ","temp.png");
@@ -432,6 +447,8 @@ void LearningDialog::set_question(int id)
             pixelWide = fm->horizontalAdvance(array[i].toObject().value("content").toString());
         }
         connect(newLineEdit,&QLineEdit::textChanged,this,&LearningDialog::answer_lineEdit_textChanged);
+        newLineEdit->installEventFilter(this);
+        // connect(newLineEdit,&QLineEdit::,this,&LearningDialog::answer_lineEdit_textChanged);
 
         newLineEdit->setStatusTip(QString::number(pixelWide + 15)); //记录LineEdit初始长度到StatusTip 8/14
         newLineEdit->setFixedWidth(pixelWide + 15);
@@ -855,3 +872,33 @@ void LearningDialog::on_LearningDialog_finished(int result)
     }
 }
 
+bool LearningDialog::eventFilter(QObject *watched, QEvent *event) {
+    static bool focused = false;
+    QLineEdit *edit = qobject_cast<QLineEdit*>(watched);
+    if(!preSubmited && edit)
+    {
+        switch (event->type()) {
+        case QEvent::FocusIn:
+            if(!edit->toolTip().isEmpty())
+            {
+                highlight_blank_by_number(edit->toolTip().toInt() + 1);
+                focused = true;
+            }
+            break;
+        case QEvent::FocusOut:
+            focused = false;
+            break;
+        case QEvent::MouseMove:
+            if(!focused)
+            {
+                highlight_blank_by_number(edit->toolTip().toInt() + 1);
+            }
+            break;
+        default:
+            break;
+        }
+
+    }
+
+    return QDialog::eventFilter(watched,event);
+}

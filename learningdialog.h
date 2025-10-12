@@ -59,7 +59,7 @@ public:
 
     bool getOnlyToLearn() const;
     void setOnlyToLearn(bool newOnlyToLearn);
-
+    void highlight_blank_by_number(int number);
 private slots:
     void on_pushButton_clicked();
     void timerHandler();
@@ -109,6 +109,10 @@ private:
 
     QLineEdit* currentLineEdit;
     QProcess typstWatchProcess{this};
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event);
+
 };
 
 #endif // LEARNINGDIALOG_H

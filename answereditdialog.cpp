@@ -142,7 +142,7 @@ void AnswerEditDialog::on_lineEdit_textChanged(const QString &arg1)
 
     if(type[ui->comboBox->currentText()] == "auto(typst)")
     {
-        QString typst = "#set page(height: auto,width: auto,margin: 0cm);";
+        QString typst = ToolFunctions::typstMathPrefix;
         typst = typst + "$ " + ui->lineEdit->text() + " $";
         if(typstWatchProcess.state() == QProcess::NotRunning)
             ToolFunctions::watch_typst_start(typstWatchProcess,"temp.typ","temp.png");
@@ -195,6 +195,7 @@ void AnswerEditDialog::on_buttonBox_accepted()
     if(typstWatchProcess.state() != QProcess::NotRunning)
         ToolFunctions::watch_typst_stop(typstWatchProcess);
     QString filePath = QString("./data/%1/%2.png").arg(qId).arg(retAId);
-    ToolFunctions::compile_typst("temp.typ",filePath);
+    if(ui->comboBox->currentText() == "自动检查(typst)")
+        ToolFunctions::compile_typst("temp.typ",filePath);
 }
 
