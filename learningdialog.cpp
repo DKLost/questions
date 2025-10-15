@@ -100,6 +100,16 @@ void LearningDialog::totalTimerHandler()
 {
     totalTime = totalTime.addMSecs(10);
     ui->totalTimeLabel->setText(totalTime.toString("hh:mm:ss.zzz").chopped(1));
+
+    //显示剩余时间25/10/14
+    totalRemainingTimeMsec -= 10;
+    if(totalRemainingTimeMsec >= 0)
+    {
+        ui->remainingTimeLabel->setText(QTime::fromMSecsSinceStartOfDay(totalRemainingTimeMsec).toString("hh:mm:ss.zzz").chopped(1));
+    }else
+    {
+        ui->remainingTimeLabel->setText(QTime::fromMSecsSinceStartOfDay(-totalRemainingTimeMsec).toString("'-'hh:mm:ss.zzz").chopped(1));
+    }
 }
 
 //getter
@@ -170,7 +180,8 @@ void LearningDialog::set_items_table(QString filter) //设置表过滤
 
     int rowCount = tableModel->rowCount();  // 获取过滤后的行数
 
-    QTime totalGoodTime = QTime::fromMSecsSinceStartOfDay(0);
+    totalGoodTime = QTime::fromMSecsSinceStartOfDay(0);
+    totalRemainingTimeMsec = 0;
     for (int row = 0; row < rowCount; row++) {
         QModelIndex index = tableModel->index(row,0);
         int qId = index.data().toInt();
@@ -178,7 +189,9 @@ void LearningDialog::set_items_table(QString filter) //设置表过滤
         totalGoodTime = totalGoodTime.addMSecs(qGoodTime.msecsSinceStartOfDay());
     }
     totalGoodTime=totalGoodTime.addMSecs(totalGoodTime.msecsSinceStartOfDay()*0.6);
+    totalRemainingTimeMsec = totalGoodTime.msecsSinceStartOfDay();
     ui->totalGoodTimeLabel->setText(totalGoodTime.toString("hh'h':mm'm':ss's'"));
+    ui->remainingTimeLabel->setText(QTime::fromMSecsSinceStartOfDay(totalRemainingTimeMsec).toString("hh:mm:ss.zz"));
 }
 
 //checked
@@ -406,7 +419,8 @@ void LearningDialog::set_question(int id)
         newLineNumberLabel->setFixedWidth(20);
 
         newLineEditHBoxLayout->addWidget(newLineEdit,0,Qt::AlignLeft);
-        newLineEditHBoxLayout->addWidget(newTypstPreviewLabel); //添加typst公式预览 25/10/11
+        newLineEditHBoxLayout->addWidget(newTypstPreviewLabel,0,Qt::AlignLeft); //添加typst公式预览 25/10/11
+        newLineEditHBoxLayout->addStretch();
 
         newTypstPreviewLabel->hide();
 
@@ -870,6 +884,7 @@ void LearningDialog::on_LearningDialog_finished(int result)
     {
         totalTime = QTime::fromString("23:59:59.99");
     }
+    ToolFunctions::watch_typst_stop(typstWatchProcess);
 }
 
 bool LearningDialog::eventFilter(QObject *watched, QEvent *event) {

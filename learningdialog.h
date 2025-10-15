@@ -110,6 +110,9 @@ private:
     QLineEdit* currentLineEdit;
     QProcess typstWatchProcess{this};
 
+    QTime totalGoodTime;
+    int totalRemainingTimeMsec;
+
 protected:
     bool eventFilter(QObject *watched, QEvent *event);
 

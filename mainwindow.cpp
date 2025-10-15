@@ -27,6 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->questionTextEdit->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
     ui->questionTextEdit->setFont(font);
 
+
     //init dialogs
     learningDialog = new LearningDialog(questionSql,this);                          //init learning dialog
     setTimeDialog = new SetTimeDialog(this);                                        //init set time dialog
@@ -962,7 +963,7 @@ void MainWindow::on_questionAutoGoodTimeButton_clicked()
 {
     QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
     QRegularExpression regex1("[a-z0-9]");
-    QRegularExpression regex2(R"([_\^()\{\}\[\]/])");
+    QRegularExpression regex2(R"([()\{\}\[\]/])");
     for(int i = 0;i < answerArray.count();i++)
     {
         int cId = answerArray[i].toObject()["id"].toInt();
@@ -1102,7 +1103,7 @@ void MainWindow::on_htmlTypstAddButton_clicked()
         imageFormat.setName(dir.relativeFilePath(filePath));
 
         if(QImage{imageFormat.name()}.height() <= 20)
-            imageFormat.setVerticalAlignment(QTextCharFormat::AlignBaseline); //居中对齐插入图片25/10/13
+            imageFormat.setVerticalAlignment(QTextCharFormat::AlignNormal);
         else
             imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
 

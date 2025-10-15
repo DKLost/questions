@@ -1,6 +1,7 @@
 #include "toolfunctions.h"
 
-QString ToolFunctions::typstMathPrefix = "#set page(height: auto,width: auto,margin: 0.5pt);";
+QString ToolFunctions::typstMathPrefix = "#set page(height: auto,width: auto,margin: 0.5pt);"
+                                         "#set text(size: 9pt);";
 
 ToolFunctions::ToolFunctions() {}
 

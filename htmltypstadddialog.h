@@ -32,7 +32,7 @@ private slots:
 
 private:
     Ui::HtmlTypstAddDialog *ui;
-    QProcess typstWatchProcess;
+    QProcess typstWatchProcess{this};
     int qId;
 
     //ret
