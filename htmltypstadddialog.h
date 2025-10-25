@@ -24,6 +24,7 @@ public:
 
     QString getRetPath() const;
     void setRetPath(const QString &newRetPath);
+    void setText(const QString &text);
 
 private slots:
     void on_lineEdit_textChanged(const QString &arg1);

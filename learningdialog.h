@@ -20,6 +20,7 @@
 #include <QCheckBox>
 #include <QLayout>
 #include <QProcess>
+#include <limits>
 
 namespace Ui {
 class LearningDialog;

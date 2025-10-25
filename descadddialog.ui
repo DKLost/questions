@@ -6,33 +6,22 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>437</width>
-    <height>99</height>
+    <width>259</width>
+    <height>122</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>添加描述条目</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>主题注入存在</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="comboBox"/>
-     </item>
-     <item>
-      <widget class="QToolButton" name="toolButton">
-       <property name="text">
-        <string>...</string>
-       </property>
-      </widget>
-     </item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <widget class="QLabel" name="label_4">
        <property name="text">
@@ -44,11 +33,6 @@
       <widget class="QComboBox" name="comboBox_2">
        <item>
         <property name="text">
-         <string>标题</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
          <string>无序列表</string>
         </property>
        </item>
@@ -57,6 +41,29 @@
          <string>有序列表</string>
         </property>
        </item>
+       <item>
+        <property name="text">
+         <string>标题</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>主题注入存在</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="themeBeingLabel">
+       <property name="text">
+        <string>Universe</string>
+       </property>
       </widget>
      </item>
     </layout>
@@ -68,6 +75,9 @@
        <property name="toolTip">
         <string>修饰过程存在</string>
        </property>
+       <property name="placeholderText">
+        <string>的</string>
+       </property>
       </widget>
      </item>
      <item>
@@ -75,12 +85,15 @@
        <property name="toolTip">
         <string>中心数据</string>
        </property>
+       <property name="placeholderText">
+        <string>self</string>
+       </property>
       </widget>
      </item>
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string> ⇒ </string>
+        <string>⇒</string>
        </property>
       </widget>
      </item>
@@ -89,12 +102,15 @@
        <property name="toolTip">
         <string>关系过程存在</string>
        </property>
+       <property name="placeholderText">
+        <string>是</string>
+       </property>
       </widget>
      </item>
      <item>
       <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>:  </string>
+        <string>:</string>
        </property>
       </widget>
      </item>
@@ -103,7 +119,23 @@
        <property name="toolTip">
         <string>关系注入存在</string>
        </property>
+       <property name="placeholderText">
+        <string>{}</string>
+       </property>
       </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
     </layout>
    </item>

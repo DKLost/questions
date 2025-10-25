@@ -1,7 +1,14 @@
 #include "toolfunctions.h"
 
-QString ToolFunctions::typstMathPrefix = "#set page(height: auto,width: auto,margin: 0.5pt);"
-                                         "#set text(size: 9pt);";
+QString ToolFunctions::typstMathPrefix = R"(
+#set page(height: auto,width: auto,margin: 0.5pt);
+#set text(size: 9pt);
+#let revcases(..arr, spacing: 6pt) = {
+    $ lr(#stack(dir: ttb, spacing: spacing, ..arr.pos().map(item => align(left, $ #item $))) }) $
+};
+#show "∥" : "//";
+#show math.attach: math.display;
+)";
 
 ToolFunctions::ToolFunctions() {}
 

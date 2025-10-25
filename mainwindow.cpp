@@ -7,6 +7,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     QFont font({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
+    QFont font2({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
     QApplication::setFont(font);
     currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
@@ -25,7 +26,8 @@ MainWindow::MainWindow(QWidget *parent)
     //init question html text edit
     ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*4);
     ui->questionTextEdit->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
-    ui->questionTextEdit->setFont(font);
+    ui->questionTextEdit->setFont(font2);
+    ui->questionTextEdit->document()->setDefaultStyleSheet("li{margin-top: 20px}");
 
 
     //init dialogs
@@ -49,7 +51,7 @@ MainWindow::MainWindow(QWidget *parent)
     //init qIdHistoryPos
     qIdHistoryPos = 0;
 
-    ui->descAddButton->hide();
+    //ui->descAddButton->hide();
 }
 
 MainWindow::~MainWindow()
@@ -287,7 +289,11 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     int qId = currentQId;
 
     int row = ui->answerTreeWidget->currentIndex().row() + 1;
-    QTreeWidgetItem *newItem = new QTreeWidgetItem{{QString::number(row + 1),"请输入答案"}};
+    QString selectedText = "";
+    selectedText = ui->questionTextEdit->textCursor().selectedText();
+    if(selectedText == "")
+        selectedText = "请输入答案";
+    QTreeWidgetItem *newItem = new QTreeWidgetItem{{QString::number(row + 1),selectedText}};
     ui->answerTreeWidget->insertTopLevelItem(row,newItem);
     int id = questionSql->get_max_id("constructs") + 1;
     questionSql->add_construct(id);
@@ -297,7 +303,7 @@ void MainWindow::on_answerAddButton_clicked() //新建答案
     //保存
     QJsonArray array = questionSql->read_answerJSON(qId);
     QJsonObject aObj;
-    aObj["content"] = "请输入答案";
+    aObj["content"] = selectedText;
     aObj["id"] = id;
     aObj["type"] = "auto";
     aObj["pool"] = 0;
@@ -665,6 +671,13 @@ void MainWindow::on_htmlImgAddButton_clicked() //插入图片功能 2024/8/7
         QTextImageFormat imageFormat;
         imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
         imageFormat.setName(dir.relativeFilePath(filePath));
+        if(cursor.currentTable() != nullptr) //优化表格插入显示25/10/21
+        {
+            QTextBlockFormat blockFormat = cursor.blockFormat();
+            blockFormat.setAlignment(Qt::AlignCenter);
+            cursor.setBlockFormat(blockFormat);
+            cursor.insertText("\u200B");
+        }
         cursor.insertImage(imageFormat);
     }
 }
@@ -674,12 +687,16 @@ void MainWindow::on_htmlTableAddButton_clicked()
     htmlTableAddDialog->setRetRow(0);
     htmlTableAddDialog->setRetColumn(0);
     htmlTableAddDialog->exec();
-    QTextTableFormat tf;
+    QTextTableFormat tf ;
     tf.setBorder(1);
     tf.setBorderStyle(QTextFrameFormat::BorderStyle_Solid);
     //tf.setBorderBrush(QBrush(Qt::black))    ;
     tf.setCellPadding(5);
     tf.setBorderCollapse(false);
+    //tf.setAlignment(Qt::AlignLeft);
+    int x = ui->questionTextEdit->cursorRect(ui->questionTextEdit->textCursor()).x();
+    tf.setLeftMargin(x);
+    qDebug() << tf.leftMargin();
     int row = htmlTableAddDialog->getRetRow();
     int column = htmlTableAddDialog->getRetColumn();
     ui->questionTextEdit->textCursor().insertTable(row,column,tf);
@@ -963,7 +980,7 @@ void MainWindow::on_questionAutoGoodTimeButton_clicked()
 {
     QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
     QRegularExpression regex1("[a-z0-9]");
-    QRegularExpression regex2(R"([()\{\}\[\]/])");
+    QRegularExpression regex2(R"([<=>\-\+,\|()\{\}\[\]"/⟂∥±∪∩⟨⟩⋅∈∉×÷⇌≈⇒→←])");
     for(int i = 0;i < answerArray.count();i++)
     {
         int cId = answerArray[i].toObject()["id"].toInt();
@@ -1016,10 +1033,111 @@ void MainWindow::on_underlineToggleButton_clicked()
     }
 }
 
-//添加描述条目 25/9/29
+//添加描述条目 25/10/24
 void MainWindow::on_descAddButton_clicked()
 {
-    descAddDialog->exec();
+    descAddDialog->reset();
+    QTextCursor cursor = ui->questionTextEdit->textCursor();
+    descAddDialog->setThemeBeing(cursor.block().text().split("⇒")[0]);
+    if(descAddDialog->exec())
+    {
+        int originalPosition= ui->questionTextEdit->textCursor().position();
+        auto block = cursor.block();
+        auto list = block.textList();
+        QTextListFormat format;
+        if(descAddDialog->getRetType() == "无序列表")
+        {
+            if(list == nullptr) //不是list
+            {
+                format.setStyle(QTextListFormat::ListDisc);
+            }else //是list
+            {
+                format = list->format();
+                format.setIndent(format.indent()+1);
+                if(format.indent() == 2)
+                {
+                    format.setStyle(QTextListFormat::ListCircle);
+                }else if(format.indent()>= 3)
+                {
+                    format.setStyle(QTextListFormat::ListSquare);
+                }
+            }
+
+            auto nextList = block.next().textList();
+            while(nextList != nullptr && nextList->format().indent() >= format.indent())
+            {
+                block = block.next();
+                nextList = block.next().textList();
+            }
+            cursor = QTextCursor(block);
+            cursor.movePosition(QTextCursor::EndOfBlock);
+            auto bf = QTextBlockFormat();
+            bf.setTopMargin(3);
+            bf.setBottomMargin(3);
+            cursor.insertBlock(bf,QTextCharFormat());
+            cursor.createList(format);
+            if(block.textList() != nullptr &&
+                block.textList()->format().style() != QTextListFormat::ListDecimal &&
+                block.textList()->format().indent() == cursor.currentList()->format().indent())
+            {
+                block.textList()->add(cursor.block());
+            }
+            cursor.insertText(descAddDialog->getRetContent());
+        }else if(descAddDialog->getRetType() == "有序列表")
+        {
+            format.setStyle(QTextListFormat::ListDecimal);
+            if(list == nullptr) //不是list
+            {
+                format.setIndent(1);
+            }else //是list
+            {
+                format.setIndent(list->format().indent()+1);
+            }
+            auto nextList = block.next().textList();
+            while(nextList != nullptr &&
+                   nextList->format().indent() >= format.indent() &&
+                   nextList->format().style() == QTextListFormat::ListDecimal)
+            {
+
+                block = block.next();
+                nextList = block.next().textList();
+            }
+
+            cursor = QTextCursor(block);
+            cursor.movePosition(QTextCursor::EndOfBlock);
+            auto bf = QTextBlockFormat();
+            bf.setTopMargin(3);
+            bf.setBottomMargin(3);
+            cursor.insertBlock(bf,QTextCharFormat());
+            cursor.createList(format);
+            if(block.textList() != nullptr &&
+                block.textList()->format().style() == QTextListFormat::ListDecimal &&
+                block.textList()->format().indent() == cursor.currentList()->format().indent())
+            {
+                block.textList()->add(cursor.block());
+            }
+            cursor.insertText(descAddDialog->getRetContent());
+        }else if(descAddDialog->getRetType() == "标题")
+        {
+            QTextBlockFormat bf;
+            bf.setHeadingLevel(block.blockFormat().headingLevel()+1);
+
+            while(block.next().isValid() && block.next().blockFormat().headingLevel() >= bf.headingLevel())
+            {
+                qDebug() << 1;
+                block = block.next();
+            }
+
+            cursor = QTextCursor(block);
+            cursor.movePosition(QTextCursor::EndOfBlock);
+            cursor.insertBlock(bf,QTextCharFormat());
+            cursor.insertText(descAddDialog->getRetContent());
+            ui->questionTextEdit->setHtml(ui->questionTextEdit->toHtml());
+        }
+
+        cursor.setPosition(originalPosition);
+        ui->questionTextEdit->setTextCursor(cursor);
+    }
 }
 
 void MainWindow::on_questionSearchButton_clicked()
@@ -1093,6 +1211,7 @@ void MainWindow::on_htmlTypstAddButton_clicked()
 {
     htmlTypstAddDialog->reset();
     htmlTypstAddDialog->setQId(currentQId);
+    htmlTypstAddDialog->setText(ui->questionTextEdit->textCursor().selectedText());
     htmlTypstAddDialog->exec();
     QString filePath  = htmlTypstAddDialog->getRetPath();
     if(ui->questionTableView->currentIndex().isValid() && !filePath.isEmpty())
@@ -1101,11 +1220,22 @@ void MainWindow::on_htmlTypstAddButton_clicked()
         QTextCursor cursor = ui->questionTextEdit->textCursor();
         QTextImageFormat imageFormat;
         imageFormat.setName(dir.relativeFilePath(filePath));
+        int height = QImage{imageFormat.name()}.height();
 
-        if(QImage{imageFormat.name()}.height() <= 20)
+        if(cursor.currentTable() != nullptr) //优化表格插入显示25/10/2
+        {
+            QTextBlockFormat blockFormat = cursor.blockFormat();
+            blockFormat.setAlignment(Qt::AlignCenter);
+            cursor.setBlockFormat(blockFormat);
+            imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/21
+            cursor.insertText("\u200B");
+        }else if(height <= 16)
+        {
             imageFormat.setVerticalAlignment(QTextCharFormat::AlignNormal);
-        else
+        }else
+        {
             imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
+        }
 
         cursor.insertImage(imageFormat);
     }

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1200</width>
-    <height>799</height>
+    <height>825</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -432,6 +432,30 @@ li.checked::marker { content: &quot;\2612&quot;; }
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="descAddButton">
+        <property name="text">
+         <string>添加描述条目</string>
+        </property>
+        <property name="shortcut">
+         <string>F3</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="htmlTypstAddButton">
+        <property name="text">
+         <string>插入typst公式</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="htmlImgAddButton">
+        <property name="text">
+         <string>插入图片</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="htmlTableAddButton">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -445,30 +469,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="htmlImgAddButton">
-        <property name="text">
-         <string>插入图片</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="htmlTypstAddButton">
-        <property name="text">
-         <string>插入typst公式</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QPushButton" name="setFontButton">
         <property name="text">
          <string>设置字体</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="descAddButton">
-        <property name="text">
-         <string>添加描述条目</string>
         </property>
        </widget>
       </item>

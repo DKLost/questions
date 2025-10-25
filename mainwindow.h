@@ -19,6 +19,7 @@
 #include <QTextDocumentFragment>
 #include <QQueue>
 #include <QInputDialog>
+#include <QTextList>
 #include "learningdialog.h"
 #include "core/questionsql.h"
 #include "questionmovedialog.h"

@@ -178,10 +178,17 @@ void LearningDialog::set_items_table(QString filter) //设置表过滤
     ui->tableView->sortByColumn(0,Qt::AscendingOrder);
     on_comboBox_currentTextChanged(ui->comboBox->currentText());
 
+    while (tableModel->canFetchMore()) //获取完整行数25/10/22
+    {
+        tableModel->fetchMore();
+    }
     int rowCount = tableModel->rowCount();  // 获取过滤后的行数
 
     totalGoodTime = QTime::fromMSecsSinceStartOfDay(0);
     totalRemainingTimeMsec = 0;
+
+
+
     for (int row = 0; row < rowCount; row++) {
         QModelIndex index = tableModel->index(row,0);
         int qId = index.data().toInt();
@@ -455,7 +462,7 @@ void LearningDialog::set_question(int id)
             newAnswerLabel->setPixmap(QPixmap{imgPath});
             newAnswerLabel->setToolTip(obj["content"].toString());
             newTypstPreviewLabel->show();
-            //newAnswerLabel->setToolTipDuration(0);
+            newAnswerLabel->setToolTipDuration(INT_MAX);
             //newAnswerLabel->setAttribute(Qt::WA_AlwaysShowToolTips);
             //newAnswerLabel->setText(obj["content"].toString());
             pixelWide = fm->horizontalAdvance(array[i].toObject().value("content").toString());
@@ -544,6 +551,7 @@ void LearningDialog::set_question(int id)
                     {
                         QString imgPath = QString("./data/%1/%2.png").arg(currentId).arg(pool_obj["id"].toInt());
                         newAnswerComboBox->addItem(QIcon{imgPath},"",row);
+                        newAnswerComboBox->setItemData(newAnswerComboBox->count()-1,pool_obj["content"].toString(),Qt::ToolTipRole);
                     }else
                     {
                         newAnswerComboBox->addItem(pool_obj["content"].toString(),row);
@@ -683,7 +691,8 @@ void LearningDialog::preSubmit()
                             QComboBox *_answerComboBox = (QComboBox *)layout->itemAtPosition(_row,2)->widget();
                             if(_obj["type"].toString() == "auto(typst)")
                             {//若是auto(typst)类型，则根据tooltip寻找并删除
-                                _answerComboBox->removeItem(_answerComboBox->findData(answerComboBox->toolTip(),Qt::ToolTipRole));
+                                auto item = _answerComboBox->findData(answerComboBox->currentData(Qt::ToolTipRole),Qt::ToolTipRole);
+                                _answerComboBox->removeItem(item);
                             }else
                                 _answerComboBox->removeItem(_answerComboBox->findText(answerComboBox->currentText()));
                         }

@@ -65,6 +65,11 @@ void HtmlTypstAddDialog::setRetPath(const QString &newRetPath)
     retPath = newRetPath;
 }
 
+void HtmlTypstAddDialog::setText(const QString &text)
+{
+    ui->lineEdit->setText(text);
+}
+
 int HtmlTypstAddDialog::getQId() const
 {
     return qId;
