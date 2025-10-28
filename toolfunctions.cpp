@@ -7,7 +7,7 @@ QString ToolFunctions::typstMathPrefix = R"(
     $ lr(#stack(dir: ttb, spacing: spacing, ..arr.pos().map(item => align(left, $ #item $))) }) $
 };
 #show "∥" : "//";
-#show math.attach: math.display;
+#show math.sum : math.limits
 )";
 
 ToolFunctions::ToolFunctions() {}

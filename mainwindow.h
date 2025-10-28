@@ -140,6 +140,8 @@ private slots:
 
     void on_htmlTypstAddButton_clicked();
 
+    void on_answerGenAddButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 

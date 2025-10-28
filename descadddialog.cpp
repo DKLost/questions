@@ -107,16 +107,30 @@ void DescAddDialog::on_mLineEdit_textChanged(const QString &arg1)
 }
 void DescAddDialog::on_comboBox_2_currentTextChanged(const QString &arg1)
 {
+    QString fText = ui->fLineEdit->text();
+    QString xText = ui->xLineEdit->text();
+    QString rText = ui->rLineEdit->text();
+    QString mText = ui->mLineEdit->text();
     reset();
-    if(arg1 == "标题")
+    if(arg1 == "无序列表")
     {
+        ui->fLineEdit->setText(fText);
+        ui->xLineEdit->setText(xText);
+        ui->rLineEdit->setText(rText);
+        ui->mLineEdit->setText(mText);
+    }else if(arg1 == "标题")
+    {
+        ui->fLineEdit->setText(fText);
+        ui->xLineEdit->setText(xText);
         ui->rLineEdit->setDisabled(true);
         ui->mLineEdit->setDisabled(true);
-
     }else if(arg1 == "有序列表")
     {
         ui->fLineEdit->setPlaceholderText("其中作为第n存在的");
         ui->fLineEdit->setDisabled(true);
+        ui->xLineEdit->setText(xText);
+        ui->rLineEdit->setText(rText);
+        ui->mLineEdit->setText(mText);
     }
 }
 

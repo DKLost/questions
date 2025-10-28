@@ -450,10 +450,10 @@ void MainWindow::on_questionAddButton_clicked()
     QString name = ui->lineEdit->text();
     questionSql->add_question(id,categoryId,name);
 
-    //reload categoryTreeView
-    reload_categoryTreeView();
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-    on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
+    //reload_categoryTreeView();
+    update_count_categoryTreeView(); //优化添加 25/10/25
+    //ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
+    //on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
 
     //select new item
     int row = 0;
@@ -483,9 +483,10 @@ void MainWindow::on_questionDelButton_clicked()
 
     int row = ui->questionTableView->currentIndex().row();
     int categoryId =ui->categoryTreeView->currentIndex().siblingAtColumn(1).data().toInt();
-    reload_categoryTreeView();
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-    on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
+    //reload_categoryTreeView();
+    //ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
+    //on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
+    update_count_categoryTreeView(); //优化题目删除 25/10/25
 
     //reset table view
     if(questionTableModel->rowCount() > 0)
@@ -516,9 +517,11 @@ void MainWindow::on_questionMoveButton_clicked()
         questionSql->set_value("questions",id,"categoryId",newCategoryId);
     }
 
-    reload_categoryTreeView();
+    //reload_categoryTreeView();
+    update_count_categoryTreeView(); //优化题目移动效果 25/10/25
     ui->categoryTreeView->setCurrentIndex(categoryItemLists[newCategoryId][0]->index());
     on_categoryTreeView_clicked(categoryItemLists[newCategoryId][0]->index());
+
     QAbstractItemModel *model = ui->questionTableView->model();
     QModelIndex newIndex;
     for(int i = 0;i < model->rowCount();i++)
@@ -1241,3 +1244,15 @@ void MainWindow::on_htmlTypstAddButton_clicked()
     }
     htmlTypstAddDialog->reset();
 }
+
+void MainWindow::on_answerGenAddButton_clicked()
+{
+    on_answerAddButton_clicked();
+    auto cursor = ui->questionTextEdit->textCursor();
+    QTextCharFormat format = cursor.charFormat();
+    format.setFontFamilies({"Tahoma"});
+    format.setFontUnderline(true);
+    cursor.removeSelectedText();
+    cursor.insertText("      ",format);
+}
+
