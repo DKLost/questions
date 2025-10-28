@@ -1247,12 +1247,16 @@ void MainWindow::on_htmlTypstAddButton_clicked()
 
 void MainWindow::on_answerGenAddButton_clicked()
 {
-    on_answerAddButton_clicked();
     auto cursor = ui->questionTextEdit->textCursor();
     QTextCharFormat format = cursor.charFormat();
     format.setFontFamilies({"Tahoma"});
     format.setFontUnderline(true);
-    cursor.removeSelectedText();
+    if(!cursor.selectedText().isEmpty())
+    {
+        on_answerAddButton_clicked();
+        cursor = ui->questionTextEdit->textCursor();
+        cursor.removeSelectedText();
+    }
     cursor.insertText("      ",format);
 }
 
