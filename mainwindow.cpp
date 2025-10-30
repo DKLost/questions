@@ -1088,6 +1088,8 @@ void MainWindow::on_descAddButton_clicked()
             cursor.insertText(descAddDialog->getRetContent());
         }else if(descAddDialog->getRetType() == "有序列表")
         {
+            QTextBlock lastDecimalblock;
+            QTextBlock firstBlock = block;
             format.setStyle(QTextListFormat::ListDecimal);
             if(list == nullptr) //不是list
             {
@@ -1098,12 +1100,18 @@ void MainWindow::on_descAddButton_clicked()
             }
             auto nextList = block.next().textList();
             while(nextList != nullptr &&
-                   nextList->format().indent() >= format.indent() &&
-                   nextList->format().style() == QTextListFormat::ListDecimal)
+                   nextList->format().style() == QTextListFormat::ListDecimal &&
+                   nextList->format().indent() == format.indent())
             {
-
                 block = block.next();
+                lastDecimalblock = block;
                 nextList = block.next().textList();
+                while(nextList != nullptr &&
+                       nextList->format().indent() > format.indent())
+                {
+                    block = block.next();
+                    nextList = block.next().textList();
+                }
             }
 
             cursor = QTextCursor(block);
@@ -1113,11 +1121,11 @@ void MainWindow::on_descAddButton_clicked()
             bf.setBottomMargin(3);
             cursor.insertBlock(bf,QTextCharFormat());
             cursor.createList(format);
-            if(block.textList() != nullptr &&
-                block.textList()->format().style() == QTextListFormat::ListDecimal &&
-                block.textList()->format().indent() == cursor.currentList()->format().indent())
+            if(lastDecimalblock.textList() != nullptr &&
+                lastDecimalblock.textList()->format().style() == QTextListFormat::ListDecimal &&
+                lastDecimalblock.textList()->format().indent() == cursor.currentList()->format().indent())
             {
-                block.textList()->add(cursor.block());
+                lastDecimalblock.textList()->add(cursor.block());
             }
             cursor.insertText(descAddDialog->getRetContent());
         }else if(descAddDialog->getRetType() == "标题")
@@ -1125,7 +1133,9 @@ void MainWindow::on_descAddButton_clicked()
             QTextBlockFormat bf;
             bf.setHeadingLevel(block.blockFormat().headingLevel()+1);
 
-            while(block.next().isValid() && block.next().blockFormat().headingLevel() >= bf.headingLevel())
+            while(block.next().isValid() &&
+                   (block.next().blockFormat().headingLevel() == 0 ||
+                    block.next().blockFormat().headingLevel() >= bf.headingLevel()))
             {
                 qDebug() << 1;
                 block = block.next();
