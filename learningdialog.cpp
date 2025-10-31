@@ -44,7 +44,9 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     set_tableHeader();
 
     //set text broswer
-    ui->textBrowser->setTabStopDistance(ui->textBrowser->fontMetrics().horizontalAdvance(' ')*4);
+    QFont font2({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
+    ui->textBrowser->setFont(font2);
+    ui->textBrowser->setTabStopDistance(ui->textBrowser->fontMetrics().horizontalAdvance(' ')*2);
     ui->textBrowser->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
 
     //init isSpeedLearn

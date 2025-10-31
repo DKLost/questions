@@ -113,6 +113,20 @@ void ToolFunctions::compile_typst(const QString &inputFile, const QString &outpu
     }
 }
 
+void ToolFunctions::write_file(const QString &filePath,const QString &text)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadWrite))
+    {
+        qDebug() << "cannot open file: " << filePath;
+        return;
+    }
+    file.resize(0);
+    QTextStream fileIO(&file);
+    fileIO << text;
+    file.close();
+}
+
 void ToolFunctions::write_typst(const QString &typstString, const QString &filePath)
 {
     QFile file(filePath);

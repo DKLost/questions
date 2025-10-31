@@ -109,7 +109,6 @@ private slots:
     void on_categoryEditButton_clicked();
 
     //other
-    void on_setFontButton_clicked();
     void on_setGoodTimeButton_clicked();
 
     void on_questionRenameButton_clicked();

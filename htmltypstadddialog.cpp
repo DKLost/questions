@@ -47,6 +47,8 @@ void HtmlTypstAddDialog::on_buttonBox_accepted()
     if(typstWatchProcess.state() != QProcess::NotRunning)
         ToolFunctions::watch_typst_stop(typstWatchProcess);
     retPath = QString("./data/%1/%2.png").arg(qId).arg(hash);
+    QString mathPath = QString("./data/%1/%2.typmath").arg(qId).arg(hash);
+    ToolFunctions::write_file(mathPath,ui->lineEdit->text());
     ToolFunctions::compile_typst("temp.typ",retPath);
 }
 

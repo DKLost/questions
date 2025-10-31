@@ -8,6 +8,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     QFont font({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
     QFont font2({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
+    QFont fontSmall({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},9);
     QApplication::setFont(font);
     currentDate = QDate::currentDate();
     questionSql = new QuestionSql("question.db",this);
@@ -24,10 +25,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(categoryItemModel,&QStandardItemModel::itemChanged,this,&MainWindow::category_item_change_handler);
 
     //init question html text edit
-    ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*4);
-    ui->questionTextEdit->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
     ui->questionTextEdit->setFont(font2);
-    ui->questionTextEdit->document()->setDefaultStyleSheet("li{margin-top: 20px}");
+    ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*2);
+    ui->questionTextEdit->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
+    //ui->questionTextEdit->document()->setDefaultStyleSheet("li{margin-top: 20px}");
 
 
     //init dialogs
@@ -52,6 +53,10 @@ MainWindow::MainWindow(QWidget *parent)
     qIdHistoryPos = 0;
 
     //ui->descAddButton->hide();
+
+    //init groupbox title
+    ui->groupBox_2->setFont(fontSmall);
+    ui->answerTreeWidget->setFont(font2);
 }
 
 MainWindow::~MainWindow()
@@ -891,14 +896,6 @@ void MainWindow::category_item_change_handler(QStandardItem *item)
 }
 
 //other
-void MainWindow::on_setFontButton_clicked()
-{
-    bool ok;
-    QFont font = QFontDialog::getFont(&ok, QFont("黑体", 12), this);
-    if(ok)
-        ui->questionTextEdit->setCurrentFont(font);
-}
-
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == ui->questionTableView) {
@@ -1233,6 +1230,7 @@ void MainWindow::on_htmlTypstAddButton_clicked()
         QTextCursor cursor = ui->questionTextEdit->textCursor();
         QTextImageFormat imageFormat;
         imageFormat.setName(dir.relativeFilePath(filePath));
+        imageFormat.setToolTip(QFile{filePath.replace(".png$",".typstmath")}.readAll());
         int height = QImage{imageFormat.name()}.height();
 
         if(cursor.currentTable() != nullptr) //优化表格插入显示25/10/2
