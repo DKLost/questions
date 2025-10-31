@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1200</width>
-    <height>747</height>
+    <width>1112</width>
+    <height>573</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -126,23 +126,112 @@ border: 0px
        <widget class="QWidget" name="layoutWidget">
         <layout class="QVBoxLayout" name="verticalLayout_3">
          <item>
-          <widget class="QTableView" name="questionTableView">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="contextMenuPolicy">
-            <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
-           </property>
+          <widget class="QGroupBox" name="groupBox">
            <property name="styleSheet">
-            <string notr="true">QTableView{
-border-width:1px;
-border-style:solid;
-border-color:black;
+            <string notr="true">QGroupBox{
 }</string>
            </property>
+           <property name="title">
+            <string>题目</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_4">
+            <item row="2" column="10">
+             <widget class="QPushButton" name="questionDelButton">
+              <property name="maximumSize">
+               <size>
+                <width>30</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>🗑</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="9">
+             <widget class="QPushButton" name="questionAddButton">
+              <property name="maximumSize">
+               <size>
+                <width>30</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>➕︎</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="11">
+             <widget class="QPushButton" name="questionRenameButton">
+              <property name="maximumSize">
+               <size>
+                <width>30</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>✏️</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="8">
+             <widget class="QPushButton" name="questionSearchButton">
+              <property name="maximumSize">
+               <size>
+                <width>30</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>🔍️</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="7">
+             <spacer name="horizontalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="2" column="12">
+             <widget class="QPushButton" name="questionMoveButton">
+              <property name="maximumSize">
+               <size>
+                <width>30</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>🚐</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="7" colspan="6">
+             <widget class="QTableView" name="questionTableView">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="contextMenuPolicy">
+               <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QTableView{
+border-width:0px;
+}</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </widget>
          </item>
          <item>
@@ -374,6 +463,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
       </property>
       <item>
        <widget class="QLabel" name="label_5">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
         <property name="text">
          <string>输入框</string>
         </property>
@@ -403,41 +495,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="questionSearchButton">
-        <property name="text">
-         <string>搜索题目</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="questionAddButton">
-        <property name="text">
-         <string>添加题目</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="questionDelButton">
-        <property name="text">
-         <string>删除题目</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="questionRenameButton">
-        <property name="text">
-         <string>重命名题目</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="questionMoveButton">
-        <property name="text">
-         <string>移动题目</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QPushButton" name="setGoodTimeButton">
         <property name="text">
          <string>设置良好用时</string>
@@ -447,7 +504,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <item>
        <widget class="QPushButton" name="questionResetButton">
         <property name="text">
-         <string>重置题目学习数据</string>
+         <string>重置学习数据</string>
         </property>
        </widget>
       </item>
@@ -461,7 +518,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <item>
        <widget class="QPushButton" name="questionAutoGoodTimeButton">
         <property name="text">
-         <string>按字数生成良好时间</string>
+         <string>生成良好用时</string>
         </property>
        </widget>
       </item>
@@ -478,7 +535,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <item>
        <widget class="QPushButton" name="questionDirOpenButton">
         <property name="text">
-         <string>打开题目文件夹</string>
+         <string>打开文件夹</string>
         </property>
        </widget>
       </item>
@@ -525,7 +582,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <item>
        <widget class="QPushButton" name="underlineToggleButton">
         <property name="text">
-         <string>切换选定部分下划线</string>
+         <string>切换下划线</string>
         </property>
         <property name="shortcut">
          <string>F6</string>
@@ -535,7 +592,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <item>
        <widget class="QPushButton" name="autoNumberButton">
         <property name="text">
-         <string>自动编号下一填空</string>
+         <string>编号下一填空</string>
         </property>
         <property name="shortcut">
          <string>F5</string>
@@ -545,7 +602,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <item>
        <widget class="QPushButton" name="autoNumberAllButton">
         <property name="text">
-         <string>自动编号后续所有填空</string>
+         <string>编号后续填空</string>
         </property>
        </widget>
       </item>
@@ -575,28 +632,28 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <item>
        <widget class="QPushButton" name="itemLearnButton">
         <property name="text">
-         <string>开始学习(单项)</string>
+         <string>学习(单项)</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="categoryLearnButton">
         <property name="text">
-         <string>开始学习(表项)</string>
+         <string>学习(表项)</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="speedLearnButton">
         <property name="text">
-         <string>开始学习(表项,不重复)</string>
+         <string>学习(表项,不重复)</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="categoryToLearnButton">
         <property name="text">
-         <string>开始学习(表项,待学习)</string>
+         <string>学习(表项,待学习)</string>
         </property>
        </widget>
       </item>
@@ -609,7 +666,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1200</width>
+     <width>1112</width>
      <height>21</height>
     </rect>
    </property>
