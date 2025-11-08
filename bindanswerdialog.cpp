@@ -145,7 +145,8 @@ void BindAnswerDialog::on_questionTableView_activated(const QModelIndex &index) 
     {
         QJsonObject itemObject = item.toObject();
         QString type = itemObject["type"].toString();
-        QListWidgetItem *aitem = new QListWidgetItem{};//id:StatusTip,type:ToolTip,content:WhatsThis
+        auto aitem = new QListWidgetItem{}; //id:StatusTip,type:ToolTip,content:WhatsThis
+        //std::unique_ptr<QListWidgetItem> aitem{new QListWidgetItem{}};
         aitem->setStatusTip(QString::number(itemObject["id"].toInt()));
         aitem->setToolTip(type);
         aitem->setWhatsThis(itemObject["content"].toString());

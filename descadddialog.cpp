@@ -32,7 +32,7 @@ void DescAddDialog::reset()
     ui->rLineEdit->setText("");
     ui->mLineEdit->setText("");
 
-    ui->fLineEdit->setPlaceholderText("的");
+    ui->fLineEdit->setPlaceholderText("{}");
 
     if(ui->comboBox_2->currentText() == "标题")
     {
@@ -40,7 +40,7 @@ void DescAddDialog::reset()
         ui->mLineEdit->setDisabled(true);
     }else if(ui->comboBox_2->currentText() == "有序列表")
     {
-        ui->fLineEdit->setPlaceholderText("其中作为第n存在的");
+        ui->fLineEdit->setPlaceholderText("其中作为第n存在有");
         ui->fLineEdit->setDisabled(true);
     }
 
@@ -52,7 +52,7 @@ void DescAddDialog::reset()
 
 void DescAddDialog::on_fLineEdit_textChanged(const QString &arg1)
 {
-    int defaultPixelWide = ui->fLineEdit->fontMetrics().horizontalAdvance("的") + 20;
+    int defaultPixelWide = ui->fLineEdit->fontMetrics().horizontalAdvance("{}") + 20;
     int pixelWide = ui->fLineEdit->fontMetrics().horizontalAdvance(arg1) + 20;
     if(pixelWide < defaultPixelWide)
         pixelWide = defaultPixelWide;
@@ -73,13 +73,13 @@ void DescAddDialog::on_xLineEdit_textChanged(const QString &arg1)
         ui->mLineEdit->setPlaceholderText(arg1);
     }else
     {
-        ui->mLineEdit->setPlaceholderText("{}");
+        ui->mLineEdit->setPlaceholderText("{}'");
     }
     adjustSize();
 }
 void DescAddDialog::on_rLineEdit_textChanged(const QString &arg1)
 {
-    int defaultPixelWide = ui->rLineEdit->fontMetrics().horizontalAdvance("是") + 20;
+    int defaultPixelWide = ui->rLineEdit->fontMetrics().horizontalAdvance("→") + 20;
     int pixelWide = ui->rLineEdit->fontMetrics().horizontalAdvance(arg1) + 20;
     if(pixelWide < defaultPixelWide)
         pixelWide = defaultPixelWide;
@@ -98,7 +98,7 @@ void DescAddDialog::setRetType(const QString &newRetType)
 }
 void DescAddDialog::on_mLineEdit_textChanged(const QString &arg1)
 {
-    int defaultPixelWide = ui->mLineEdit->fontMetrics().horizontalAdvance("{}") + 20;
+    int defaultPixelWide = ui->mLineEdit->fontMetrics().horizontalAdvance("{}'") + 20;
     int pixelWide = ui->mLineEdit->fontMetrics().horizontalAdvance(arg1) + 20;
     if(pixelWide < defaultPixelWide)
         pixelWide = defaultPixelWide;
@@ -126,7 +126,7 @@ void DescAddDialog::on_comboBox_2_currentTextChanged(const QString &arg1)
         ui->mLineEdit->setDisabled(true);
     }else if(arg1 == "有序列表")
     {
-        ui->fLineEdit->setPlaceholderText("其中作为第n存在的");
+        ui->fLineEdit->setPlaceholderText("其中作为第n存在有");
         ui->fLineEdit->setDisabled(true);
         ui->xLineEdit->setText(xText);
         ui->rLineEdit->setText(rText);
@@ -161,17 +161,27 @@ void DescAddDialog::setThemeBeing(const QString &themeBeing)
 
 void DescAddDialog::on_buttonBox_accepted()
 {
-    QString f,x,r,m,s1,s2;
+    QString f,x,r,m,s0,s1,s2;
     f = ui->fLineEdit->text();
     x = ui->xLineEdit->text();
     r = ui->rLineEdit->text();
     m = ui->mLineEdit->text();
+    s0 = ": ";
     s1 = " ⇒ ";
-    s2 = " : ";
+    s2 = ": ";
 
-    if(f.isEmpty() && x.isEmpty() && !r.isEmpty())
+    if(x.isEmpty())
     {
-        s1 = "";
+        s0 = ":";
+    }
+
+    if(f.isEmpty())
+    {
+        s0 = "";
+        if(x.isEmpty() && !r.isEmpty())
+        {
+            s1 = "";
+        }
     }
 
     if(r.isEmpty())
@@ -183,7 +193,7 @@ void DescAddDialog::on_buttonBox_accepted()
         }
     }
 
-    retContent = f+x+s1+r+s2+m;
+    retContent = f+s0+x+s1+r+s2+m;
     retType = ui->comboBox_2->currentText();
 }
 

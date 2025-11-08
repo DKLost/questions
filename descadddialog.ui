@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>259</width>
+    <width>268</width>
     <height>122</height>
    </rect>
   </property>
@@ -76,14 +76,21 @@
         <string>修饰过程存在</string>
        </property>
        <property name="placeholderText">
-        <string>的</string>
+        <string>{}</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>:</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QLineEdit" name="xLineEdit">
        <property name="toolTip">
-        <string>中心数据</string>
+        <string>中心存在</string>
        </property>
        <property name="placeholderText">
         <string>self</string>
@@ -103,7 +110,7 @@
         <string>关系过程存在</string>
        </property>
        <property name="placeholderText">
-        <string>是</string>
+        <string>→</string>
        </property>
       </widget>
      </item>
@@ -120,7 +127,7 @@
         <string>关系注入存在</string>
        </property>
        <property name="placeholderText">
-        <string>{}</string>
+        <string>{}'</string>
        </property>
       </widget>
      </item>

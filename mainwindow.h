@@ -161,7 +161,7 @@ private:
     HtmlTypstAddDialog *htmlTypstAddDialog;
 
     //other
-    QuestionSql *questionSql;
+    QuestionSql* questionSql;
     QMap<int,QList<QStandardItem*>> categoryItemLists;
     bool is_questionTextEdit_editable = false;
     int currentSection;

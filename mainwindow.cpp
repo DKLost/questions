@@ -396,6 +396,7 @@ int MainWindow::select_question_by_id(int id) //选取问题，成功返回1，�
         return 0;
     QModelIndex index = *indexList.begin();
     ui->questionTableView->setCurrentIndex(index);
+    ui->questionTableView->scrollTo(index, QAbstractItemView::EnsureVisible);
     on_questionTableView_activated(index);
     return 1;
 }
@@ -469,6 +470,7 @@ void MainWindow::on_questionAddButton_clicked()
             break;
     }
     ui->questionTableView->selectRow(row);
+    ui->questionTableView->scrollTo(ui->questionTableView->currentIndex());
     on_questionTableView_clicked(ui->questionTableView->currentIndex());
 }
 
@@ -1259,6 +1261,7 @@ void MainWindow::on_answerGenAddButton_clicked()
     QTextCharFormat format = cursor.charFormat();
     format.setFontFamilies({"Tahoma"});
     format.setFontUnderline(true);
+    format.setFontItalic(false);
     if(!cursor.selectedText().isEmpty())
     {
         on_answerAddButton_clicked();
@@ -1266,5 +1269,9 @@ void MainWindow::on_answerGenAddButton_clicked()
         cursor.removeSelectedText();
     }
     cursor.insertText("      ",format);
+    cursor.insertText("\u200B",{});
+    cursor.movePosition(QTextCursor::Left,QTextCursor::MoveAnchor,4);
+    ui->questionTextEdit->setTextCursor(cursor);
+
 }
 
