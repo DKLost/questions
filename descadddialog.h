@@ -42,6 +42,7 @@ private:
     Ui::DescAddDialog *ui;
     QString retContent;
     QString retType;
+    void set_place_holder();
 };
 
 #endif // DESCADDDIALOG_H

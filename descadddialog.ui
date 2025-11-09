@@ -110,7 +110,7 @@
         <string>关系过程存在</string>
        </property>
        <property name="placeholderText">
-        <string>→</string>
+        <string>意指</string>
        </property>
       </widget>
      </item>

@@ -148,10 +148,47 @@ void LearningDialog::highlight_blank_by_number(int number)
     if(ToolFunctions::get_cursor_number(&cursor) == number)
         return;
     QTextCursor highlightCursor = ToolFunctions::find_blank_by_number(number,cursor);
+    QTextCursor ensureCursor;
+    if(highlightCursor.position() > cursor.position()){
+        ensureCursor = ToolFunctions::find_blank_by_number(number+1,highlightCursor);
+        if(ensureCursor.position() == highlightCursor.position())
+        {
+            ensureCursor.movePosition(QTextCursor::End);
+        }
+        ui->textBrowser->setTextCursor(ensureCursor);
+        ui->textBrowser->ensureCursorVisible();
+        ensureCursor = ToolFunctions::find_blank_by_number(number-1,highlightCursor);
+        if(ensureCursor.position() == highlightCursor.position())
+        {
+            ensureCursor.movePosition(QTextCursor::Start);
+        }
+        ui->textBrowser->setTextCursor(ensureCursor);
+        ui->textBrowser->ensureCursorVisible();
+    }else
+    {
+        ensureCursor = ToolFunctions::find_blank_by_number(number-1,highlightCursor);
+        if(ensureCursor.position() == highlightCursor.position())
+        {
+            ensureCursor.movePosition(QTextCursor::Start);
+        }
+        ui->textBrowser->setTextCursor(ensureCursor);
+        ui->textBrowser->ensureCursorVisible();
+        ensureCursor = ToolFunctions::find_blank_by_number(number+1,highlightCursor);
+        if(ensureCursor.position() == highlightCursor.position())
+        {
+            ensureCursor.movePosition(QTextCursor::End);
+        }
+        ui->textBrowser->setTextCursor(ensureCursor);
+        ui->textBrowser->ensureCursorVisible();
+
+    }
+
     if(cursor.position() != highlightCursor.position())
     {
         ui->textBrowser->setTextCursor(highlightCursor);
     }
+
+
     //qDebug() << number << cursor.position() << highlightCursor.position();
 }
 
