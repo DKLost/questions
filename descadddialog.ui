@@ -76,7 +76,7 @@
         <string>修饰过程存在</string>
        </property>
        <property name="placeholderText">
-        <string>{}</string>
+        <string>…</string>
        </property>
       </widget>
      </item>

@@ -6,20 +6,49 @@ DescAddDialog::DescAddDialog(QWidget *parent)
     , ui(new Ui::DescAddDialog)
 {
     ui->setupUi(this);
-    int w = ui->fLineEdit->fontMetrics().horizontalAdvance("意指") + 20;
-    ui->fLineEdit->setFixedWidth(w);
-    w = ui->xLineEdit->fontMetrics().horizontalAdvance(ui->xLineEdit->placeholderText()) + 20;
-    ui->xLineEdit->setFixedWidth(w);
-    w = ui->rLineEdit->fontMetrics().horizontalAdvance(ui->rLineEdit->placeholderText()) + 20;
-    ui->rLineEdit->setFixedWidth(w);
-    w = ui->mLineEdit->fontMetrics().horizontalAdvance("self") + 20;
-    ui->mLineEdit->setFixedWidth(w);
+    adjust_size_by_place_holder();
+    // int w = ui->fLineEdit->fontMetrics().horizontalAdvance("意指") + 20;
+    // ui->fLineEdit->setFixedWidth(w);
+    // w = ui->xLineEdit->fontMetrics().horizontalAdvance(ui->xLineEdit->placeholderText()) + 20;
+    // ui->xLineEdit->setFixedWidth(w);
+    // w = ui->rLineEdit->fontMetrics().horizontalAdvance(ui->rLineEdit->placeholderText()) + 20;
+    // ui->rLineEdit->setFixedWidth(w);
+    // w = ui->mLineEdit->fontMetrics().horizontalAdvance("self") + 20;
+    // ui->mLineEdit->setFixedWidth(w);
 }
 DescAddDialog::~DescAddDialog()
 {
     delete ui;
 }
 
+void DescAddDialog::adjust_size_by_place_holder()
+{
+    auto f = ui->fLineEdit->text();
+    auto x = ui->xLineEdit->text();
+    auto r = ui->rLineEdit->text();
+    auto m = ui->mLineEdit->text();
+    int w;
+    if(f.isEmpty())
+    {
+      w = ui->fLineEdit->fontMetrics().horizontalAdvance(ui->fLineEdit->placeholderText()) + 20;
+      ui->fLineEdit->setFixedWidth(w);
+    }
+    if(x.isEmpty())
+    {
+        w = ui->xLineEdit->fontMetrics().horizontalAdvance(ui->xLineEdit->placeholderText()) + 20;
+        ui->xLineEdit->setFixedWidth(w);
+    }
+    if(r.isEmpty())
+    {
+        w = ui->rLineEdit->fontMetrics().horizontalAdvance(ui->rLineEdit->placeholderText()) + 20;
+        ui->rLineEdit->setFixedWidth(w);
+    }
+    if(m.isEmpty())
+    {
+        w = ui->mLineEdit->fontMetrics().horizontalAdvance(ui->mLineEdit->placeholderText()) + 20;
+        ui->mLineEdit->setFixedWidth(w);
+    }
+}
 void DescAddDialog::set_place_holder()
 {
     auto f = ui->fLineEdit->text();
@@ -35,6 +64,7 @@ void DescAddDialog::set_place_holder()
     {
         ui->mLineEdit->setPlaceholderText("{}'");
     }
+    adjust_size_by_place_holder();
 }
 void DescAddDialog::reset()
 {
@@ -48,7 +78,7 @@ void DescAddDialog::reset()
     ui->rLineEdit->setText("");
     ui->mLineEdit->setText("");
 
-    ui->fLineEdit->setPlaceholderText("{}");
+    ui->fLineEdit->setPlaceholderText("…");
 
     if(ui->comboBox_2->currentText() == "标题")
     {
@@ -57,9 +87,10 @@ void DescAddDialog::reset()
     }else if(ui->comboBox_2->currentText() == "有序列表")
     {
         ui->fLineEdit->setPlaceholderText("意指");
+
         //ui->fLineEdit->setDisabled(true);
     }
-
+    adjust_size_by_place_holder();
     ui->xLineEdit->setFocus();
 
     ui->horizontalSpacer->changeSize(0,0);
@@ -68,7 +99,7 @@ void DescAddDialog::reset()
 
 void DescAddDialog::on_fLineEdit_textChanged(const QString &arg1)
 {
-    int defaultPixelWide = ui->fLineEdit->fontMetrics().horizontalAdvance("{}") + 20;
+    int defaultPixelWide = ui->fLineEdit->fontMetrics().horizontalAdvance(ui->fLineEdit->placeholderText()) + 20;
     int pixelWide = ui->fLineEdit->fontMetrics().horizontalAdvance(arg1) + 20;
     if(pixelWide < defaultPixelWide)
         pixelWide = defaultPixelWide;
@@ -79,7 +110,7 @@ void DescAddDialog::on_fLineEdit_textChanged(const QString &arg1)
 }
 void DescAddDialog::on_xLineEdit_textChanged(const QString &arg1)
 {
-    int defaultPixelWide = ui->xLineEdit->fontMetrics().horizontalAdvance("self") + 20;
+    int defaultPixelWide = ui->xLineEdit->fontMetrics().horizontalAdvance(ui->xLineEdit->placeholderText()) + 20;
     int pixelWide = ui->xLineEdit->fontMetrics().horizontalAdvance(arg1) + 20;
     if(pixelWide < defaultPixelWide)
         pixelWide = defaultPixelWide;
@@ -90,7 +121,7 @@ void DescAddDialog::on_xLineEdit_textChanged(const QString &arg1)
 }
 void DescAddDialog::on_rLineEdit_textChanged(const QString &arg1)
 {
-    int defaultPixelWide = ui->rLineEdit->fontMetrics().horizontalAdvance("意指") + 20;
+    int defaultPixelWide = ui->rLineEdit->fontMetrics().horizontalAdvance(ui->rLineEdit->placeholderText()) + 20;
     int pixelWide = ui->rLineEdit->fontMetrics().horizontalAdvance(arg1) + 20;
     if(pixelWide < defaultPixelWide)
         pixelWide = defaultPixelWide;
@@ -100,7 +131,7 @@ void DescAddDialog::on_rLineEdit_textChanged(const QString &arg1)
 }
 void DescAddDialog::on_mLineEdit_textChanged(const QString &arg1)
 {
-    int defaultPixelWide = ui->mLineEdit->fontMetrics().horizontalAdvance("self") + 20;
+    int defaultPixelWide = ui->mLineEdit->fontMetrics().horizontalAdvance(ui->mLineEdit->placeholderText()) + 20;
     int pixelWide = ui->mLineEdit->fontMetrics().horizontalAdvance(arg1) + 20;
     if(pixelWide < defaultPixelWide)
         pixelWide = defaultPixelWide;
@@ -141,6 +172,7 @@ void DescAddDialog::on_comboBox_2_currentTextChanged(const QString &arg1)
     }else if(arg1 == "有序列表")
     {
         ui->fLineEdit->setPlaceholderText("意指");
+        adjust_size_by_place_holder();
         //ui->fLineEdit->setDisabled(true);
         ui->xLineEdit->setText(xText);
         ui->rLineEdit->setText(rText);
