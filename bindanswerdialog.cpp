@@ -1,7 +1,10 @@
 #include "bindanswerdialog.h"
 #include "ui_bindanswerdialog.h"
 
-BindAnswerDialog::BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainCategoryTreeView,QWidget *parent)
+BindAnswerDialog::BindAnswerDialog(QuestionSql *mainQuestionSql,
+                              QTreeView *mainCategoryTreeView,
+                              QTableView *mainQuestionTableView,
+                              QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::BindAnswerDialog)
 {
@@ -31,6 +34,8 @@ BindAnswerDialog::BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainC
     ui->splitter->setStretchFactor(0,0);
     ui->splitter->setStretchFactor(1,0);
     ui->splitter->setStretchFactor(2,1);
+
+    this->mainQuestionTableView = mainQuestionTableView;
 }
 
 BindAnswerDialog::~BindAnswerDialog()
@@ -225,10 +230,9 @@ void BindAnswerDialog::on_buttonBox_accepted()
 void BindAnswerDialog::initDialog(int qId,int aId)
 {
     ui->categoryTreeView->setCurrentIndex(mainCategoryTreeView->currentIndex());
-    on_categoryTreeView_clicked(ui->categoryTreeView->currentIndex());
-    retAId = -1;
-
+    questionTableModel->setFilter(qobject_cast<QSqlTableModel*>(mainQuestionTableView->model())->filter());
     select_question_by_id(qId);
+    retAId = -1;
     for(int i = 0;i < ui->answerListWidget->count();i++)
     {
         if(ui->answerListWidget->item(i)->statusTip().toInt() == aId)

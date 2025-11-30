@@ -28,7 +28,10 @@ class BindAnswerDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit BindAnswerDialog(QuestionSql *mainQuestionSql,QTreeView *mainCategoryTreeView,QWidget *parent = nullptr);
+    explicit BindAnswerDialog(QuestionSql *mainQuestionSql,
+                              QTreeView *mainCategoryTreeView,
+                              QTableView *mainQuestionTableView,
+                              QWidget *parent = nullptr);
     ~BindAnswerDialog();
     //answer
     void init_answerTableView();
@@ -66,6 +69,7 @@ private:
 
     //main
     QTreeView *mainCategoryTreeView;
+    QTableView *mainQuestionTableView;
 
     //model
     QSqlRelationalTableModel *questionTableModel;
@@ -73,7 +77,6 @@ private:
 
     //other
     QuestionSql *questionSql;
-    QMap<int,QList<QStandardItem*>> categoryItemLists;
     bool is_questionTextEdit_editable = false;
 
     //ret

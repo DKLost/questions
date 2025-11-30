@@ -38,6 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     questionMoveDialog = new QuestionMoveDialog(ui->categoryTreeView,this);         //init question move dialog
     bindAnswerDialog = new BindAnswerDialog{questionSql,                            //init bind answer dialog
                                             ui->categoryTreeView,
+                                            ui->questionTableView,
                                             this};
     answerEditDialog = new AnswerEditDialog(bindAnswerDialog,this);                 //init answer edit dialog
     descAddDialog = new DescAddDialog(this);
@@ -57,6 +58,10 @@ MainWindow::MainWindow(QWidget *parent)
     //init groupbox title
     ui->groupBox_2->setFont(fontSmall);
     ui->answerTreeWidget->setFont(font2);
+
+    ui->label_7->hide();
+    ui->pushButton->hide();
+    ui->pushButton_2->hide();
 }
 
 MainWindow::~MainWindow()
@@ -1056,13 +1061,7 @@ void MainWindow::on_descAddButton_clicked()
             {
                 format = list->format();
                 format.setIndent(format.indent()+1);
-                if(format.indent() == 2)
-                {
-                    format.setStyle(QTextListFormat::ListCircle);
-                }else if(format.indent()>= 3)
-                {
-                    format.setStyle(QTextListFormat::ListSquare);
-                }
+                format.setStyle(QTextListFormat::ListDisc);
             }
 
             auto nextList = block.next().textList();
