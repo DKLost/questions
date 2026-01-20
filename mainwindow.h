@@ -65,6 +65,7 @@ public:
     void update_count_categoryTreeView();
 
 
+    void set_and_jump_to_qId(int qId);
 protected:
     bool eventFilter(QObject *watched, QEvent *event);
 
@@ -140,6 +141,8 @@ private slots:
     void on_htmlTypstAddButton_clicked();
 
     void on_answerGenAddButton_clicked();
+
+    void on_htmlImgAddButton_2_clicked();
 
 private:
     Ui::MainWindow *ui;

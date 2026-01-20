@@ -84,6 +84,7 @@ private:
 
     QTimer *totalTimer;
     QTime totalTime;
+    int curTotalCount;
     int totalCount;
     int correctCount;
     bool isSpeedLearn;

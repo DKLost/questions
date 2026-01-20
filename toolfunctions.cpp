@@ -1,8 +1,18 @@
 #include "toolfunctions.h"
 
 QString ToolFunctions::typstMathPrefix = R"(
+#import "@preview/typsium:0.3.1":*
 #set page(height: auto,width: auto,margin: 0.5pt);
-#set text(size: 9pt);
+#set text(
+    size: 9pt
+);
+#show math.equation: set text(
+    size: 9pt,
+    font: (
+        "New Computer Modern Math",
+        "Noto Serif SC"
+    )
+);
 #let revcases(..arr, spacing: 6pt) = {
     $ lr(#stack(dir: ttb, spacing: spacing, ..arr.pos().map(item => align(left, $ #item $))) }) $
 };

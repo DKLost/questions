@@ -293,8 +293,7 @@ border:1px solid black;
         </property>
         <widget class="QTextEdit" name="questionTextEdit">
          <property name="styleSheet">
-          <string notr="true">
-</string>
+          <string notr="true"/>
          </property>
          <property name="html">
           <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
@@ -559,7 +558,14 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <item>
        <widget class="QPushButton" name="htmlImgAddButton">
         <property name="text">
-         <string>插入图片</string>
+         <string>插入图片(居中对齐)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="htmlImgAddButton_2">
+        <property name="text">
+         <string>插入图片(底部对齐)</string>
         </property>
        </widget>
       </item>

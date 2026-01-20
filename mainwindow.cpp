@@ -641,9 +641,11 @@ void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
     //ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
 
     questionTableModel->select();
+
     if(learningDialog->getLastId() != -1)
     {
-        select_question_by_id(learningDialog->getLastId());
+        set_and_jump_to_qId(learningDialog->getLastId());
+        //select_question_by_id(learningDialog->getLastId());
     }
 }
 
@@ -711,7 +713,6 @@ void MainWindow::on_htmlTableAddButton_clicked()
     //tf.setAlignment(Qt::AlignLeft);
     int x = ui->questionTextEdit->cursorRect(ui->questionTextEdit->textCursor()).x();
     tf.setLeftMargin(x);
-    qDebug() << tf.leftMargin();
     int row = htmlTableAddDialog->getRetRow();
     int column = htmlTableAddDialog->getRetColumn();
     ui->questionTextEdit->textCursor().insertTable(row,column,tf);
@@ -1135,7 +1136,6 @@ void MainWindow::on_descAddButton_clicked()
                    (block.next().blockFormat().headingLevel() == 0 ||
                     block.next().blockFormat().headingLevel() >= bf.headingLevel()))
             {
-                qDebug() << 1;
                 block = block.next();
             }
 
@@ -1156,6 +1156,19 @@ void MainWindow::on_questionSearchButton_clicked()
     QString condString = QString("questions.name LIKE '\%%1\%'").arg(ui->lineEdit->text());
     questionTableModel->setFilter(condString);
     questionTableModel->select();
+    Qt::MatchFlags type[3] = {Qt::MatchExactly,Qt::MatchStartsWith,Qt::MatchContains};
+    QModelIndexList indexList;
+    for(int i = 0;i < 3;i++)
+    {
+        indexList = questionTableModel->match(questionTableModel->index(0,2),Qt::DisplayRole,ui->lineEdit->text(),1,type[i]);
+        if(!indexList.isEmpty()){
+            QModelIndex index = *indexList.begin();
+            ui->questionTableView->setCurrentIndex(index);
+            ui->questionTableView->scrollTo(index, QAbstractItemView::EnsureVisible);
+            on_questionTableView_activated(index);
+            break;
+        }
+    }
 }
 
 //添加id跳转 25/9/29
@@ -1172,6 +1185,13 @@ void MainWindow::on_idLineEdit_returnPressed()
         on_categoryTreeView_clicked(categoryItemLists[cId][0]->index());
         select_question_by_id(qId);
     }
+}
+
+void MainWindow::set_and_jump_to_qId(int qId)
+{
+    auto qIdString = QString::number(qId);
+    ui->idLineEdit->setText(qIdString);
+    on_idLineEdit_returnPressed();
 }
 
 //添加题目搜索 25/9/29
@@ -1272,5 +1292,34 @@ void MainWindow::on_answerGenAddButton_clicked()
     cursor.movePosition(QTextCursor::Left,QTextCursor::MoveAnchor,4);
     ui->questionTextEdit->setTextCursor(cursor);
 
+}
+
+
+void MainWindow::on_htmlImgAddButton_2_clicked()
+{
+    if(ui->questionTableView->currentIndex().isValid())
+    {
+        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
+        int qId = currentQId;
+
+        QString dirPath = QString("%1/data/%2/").arg(QDir::currentPath()).arg(qId);
+        QString filePath = QFileDialog::getOpenFileName(this,
+                                                        "打开图片", dirPath, tr("Image Files (*.jpg *.png *.gif)"));
+        if(filePath.isNull() || filePath.isEmpty() || filePath == "")
+            return;
+        QDir dir("./");
+        QTextCursor cursor = ui->questionTextEdit->textCursor();
+        QTextImageFormat imageFormat;
+        imageFormat.setVerticalAlignment(QTextCharFormat::AlignBottom); //底部对齐插入图片25/12/7
+        imageFormat.setName(dir.relativeFilePath(filePath));
+        if(cursor.currentTable() != nullptr) //优化表格插入显示25/10/21
+        {
+            QTextBlockFormat blockFormat = cursor.blockFormat();
+            blockFormat.setAlignment(Qt::AlignCenter);
+            cursor.setBlockFormat(blockFormat);
+            cursor.insertText("\u200B");
+        }
+        cursor.insertImage(imageFormat);
+    }
 }
 

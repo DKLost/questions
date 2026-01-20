@@ -48,7 +48,6 @@ BeingConstructSql::BeingConstructSql(QString fileName, QObject *parent)
                "source INTEGER,"   //being
                "target INTEGER"   //being
                );
-
     add_being(being["{}"]);
     add_being(being["→"]);
     add_being(being["~"]);

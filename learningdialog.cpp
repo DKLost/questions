@@ -28,6 +28,8 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     questionSql = newQuestionSql;
     submited = true;
     currentId = -1;
+    totalCount = 0;
+    correctCount = 0;
 
     //init table
     tableModel = new QSqlRelationalTableModel(this,questionSql->getDb());
@@ -44,7 +46,7 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     set_tableHeader();
 
     //set text broswer
-    QFont font2({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
+    QFont font2({"NewComputerModernMath","IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
     ui->textBrowser->setFont(font2);
     ui->textBrowser->setTabStopDistance(ui->textBrowser->fontMetrics().horizontalAdvance(' ')*2);
     ui->textBrowser->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
@@ -209,8 +211,9 @@ void LearningDialog::set_items_table(QString filter) //设置表过滤
     totalTime = QTime::fromMSecsSinceStartOfDay(0);
     tableModel->setFilter(filter);
     tableModel->select();
-    totalCount = 0;
-    correctCount = 0;
+    curTotalCount = 0;
+    //totalCount = 0;
+    //correctCount = 0;
     if(isSpeedLearn)
         ui->comboBox->setCurrentIndex(1);
     clear_question_display();
@@ -233,6 +236,7 @@ void LearningDialog::set_items_table(QString filter) //设置表过滤
         int qId = index.data().toInt();
         QTime qGoodTime = questionSql->get_question_learn_time(qId);
         totalGoodTime = totalGoodTime.addMSecs(qGoodTime.msecsSinceStartOfDay());
+        //curTotalCount++;
     }
     totalGoodTime=totalGoodTime.addMSecs(totalGoodTime.msecsSinceStartOfDay()*0.6);
     totalRemainingTimeMsec = totalGoodTime.msecsSinceStartOfDay();
@@ -665,7 +669,9 @@ void LearningDialog::preSubmit()
                 if(lineEdit->text() == answerLabel->text())
                     checkBox->setChecked(true);
                 else
+                {
                     checkBox->setChecked(false);
+                }
                 checkBox->setEnabled(false);
             }else if(array[row].toObject()["type"].toString()  == "auto(typst)")
             {
@@ -795,7 +801,14 @@ void LearningDialog::submit()
             answerTime = QTime::fromMSecsSinceStartOfDay(0);
         }
         questionSql->update_construct_state(aId,answerTime);
-        //
+
+        //set accuracy label
+        totalCount++;
+        if(!wrong)
+            correctCount++;
+        QString acc = QString::number(double(correctCount)/totalCount*100,'f',2);
+        QString newAccuracyText = QString("正确率(%1\%):%2/%3").arg(acc).arg(correctCount).arg(totalCount);
+        ui->accuracyLabel->setText(newAccuracyText);
     }
 
     //QLabel *timeLabel = (QLabel *)layout->itemAtPosition(row,0)->widget();
@@ -817,14 +830,6 @@ void LearningDialog::submit()
     questionSql->update_question_state(currentId);
     checkLabel->show();
     oldRow = ui->tableView->currentIndex().row();
-
-    //set accuracy label
-    totalCount++;
-    if(!wrong)
-        correctCount++;
-    QString acc = QString::number(double(correctCount)/totalCount*100,'f',2);
-    QString newAccuracyText = QString("正确率(%1\%):%2/%3").arg(acc).arg(correctCount).arg(totalCount);
-    ui->accuracyLabel->setText(newAccuracyText);
 
     //set new filter
     if(isSpeedLearn)
