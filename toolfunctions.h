@@ -8,6 +8,7 @@
 #include <QProcess>
 #include <QFile>
 #include <QRegularExpression>
+#include <QList>
 
 class ToolFunctions
 {
@@ -26,6 +27,7 @@ public:
     static void watch_typst_stop(QProcess &process);
     static int get_cursor_number(QTextCursor *cursor);
     static QTextCursor find_blank_by_number(int number, QTextCursor &_cursor);
+    static QList<QTextCursor> find_blanks_by_number(int number, QTextCursor &_cursor);
     static void write_file(const QString &filePath, const QString &text);
 
 public:

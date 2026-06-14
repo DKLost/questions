@@ -4,6 +4,12 @@
 #include "core/fsrs.h"
 #include <QListView>
 #include <QSet>
+#include <QFile>
+#include <QImage>
+#include <QUrl>
+#include <QTextBlockFormat>
+#include <QPainter>
+#include <QTextImageFormat>
 
 LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     : QDialog(parent)
@@ -46,7 +52,7 @@ LearningDialog::LearningDialog(QuestionSql *newQuestionSql,QWidget *parent)
     set_tableHeader();
 
     //set text broswer
-    QFont font2({"NewComputerModernMath","IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
+    QFont font2({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
     ui->textBrowser->setFont(font2);
     ui->textBrowser->setTabStopDistance(ui->textBrowser->fontMetrics().horizontalAdvance(' ')*2);
     ui->textBrowser->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
@@ -238,7 +244,7 @@ void LearningDialog::set_items_table(QString filter) //设置表过滤
         totalGoodTime = totalGoodTime.addMSecs(qGoodTime.msecsSinceStartOfDay());
         //curTotalCount++;
     }
-    totalGoodTime=totalGoodTime.addMSecs(totalGoodTime.msecsSinceStartOfDay()*0.6);
+    totalGoodTime=totalGoodTime.addMSecs(totalGoodTime.msecsSinceStartOfDay()*0.87);
     totalRemainingTimeMsec = totalGoodTime.msecsSinceStartOfDay();
     ui->totalGoodTimeLabel->setText(totalGoodTime.toString("hh'h':mm'm':ss's'"));
     ui->remainingTimeLabel->setText(QTime::fromMSecsSinceStartOfDay(totalRemainingTimeMsec).toString("hh:mm:ss.zz"));
@@ -340,14 +346,14 @@ void LearningDialog::poolComboBox_currentIndexChanged(const int &index)
     if(!senderComboBox->itemIcon(index).isNull())
     {
         QSize sz = senderComboBox->itemIcon(index).actualSize(QSize{1000,1000});
-        sz.setWidth(35 + sz.width());
+        sz.setWidth(50 + sz.width());
         sz.setHeight(10 + sz.height());
         senderComboBox->setFixedSize(sz);
         senderComboBox->setIconSize(senderComboBox->itemIcon(index).actualSize(QSize{1000,1000}));
         senderComboBox->view()->setIconSize(QSize{1000,1000});
     }else
     {
-        int w = 35 + senderComboBox->fontMetrics().horizontalAdvance(senderComboBox->itemText(index));
+        int w = 50 + senderComboBox->fontMetrics().horizontalAdvance(senderComboBox->itemText(index));
         senderComboBox->setFixedSize(w,28);
     }
 
@@ -442,6 +448,7 @@ void LearningDialog::set_question(int id)
     QJsonArray &array = currentArray;
     QSet<int> toLearnPoolSet; //记录需要复习的乱序池8/10
     QSet<int> toLearnInjectSet; //记录需要显示的注入答案8/10
+    QVector<int> answersNotToLearn; //记录不需要复习的答案索引
 
     clear_question_display();
     ui->textBrowser->setHtml(html);
@@ -529,6 +536,7 @@ void LearningDialog::set_question(int id)
             layout->addWidget(newAnswerLabel,i,1);
             newLineNumberLabel->hide();
             newAnswerLabel->hide();
+            answersNotToLearn.append(i); //记录这个不需要复习的答案索引
         }else
         {
             layout->addLayout(newLineEditHBoxLayout,i,1);
@@ -630,6 +638,107 @@ void LearningDialog::set_question(int id)
     layout->addItem(verticalSpacer,array.count()+1,0,1,5);
 
     //layout->itemAt(0)->widget()->setFocus();
+
+    // 将不需要复习的答案显示到题目中
+    if(onlyToLearn && !answersNotToLearn.isEmpty())
+    {
+        QTextDocument* doc = ui->textBrowser->document();
+        QTextCursor cursor(doc);
+        
+        for(int answerIdx : answersNotToLearn)
+        {
+            QJsonObject obj = array[answerIdx].toObject();
+            QString type = obj["type"].toString();
+            QString content = obj["content"].toString();
+            int blankNumber = answerIdx + 1; // 填空编号从1开始
+            int constructId = obj["id"].toInt();
+            
+            // 找到所有相同编号的填空
+            QList<QTextCursor> findCursors = ToolFunctions::find_blanks_by_number(blankNumber, cursor);
+            
+            // 处理每一个找到的填空
+            for(QTextCursor &findCursor : findCursors)
+            {
+                ToolFunctions::select_current_underline_text(&findCursor);
+                
+                if(type == "manual(image)" || type == "auto(typst)")
+                {
+                    // 对于图片/公式类型，使用Qt原生API插入
+                    QString imgPath;
+                    if(type == "manual(image)")
+                    {
+                        imgPath = content;
+                    }
+                    else // auto(typst)
+                    {
+                        imgPath = QString("./data/%1/%2.png").arg(currentId).arg(constructId);
+                    }
+                    
+                    QImage image(imgPath);
+                    if(!image.isNull())
+                    {
+                        // 缩放图片
+                        QImage scaledImage;
+                        if(image.width() > 400)
+                        {
+                            scaledImage = image.scaledToWidth(400, Qt::SmoothTransformation);
+                        }
+                        else
+                        {
+                            scaledImage = image;
+                        }
+                        
+                        // 添加绿色边框效果
+                        QImage borderedImage(scaledImage.width() + 8, scaledImage.height() + 8, QImage::Format_ARGB32);
+                        borderedImage.fill(Qt::white);
+                        QPainter painter(&borderedImage);
+                        painter.drawImage(4, 4, scaledImage);
+                        painter.setPen(QPen(QColor("#4CAF50"), 2));
+                        painter.drawRect(2, 2, borderedImage.width() - 4, borderedImage.height() - 4);
+                        painter.end();
+                        
+                        // 注册资源并使用QTextImageFormat插入图片（垂直居中）
+                        QString resourceName = QString("notolearn_%1_%2").arg(currentId).arg(constructId);
+                        QUrl imageUrl(resourceName);
+                        doc->addResource(QTextDocument::ImageResource, imageUrl, borderedImage);
+                        
+                        QTextImageFormat imageFormat;
+                        imageFormat.setName(resourceName);
+                        imageFormat.setWidth(borderedImage.width());
+                        imageFormat.setHeight(borderedImage.height());
+                        imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); // 垂直居中对齐
+                        findCursor.insertImage(imageFormat);
+                    }
+                    else
+                    {
+                        // 图片加载失败时显示文本提示
+                        QTextCharFormat format;
+                        format.setForeground(QColor("#4CAF50")); // 绿色强调
+                        format.setFontUnderline(false); // 取消下划线
+                        findCursor.setCharFormat(format);
+                        
+                        if(type == "manual(image)")
+                        {
+                            findCursor.insertText("[图片]");
+                        }
+                        else
+                        {
+                            findCursor.insertText(content);
+                        }
+                    }
+                }
+                else
+                {
+                    // 文本类型直接显示，用绿色强调
+                    QTextCharFormat format;
+                    format.setForeground(QColor("#4CAF50")); // 绿色强调
+                    format.setFontUnderline(false); // 取消下划线
+                    findCursor.setCharFormat(format);
+                    findCursor.insertText(content);
+                }
+            }
+        }
+    }
 
     if(!totalTimer->isActive()) totalTimer->start();
     start_timer();
@@ -842,7 +951,11 @@ void LearningDialog::submit()
     }
 
     //update old row
-    tableModel  ->select();
+    tableModel->select();
+    while (tableModel->canFetchMore()) //获取完整行数25/10/22
+    {
+        tableModel->fetchMore();
+    }
     if(oldRow >= tableModel->rowCount())
         oldRow = 0;
     ui->tableView->selectRow(oldRow);
@@ -873,6 +986,10 @@ void LearningDialog::on_pushButton_clicked()
             int randNum = QRandomGenerator::global()->bounded(32768);
             questionSql->set_value("questions",newCurrentId,"orderNum",randNum);
             tableModel->select();
+            while (tableModel->canFetchMore()) //获取完整行数25/10/22
+            {
+                tableModel->fetchMore();
+            }
         }else if(ui->comboBox->currentText() == "默认排序" && newCurrentId == currentId)
         {
             QString state = tableModel->index(oldRow,3).data().toString();
@@ -895,6 +1012,10 @@ void LearningDialog::on_pushButton_clicked()
                 int newOrderNum = (orderNum1 + orderNum2) / 2;
                 questionSql->set_value("questions",newCurrentId,"orderNum",newOrderNum);
                 tableModel->select();
+                while (tableModel->canFetchMore()) //获取完整行数25/10/22
+                {
+                    tableModel->fetchMore();
+                }
             }
         }
 

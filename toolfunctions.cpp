@@ -1,7 +1,7 @@
 #include "toolfunctions.h"
 
 QString ToolFunctions::typstMathPrefix = R"(
-#import "@preview/typsium:0.3.1":*
+#import "@preview/typsium:0.3.1":ce
 #set page(height: auto,width: auto,margin: 0.5pt);
 #set text(
     size: 9pt
@@ -210,4 +210,38 @@ QTextCursor ToolFunctions::find_blank_by_number(int number,QTextCursor &_cursor)
         }
     }
     return _cursor;
+}
+
+QList<QTextCursor> ToolFunctions::find_blanks_by_number(int number, QTextCursor &_cursor)
+{
+    QList<QTextCursor> cursors;
+    QTextCursor cursor = _cursor;
+    cursor.movePosition(QTextCursor::Start);
+    bool flg = false;
+    
+    while(!flg)
+    {
+        flg = !cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        flg = !cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        
+        while(!cursor.charFormat().fontUnderline())
+        {
+            if(!cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1))
+            {
+                flg = true;
+                break;
+            }
+        }
+        
+        if(!flg)
+        {
+            int nextNumber = get_cursor_number(&cursor);
+            if(nextNumber == number)
+            {
+                cursors.append(cursor);
+            }
+        }
+    }
+    
+    return cursors;
 }

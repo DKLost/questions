@@ -442,6 +442,9 @@ void MainWindow::on_questionTableView_entered(const QModelIndex &index)
 
 void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题目选取功能 2024/8/11
 {
+    // 先保存当前正在编辑的内容
+    saveCurrentQuestionContent();
+    
     setCurrentQId(index.siblingAtColumn(0).data().toInt());
 
     //load question.html
@@ -560,13 +563,13 @@ void MainWindow::on_questionTextEdit_textChanged()
 
     questionMd = ui->questionTextEdit->toMarkdown();
     questionSql->write_questionMd(qId,questionMd);
-
-    on_categoryTreeView_clicked(ui->categoryTreeView->currentIndex());
-    ui->questionTableView->selectRow(index.row());
 }
 
 void MainWindow::on_questionRenameButton_clicked()
 {
+    // 先保存当前编辑的内容
+    saveCurrentQuestionContent();
+    
     QModelIndex index = ui->questionTableView->currentIndex();
 
     questionRenameDialog.setText(index.siblingAtColumn(2).data().toString());
@@ -580,6 +583,9 @@ void MainWindow::on_questionRenameButton_clicked()
 //learn
 void MainWindow::on_itemLearnButton_clicked()//单项学习
 {
+    // 先保存当前编辑的内容
+    saveCurrentQuestionContent();
+    
     QModelIndex index = ui->questionTableView->currentIndex();
     if(!index.isValid())
         return;
@@ -604,6 +610,9 @@ void MainWindow::on_itemLearnButton_clicked()//单项学习
 
 void MainWindow::on_speedLearnButton_clicked()// 标签学习（不重复）
 {
+    // 先保存当前编辑的内容
+    saveCurrentQuestionContent();
+    
     learningDialog->setOnlyToLearn(false);
     learningDialog->setIsSpeedLearn(true);
     learningDialog->set_items_table(questionTableModel->filter());
@@ -626,6 +635,9 @@ void MainWindow::on_speedLearnButton_clicked()// 标签学习（不重复）
 
 void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
 {
+    // 先保存当前编辑的内容
+    saveCurrentQuestionContent();
+    
     learningDialog->clear_question_display();
     learningDialog->set_items_table(questionSql->get_toLearn_condString(questionTableModel->filter()));
     learningDialog->setOnlyToLearn(true);
@@ -651,6 +663,9 @@ void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
 
 void MainWindow::on_categoryLearnButton_clicked() //表项学习（全部）
 {
+    // 先保存当前编辑的内容
+    saveCurrentQuestionContent();
+    
     learningDialog->set_items_table(questionTableModel->filter());
     learningDialog->setOnlyToLearn(false);
     learningDialog->exec();
@@ -874,6 +889,9 @@ void MainWindow::on_categoryDelButton_clicked()
 
 void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
 {
+    // 先保存当前正在编辑的内容
+    saveCurrentQuestionContent();
+    
     if(currentDate != QDate::currentDate())
     {
         update_count_categoryTreeView();
@@ -1153,6 +1171,9 @@ void MainWindow::on_descAddButton_clicked()
 
 void MainWindow::on_questionSearchButton_clicked()
 {
+    // 先保存当前编辑的内容
+    saveCurrentQuestionContent();
+    
     QString condString = QString("questions.name LIKE '\%%1\%'").arg(ui->lineEdit->text());
     questionTableModel->setFilter(condString);
     questionTableModel->select();
@@ -1174,6 +1195,9 @@ void MainWindow::on_questionSearchButton_clicked()
 //添加id跳转 25/9/29
 void MainWindow::on_idLineEdit_returnPressed()
 {
+    // 先保存当前编辑的内容
+    saveCurrentQuestionContent();
+    
     int qId = ui->idLineEdit->text().toInt();
     QSqlQuery query(QSqlDatabase::database("connection1"));
     QString queryString = QString("SELECT categoryId FROM questions WHERE id = %1").arg(qId);
@@ -1185,6 +1209,22 @@ void MainWindow::on_idLineEdit_returnPressed()
         on_categoryTreeView_clicked(categoryItemLists[cId][0]->index());
         select_question_by_id(qId);
     }
+}
+
+void MainWindow::saveCurrentQuestionContent()
+{
+    if (!is_questionTextEdit_editable)
+        return;
+    QModelIndex index = ui->questionTableView->currentIndex();
+    if (!index.isValid())
+        return;
+    int qId = currentQId;
+    QString questionHTML, questionMd;
+    questionHTML = ui->questionTextEdit->toHtml();
+    questionSql->write_questionHTML(qId, questionHTML);
+
+    questionMd = ui->questionTextEdit->toMarkdown();
+    questionSql->write_questionMd(qId, questionMd);
 }
 
 void MainWindow::set_and_jump_to_qId(int qId)
@@ -1263,7 +1303,7 @@ void MainWindow::on_htmlTypstAddButton_clicked()
             cursor.insertText("\u200B");
         }else if(height <= 16)
         {
-            imageFormat.setVerticalAlignment(QTextCharFormat::AlignNormal);
+            imageFormat.setVerticalAlignment(QTextCharFormat::AlignBaseline);
         }else
         {
             imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2

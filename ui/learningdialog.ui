@@ -192,6 +192,12 @@
             <pointsize>12</pointsize>
            </font>
           </property>
+          <property name="styleSheet">
+           <string notr="true">QTextEdit:!active{
+	selection-background-color: #3399FF;
+	selection-color: white;
+}</string>
+          </property>
           <property name="html">
            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
@@ -227,7 +233,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>757</width>
+                <width>801</width>
                 <height>121</height>
                </rect>
               </property>

@@ -66,6 +66,7 @@ public:
 
 
     void set_and_jump_to_qId(int qId);
+    void saveCurrentQuestionContent();
 protected:
     bool eventFilter(QObject *watched, QEvent *event);
 
