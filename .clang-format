@@ -1,0 +1,38 @@
+Language: Cpp
+BasedOnStyle: Microsoft
+IndentWidth: 4
+TabWidth: 4
+AccessModifierOffset: -4
+UseTab: Never
+ColumnLimit: 0
+MaxEmptyLinesToKeep: 2
+PointerAlignment: Right
+ReferenceAlignment: Right
+SpaceBeforeParens: Never
+SpaceAfterCStyleCast: true
+SortIncludes: Never
+FixNamespaceComments: false
+NamespaceIndentation: None
+IndentCaseLabels: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never

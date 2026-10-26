@@ -1,58 +1,53 @@
-# C++ objects and libs
-*.slo
-*.lo
+# ── 构建产物（qmake / mingw32-make / Qt Creator）──
+build/
+debug/
+release/
 *.o
+*.obj
 *.a
-*.la
-*.lai
-*.so
-*.so.*
+*.lib
 *.dll
 *.dylib
-
-# Qt-es
-object_script.*.Release
-object_script.*.Debug
-*_plugin_import.cpp
-/.qmake.cache
-/.qmake.stash
-*.pro.user
-*.pro.user.*
-*.qbs.user
-*.qbs.user.*
-*.moc
+*.so
+*.so.*
+*.exp
+*.exe
+Makefile
+Makefile.*
+.qmake.stash
+.qmake.cache
+object_script.*
 moc_*.cpp
 moc_*.h
 qrc_*.cpp
 ui_*.h
-*.qmlc
-*.jsc
-Makefile*
-*build-*
+*_plugin_import.cpp
 *.qm
 *.prl
+*.qmlc
+*.jsc
 
-# Qt unit tests
-target_wrapper.*
-
-# QtCreator
+# ── IDE / 工具状态 ──
+.qtcreator/
+.qtc_clangd/
+.vscode/
+.idea/
+compile_commands.json
+*.pro.user
+*.pro.user.*
+*.qbs.user*
+*creator.user*
+CMakeLists.txt.user*
 *.autosave
 
-# QtCreator Qml
-*.qmlproject.user
-*.qmlproject.user.*
+# ── 运行时数据（本地题库与缓存，属个人数据不入库）──
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+.qtypst-cache/
+.typst-image-cache/
 
-# QtCreator CMake
-CMakeLists.txt.user*
-
-# QtCreator 4.8< compilation database
-compile_commands.json
-
-# QtCreator local machine specific files for imported projects
-*creator.user*
-
-*_qmlcache.qrc
-
-
-# Qt build
-build
+# ── 第三方外部工具：typst.exe 约 45MB 单文件二进制，需自行放置到运行目录 ──
+typst.exe

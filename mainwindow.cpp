@@ -1,1365 +1,303 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "mainwindow_internal.h"
+
+#include "parser/noteparser2.h"
+#include "core/knowledgedb.h"
+#include "widgets/knowledgetreehelper.h"
+#include "widgets/questiontableviewhelper.h"
+#include "dialogs/phenadddialog.h"
+#include "utils/toolfunctions.h"
+
+#include <QAbstractItemView>
+#include <QAction>
+#include <QApplication>
+#include <QCloseEvent>
+#include <QSettings>
+#include <QDate>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QEvent>
+#include <QFile>
+#include <QFileDialog>
+#include <QFont>
+#include <QGuiApplication>
+#include <QHeaderView>
+#include <QIcon>
+#include <QImage>
+#include <QItemSelectionModel>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QKeyEvent>
+#include <QList>
+#include <QMenu>
+#include <QContextMenuEvent>
+#include <QMessageBox>
+#include <QModelIndex>
+#include <QMouseEvent>
+#include <QPlainTextEdit>
+#include <QProcess>
+#include <QRegularExpression>
+#include <QSet>
+#include <QSignalBlocker>
+#include <QSize>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QStandardItem>
+#include <QStringList>
+#include <QTextBlock>
+#include <QTextBlockFormat>
+#include <QTextCharFormat>
+#include <QTextCursor>
+#include <QTextFrameFormat>
+#include <QTextImageFormat>
+#include <QTextList>
+#include <QTextListFormat>
+#include <QTextTableFormat>
+#include <QTime>
+#include <QTimer>
+#include <QVBoxLayout>
+
+namespace {
+constexpr int kInitialSplitterLeft = 600;
+constexpr int kInitialSplitterRight = 250;
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+    : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    QFont font({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
-    QFont font2({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},12);
-    QFont fontSmall({"IBM Plex Mono", "IBM Plex Math", "Noto Sans Mono", "Microsoft YaHei UI", "Microsoft YaHei", "Arial"},9);
-    QApplication::setFont(font);
-    currentDate = QDate::currentDate();
-    questionSql = new QuestionSql("question.db",this);
-    
+    initFonts();
+    initQuestionDatabase();
     init_questionTableView();
     init_answerTableView();
     init_answerTreeWidget();
+    initQuestionEditor();
+    initDialogs();
+    initKnowledgeTree();
+    initSplitter();
+    questionTableModel->setFilter(""); // 知识关联区显示全部题目，不按分类过滤
+    questionTableModel->select();
+    setQuestionAreasEnabled(false); // 启动初始无选中题：html/cloze 编辑区先置灰空态（restoreUiState 选中题后自动恢复）
+    restoreUiState(); // 恢复上次退出时的检索条件/展开集/当前题（无 ini 时为无操作）
+}
 
-    //init categoryTreeView
-    categoryItemModel = new QStandardItemModel(this);
-    reload_categoryTreeView();
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[1][0]->index());
-    on_categoryTreeView_clicked(categoryItemLists[1][0]->index());
-    connect(categoryItemModel,&QStandardItemModel::itemChanged,this,&MainWindow::category_item_change_handler);
+// 退出前落盘：正在编辑的题面 + 界面状态
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    saveCurrentQuestionContent();
+    saveUiState();
+    QMainWindow::closeEvent(event);
+}
 
-    //init question html text edit
-    ui->questionTextEdit->setFont(font2);
-    ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ')*2);
-    ui->questionTextEdit->document()->setIndentWidth(32.5); // 固定缩进值为32.5 2025/10/3
-    //ui->questionTextEdit->document()->setDefaultStyleSheet("li{margin-top: 20px}");
+void MainWindow::saveUiState()
+{
+    QSettings settings(kUiStateFileName, QSettings::IniFormat);
+    settings.setValue(kUiStateFindActiveKey, findObjsActive);
+    settings.setValue(kUiStateSubjKey, ui->subjLineEdit->text());
+    settings.setValue(kUiStatePredKey, ui->predLineEdit->text());
+    settings.setValue(kUiStateObjKey, ui->objLineEdit->text());
+    settings.setValue(kUiStateNameKey, ui->lineEdit->text());
+    settings.setValue(kUiStateScopeKey, scopeDerivedAbs.join(QLatin1Char('\n'))); // 用换行而非逗号：概念名里可能含逗号
+    settings.setValue(kUiStateExpandedKey, phenIdsToCsv(collectExpandedPhenIds()));
+    settings.setValue(kUiStateCurrentQuestionKey, currentQuestionId);
+}
 
+// 恢复顺序：检索框 → （检索态重检 / 否则恢复范围） → 展开集 → 当前题；命中不了的项静默跳过
+void MainWindow::restoreUiState()
+{
+    QSettings settings(kUiStateFileName, QSettings::IniFormat);
+    const QString subj = settings.value(kUiStateSubjKey).toString();
+    const QString pred = settings.value(kUiStatePredKey).toString();
+    const QString obj = settings.value(kUiStateObjKey).toString();
+    {
+        const QSignalBlocker subjBlocker(ui->subjLineEdit);
+        const QSignalBlocker predBlocker(ui->predLineEdit);
+        const QSignalBlocker objBlocker(ui->objLineEdit);
+        const QSignalBlocker nameBlocker(ui->lineEdit);
+        ui->subjLineEdit->setText(subj);
+        ui->predLineEdit->setText(pred);
+        ui->objLineEdit->setText(obj);
+        ui->lineEdit->setText(settings.value(kUiStateNameKey).toString());
+    }
+    const bool findActive = settings.value(kUiStateFindActiveKey).toBool();
+    if(findActive)
+        applyFindObjs(); // 检索态：按恢复后的条件重跑检索（范围由其结果重新计算；条件全空即回到全树）
+    else
+        setQuestionScope(settings.value(kUiStateScopeKey).toString().split(QLatin1Char('\n'), Qt::SkipEmptyParts));
+    restoreExpandedPhenIds(phenIdsFromCsv(settings.value(kUiStateExpandedKey).toString()));
+    const int questionId = settings.value(kUiStateCurrentQuestionKey, -1).toInt();
+    if(questionId > 0)
+        set_and_jump_to_qId(questionId); // 命中不了的 id 静默跳过（on_idLineEdit_returnPressed 内部先查存在性）
+}
 
-    //init dialogs
-    learningDialog = new LearningDialog(questionSql,this);                          //init learning dialog
-    setTimeDialog = new SetTimeDialog(this);                                        //init set time dialog
-    htmlTableAddDialog = new HtmlTableAddDialog(this);                              //init html table add dialog
-    questionMoveDialog = new QuestionMoveDialog(ui->categoryTreeView,this);         //init question move dialog
-    bindAnswerDialog = new BindAnswerDialog{questionSql,                            //init bind answer dialog
-                                            ui->categoryTreeView,
-                                            ui->questionTableView,
-                                            this};
-    answerEditDialog = new AnswerEditDialog(bindAnswerDialog,this);                 //init answer edit dialog
+// 全应用统一等宽字体：正文 12、小号 9
+void MainWindow::initFonts()
+{
+    const QFont uiFont(kUiFontFamilies, kUiFontSize);
+    QApplication::setFont(uiFont);
+    ui->questionTextEdit->setFont(uiFont);
+    ui->answerTreeWidget->setFont(uiFont);
+    // 知识树显式设字体：.ui 里带（空）styleSheet 的控件会被 QStyleSheetStyle 在 setupUi 时按当时的默认字体“钉住”，
+    // 之后再 QApplication::setFont 也推不进去（表现为树停在 9pt 而其余界面是 12pt），故与上面两处一样显式设定
+    ui->phenTreeView->setFont(uiFont);
+    ui->phenObjTreeView->setFont(uiFont);
+    ui->groupBox_2->setFont(QFont(kUiFontFamilies, kSmallFontSize));
+}
+
+void MainWindow::initQuestionDatabase()
+{
+    currentDate = QDate::currentDate();
+    questionSql = new QuestionSql(kDatabaseFileName, this);
+    answerStore = new AnswerStore(questionSql);
+}
+
+void MainWindow::initQuestionEditor()
+{
+    ui->questionTextEdit->setTabStopDistance(ui->questionTextEdit->fontMetrics().horizontalAdvance(' ') * kEditorTabStopSpaces);
+    ui->questionTextEdit->document()->setIndentWidth(kEditorIndentWidth);
+    ui->questionTextEdit->viewport()->installEventFilter(this); // 双击 typst 公式图片 → 改公式
+}
+
+void MainWindow::initDialogs()
+{
+    learningDialog = new LearningDialog(questionSql, this);
+    setTimeDialog = new SetTimeDialog(this);
+    htmlTableAddDialog = new HtmlTableAddDialog(this);
+    bindAnswerDialog = new BindAnswerDialog{questionSql, ui->phenTreeView, ui->questionTableView, this};
+    answerEditDialog = new AnswerEditDialog(bindAnswerDialog, this);
+    clozeMoveDialog = new ClozeMoveDialog(questionSql, this); // 答案迁移到其他题目
+    bindAnswerDialog->setTreeModel(nullptr);
+    bindAnswerDialog->disableCategoryTree(); // 分类树已禁用（知识索引区取代分类）
     descAddDialog = new DescAddDialog(this);
     htmlTypstAddDialog = new HtmlTypstAddDialog(this);
+}
 
-    //init current section
-    currentSection = -1;
+void MainWindow::initKnowledgeTree()
+{
+    reload_knowledgeTreeView();                                // 主树固定显示知识索引区（分类功能已移除）
+    installMergeToggle(ui->phenTreeView);                      // ⇒ 合并行随展开状态切换文本
+    installCollapseMergeOnLeave(ui->phenTreeView);             // 离开 is 子行自动折叠 ⇒ 父行
+    installMiddleClickExpandAllExceptMerged(ui->phenTreeView); // 中键点击行展开整棵子树（不含 ⇒ 合并行）
+    ui->phenTreeView->setContextMenuPolicy(Qt::CustomContextMenu); // 右键菜单：强制按概念子树过滤题目表
+    ui->phenTreeView->installEventFilter(this);                    // 键盘改变选中行时触发与点击相同的载题行为
+    connectKnowledgeTreeEntered();
+    initPhenObjTree();
+}
 
-    //init splitter
-    ui->splitter->setSizes({600,250});
+// 宾词视图与主树共用同一套渲染与交互（⇒ 合并、中键展开、右键菜单、点行载题）；入口只有 ctrl+左键与右键菜单，故默认隐藏
+void MainWindow::initPhenObjTree()
+{
+    phenObjItemModel = new QStandardItemModel(this);
+    ui->phenObjTreeView->setModel(phenObjItemModel);
+    setupKnowledgeTreeView(ui->phenObjTreeView);
+    installMergeToggle(ui->phenObjTreeView);
+    installCollapseMergeOnLeave(ui->phenObjTreeView);
+    installMiddleClickExpandAllExceptMerged(ui->phenObjTreeView);
+    ui->phenObjTreeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    ui->phenObjTreeView->installEventFilter(this);           // 聚焦跟踪 + 键盘换行载题（与主树一致）
+    ui->phenObjTreeView->setVisible(false);                  // 未触发前不占空间
+    connect(ui->phenObjTreeView, &QTreeView::clicked, this, &MainWindow::onPhenObjTreeClicked);
+    connect(ui->phenObjTreeView, &QTreeView::customContextMenuRequested,
+            this, &MainWindow::onPhenObjTreeCustomContextMenuRequested);
+    ui->phenObjTreeView->viewport()->installEventFilter(this); // ctrl+左键在宾词视图内同样可再取宾词
+    ui->phenTreeView->viewport()->installEventFilter(this);
+}
 
-    //init qIdHistoryPos
-    qIdHistoryPos = 0;
+void MainWindow::connectKnowledgeTreeEntered()
+{
+    // 按住左键拖动扫过树行时也触发载题（与题目表 entered 一致；未按按钮的悬停、按住右键、ctrl 手势均不触发）
+    connect(ui->phenTreeView, &QTreeView::entered, this, [this](const QModelIndex &index) {
+        if(QGuiApplication::mouseButtons() == Qt::NoButton || QGuiApplication::mouseButtons() == Qt::RightButton)
+            return;
+        if(QGuiApplication::keyboardModifiers() & Qt::ControlModifier)
+            return; // ctrl+左键是"看宾词"手势，不跟随扫过的行载题
+        ui->phenTreeView->setCurrentIndex(index); // 选中高亮跟随扫过的行
+        on_phenTreeView_clicked(index);
+    });
+}
 
-    //ui->descAddButton->hide();
-
-    //init groupbox title
-    ui->groupBox_2->setFont(fontSmall);
-    ui->answerTreeWidget->setFont(font2);
-
-    ui->label_7->hide();
-    ui->pushButton->hide();
-    ui->pushButton_2->hide();
+void MainWindow::initSplitter()
+{
+    ui->splitter->setSizes({kInitialSplitterLeft, kInitialSplitterRight});
 }
 
 MainWindow::~MainWindow()
 {
+    delete knowledgeRoot;
+    delete phenObjKnowledgeRoot;
     delete ui;
 }
 
-//answer
-void MainWindow::load_answer(int qId)
-{
-    //load answer.json
-    QJsonArray array = questionSql->read_answerJSON(qId);
-    ui->answerTreeWidget->clear();
-    ui->answerTreeWidget->setIconSize(QSize(1000,1000));
-    for(int row = 0;row < array.count();row++)
-    {
-        QJsonObject itemObject = array[row].toObject();
-        QString type = itemObject["type"].toString();
-        QTreeWidgetItem *aitem = new QTreeWidgetItem(ui->answerTreeWidget);//id:StatusTip,type:ToolTip,content:WhatsThis
-        aitem->setText(0,QString::number(row+1));
-        if(type == "manual(image)")
-        {
-            QIcon icon{itemObject["content"].toString()};
-            aitem->setIcon(1,icon);
-        }else if(type == "auto(typst)") //添加typst数学公式显示功能 25/10/11
-        {
-            QString imgPath = QString("./data/%1/%2.png").arg(qId).arg(itemObject["id"].toInt());
-            QIcon icon{imgPath};
-            aitem->setIcon(1,icon);
-        }else
-            aitem->setText(1,itemObject["content"].toString());
-        aitem->setText(2,QString::number(itemObject["pool"].toInt()));
-        ui->answerTreeWidget->addTopLevelItem(aitem);
-    }
-}
-
-void MainWindow::init_answerTableView()
-{
-    answerTableModel = new QSqlTableModel(this,questionSql->getDb());
-    answerTableModel->setTable("constructs");
-    answerTableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
-
-    ui->answerTableView->setModel(answerTableModel);
-    ui->answerTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    set_answer_tableHeader();
-}
-
-void MainWindow::set_answer_tableHeader()
-{
-    answerTableModel->setHeaderData(5, Qt::Horizontal, "状态");
-    answerTableModel->setHeaderData(6, Qt::Horizontal, "平均评分");
-    answerTableModel->setHeaderData(7, Qt::Horizontal, "良好用时");
-    answerTableModel->setHeaderData(8, Qt::Horizontal, "平均用时");
-    answerTableModel->setHeaderData(9, Qt::Horizontal, "最佳用时");
-    answerTableModel->setHeaderData(10, Qt::Horizontal, "到期");
-    answerTableModel->setHeaderData(11, Qt::Horizontal, "最近学习");
-}
-
-void MainWindow::init_answerTreeWidget()
-{
-    //ui->answerTreeWidget->setHeaderLabels({"编号","内容"});
-    ui->answerTreeWidget->setDragDropMode(QAbstractItemView::InternalMove);
-    ui->answerTreeWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->answerTreeWidget->headerItem()->setHidden(false);
-    ui->answerTreeWidget->setIndentation(0);
-    ui->answerTreeWidget->setHeaderLabels({"num","content","pool"});
-    //ui->answerTreeWidget->resizeColumnToContents(0);
-    ui->answerTreeWidget->header()->setStretchLastSection(false);
-    ui->answerTreeWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->answerTreeWidget->header()->setSectionResizeMode(1,QHeaderView::Stretch);
-
-    connect(ui->answerTreeWidget,&DragQTreeWidget::signalRowsMoved,
-            this,&MainWindow::answerItemRowsMoved);
-}
-
-void MainWindow::on_answerTreeWidget_itemDoubleClicked(QTreeWidgetItem *item, int column)
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    //int qId = index.siblingAtColumn(0).data().toInt();
-    int qId = currentQId;
-
-    if(item == NULL)
-        return;
-
-    //init
-    int row = item->text(0).toInt() - 1;
-    QJsonArray array = questionSql->read_answerJSON(qId);
-    QJsonObject aObj = array[row].toObject();
-
-    int aId = aObj["id"].toInt();
-    QTime goodTime = ToolFunctions::ms2QTime(questionSql->get_value("constructs",aId,"goodTime").toString());
-    //QString type = aObj["type"].toString();
-    //QString content = aObj["content"].toString();
-    answerEditDialog->setQId(qId);
-    answerEditDialog->resetEdit();
-    answerEditDialog->setGoodTime(goodTime);
-    answerEditDialog->setAId(aId);
-    answerEditDialog->setType(aObj["type"].toString());
-    answerEditDialog->setPool(aObj["pool"].toInt());
-    answerEditDialog->setContent(aObj["content"].toString());
-    answerEditDialog->lineEdit_selectAll();
-    answerEditDialog->setInjectBId(questionSql->get_value("constructs",aId,"inject").toInt());//初始化要显示的注入绑定8/11
-
-    //exec
-    if(answerEditDialog->exec())
-    {
-        //return
-        QString answerType = answerEditDialog->getRetType();
-        QString answerContent = answerEditDialog->getRetContent();
-        QString answerGoodTime = answerEditDialog->getRetGoodTime().toString("mm'm':ss's'");
-        QString answerDisplay = "";
-        int answerAId = answerEditDialog->getRetAId();
-        int answerPool = answerEditDialog->getRetPool();
-        int injectBId = answerEditDialog->getRetInjectBId();
-
-        if(aId != answerAId)
-        {
-            questionSql->inc_construct_bind_count(answerAId);
-            questionSql->del_construct(aId);
-        }
-
-
-        if(answerType == "manual(image)")
-        {
-            item->setIcon(1,QIcon{answerContent});
-            item->setText(1,"");
-        }else if(answerType == "auto(typst)") //添加typst数学公式显示功能 25/10/11
-        {
-            QString imgPath = QString("./data/%1/%2.png").arg(qId).arg(aObj["id"].toInt());
-            QIcon icon{imgPath};
-            item->setIcon(1,icon);
-            item->setText(1,"");
-        }else{
-            item->setText(1,answerContent);
-        }
-        questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
-        questionSql->update_question_state(qId);
-
-        item->setText(2,QString::number(answerPool));
-        //保存
-        aObj["content"] = answerContent;
-        aObj["id"] = answerAId;
-        aObj["type"] = answerType;
-        aObj["pool"] = answerPool;
-        aObj["display"] = answerDisplay;
-        array[row] = aObj;
-        questionSql->write_answerJSON(qId,array);
-        questionSql->set_value("constructs",aId,"inject",injectBId);//保存注入绑定8/11
-
-        questionSql->set_value("constructs",aId,"goodTime",answerGoodTime);
-    }
-}
-
-void MainWindow::on_answerTreeWidget_itemActivated(QTreeWidgetItem *item, int column)
-{
-    QString condString = "";
-    if(item != nullptr)
-    {
-        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        int qId = currentQId;
-        int row = item->text(0).toInt() - 1;
-        QJsonArray answerJson = questionSql->read_answerJSON(qId);
-        int aId = answerJson[row].toObject()["id"].toInt();
-        condString = QString("id = %1").arg(aId);
-    }
-    answerTableModel->setFilter(condString);
-    answerTableModel->select();
-    ui->answerTableView->selectRow(0);
-}
-
-void MainWindow::on_answerTreeWidget_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous)
-{
-    on_answerTreeWidget_itemClicked(current,0);
-}
-
-void MainWindow::on_answerTreeWidget_itemClicked(QTreeWidgetItem *item, int column)
-{
-    if(item != nullptr)
-    {
-        int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        int qId = currentQId;
-
-        int row = item->text(0).toInt() - 1;
-        QJsonArray answerJson = questionSql->read_answerJSON(qId);
-        if(aId != answerJson[row].toObject()["id"].toInt())
-            on_answerTreeWidget_itemActivated(item,column);
-    }
-}
-
-void MainWindow::on_answerTreeWidget_itemChanged(QTreeWidgetItem *item, int column)
-{
-    if(item != nullptr)
-    {
-        int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        int qId = currentQId;
-
-        int row = item->text(0).toInt() - 1;
-        QJsonArray answerJson = questionSql->read_answerJSON(qId);
-        if(aId != answerJson[row].toObject()["id"].toInt())
-            on_answerTreeWidget_itemActivated(item,column);
-    }
-}
-
-void MainWindow::answerItemRowsMoved(int startIndex,int endIndex)
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-
-    //int qId = index.siblingAtColumn(0).data().toInt();
-    int qId = currentQId;
-
-    QJsonArray array = questionSql->read_answerJSON(qId);
-    QJsonObject obj = array[startIndex].toObject();
-    if(endIndex >= array.count()) endIndex--;
-    array.removeAt(startIndex);
-    array.insert(endIndex,obj);
-    questionSql->write_answerJSON(qId,array);
-    load_answer(qId);
-    QTreeWidgetItem *item = ui->answerTreeWidget->findItems(QString::number(endIndex + 1),Qt::MatchExactly,0).first();
-    ui->answerTreeWidget->setCurrentItem(item);
-}
-
-void MainWindow::on_answerAddButton_clicked() //新建答案
-{
-    QModelIndex qIndex = ui->questionTableView->currentIndex();
-    if(!qIndex.isValid())
-        return;
-
-    //int qId = qIndex.siblingAtColumn(0).data().toInt();
-    int qId = currentQId;
-
-    int row = ui->answerTreeWidget->currentIndex().row() + 1;
-    QString selectedText = "";
-    selectedText = ui->questionTextEdit->textCursor().selectedText();
-    if(selectedText == "")
-        selectedText = "请输入答案";
-    QTreeWidgetItem *newItem = new QTreeWidgetItem{{QString::number(row + 1),selectedText}};
-    ui->answerTreeWidget->insertTopLevelItem(row,newItem);
-    int id = questionSql->get_max_id("constructs") + 1;
-    questionSql->add_construct(id);
-    questionSql->inc_construct_bind_count(id);
-    questionSql->set_value<QString>("constructs",id,"goodTime","00m:00s");
-
-    //保存
-    QJsonArray array = questionSql->read_answerJSON(qId);
-    QJsonObject aObj;
-    aObj["content"] = selectedText;
-    aObj["id"] = id;
-    aObj["type"] = "auto";
-    aObj["pool"] = 0;
-    aObj["display"] = "";
-    array.insert(row,aObj);
-    questionSql->write_answerJSON(qId,array);
-    questionSql->update_question_state(qId);
-    load_answer(qId);
-    newItem = ui->answerTreeWidget->findItems(QString::number(row + 1),Qt::MatchExactly,0).first();
-    ui->answerTreeWidget->setCurrentItem(newItem);
-    //on_answerTreeWidget_itemActivated(newItem)
-
-    //修改
-    on_answerTreeWidget_itemDoubleClicked(newItem,0);
-}
-
-void MainWindow::on_answerDelButton_clicked() //删除答案
-{
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    //int qId = index.siblingAtColumn(0).data().toInt();
-    int qId = currentQId;
-
-    QTreeWidgetItem *item = ui->answerTreeWidget->currentItem();
-    if(item == NULL)
-        return;
-
-    int aId = ui->answerTableView->currentIndex().siblingAtColumn(0).data().toInt();
-    int row = item->text(0).toInt() - 1;
-    questionSql->del_construct(aId);
-
-    QJsonArray array = questionSql->read_answerJSON(qId);
-    array.removeAt(row);
-    questionSql->write_answerJSON(qId,array);
-    questionSql->update_question_state(qId);
-
-    load_answer(qId);
-    item = nullptr;
-    if(row >= ui->answerTreeWidget->topLevelItemCount())
-        row--;
-    auto items = ui->answerTreeWidget->findItems(QString::number(row + 1),Qt::MatchExactly,0);
-    if(!items.empty())
-        item = items.first();
-    ui->answerTreeWidget->setCurrentItem(item);
-}
-
-
-//question
-void MainWindow::init_questionTableView()
-{
-    questionTableModel = new QSqlRelationalTableModel(this,questionSql->getDb());
-    questionTableModel->setTable("questions");
-    questionTableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
-    questionTableModel->setRelation(1,QSqlRelation{"categories","id","name"});
-    questionTableModel->select();
-
-    ui->questionTableView->setModel(questionTableModel);
-    ui->questionTableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->questionTableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    ui->questionTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->questionTableView->setSortingEnabled(true);
-    ui->questionTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    set_quesion_tableHeader();
-    ui->questionTableView->installEventFilter(this);
-}
-
-void MainWindow::set_quesion_tableHeader()
-{
-    questionTableModel->setHeaderData(1, Qt::Horizontal, "类别");
-    questionTableModel->setHeaderData(2, Qt::Horizontal, "名称");
-    questionTableModel->setHeaderData(3, Qt::Horizontal, "状态");
-    questionTableModel->setHeaderData(4, Qt::Horizontal, "平均评分");
-    questionTableModel->setHeaderData(5, Qt::Horizontal, "良好用时");
-    questionTableModel->setHeaderData(6, Qt::Horizontal, "平均用时");
-    questionTableModel->setHeaderData(7, Qt::Horizontal, "最佳用时");
-    questionTableModel->setHeaderData(8, Qt::Horizontal, "到期");
-    questionTableModel->setHeaderData(9, Qt::Horizontal, "最近学习");
-}
-
-int MainWindow::select_question_by_id(int id) //选取问题，成功返回1，失败返回0
-{
-    auto indexList = questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,id);
-    if(id < 0 || indexList.isEmpty())
-        return 0;
-    QModelIndex index = *indexList.begin();
-    ui->questionTableView->setCurrentIndex(index);
-    ui->questionTableView->scrollTo(index, QAbstractItemView::EnsureVisible);
-    on_questionTableView_activated(index);
-    return 1;
-}
-
-void MainWindow::on_questionDirOpenButton_clicked()
-{
-    if(ui->questionTableView->currentIndex().isValid())
-    {
-        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        int qId = currentQId;
-
-        QString path = QString("%1/data/%2/question.html").arg(QDir::currentPath()).arg(qId);
-        QStringList args;
-        args << "/select," << QDir::toNativeSeparators(path);
-        QProcess process;
-        process.startDetached("explorer",args);
-    }
-}
-
-void MainWindow::on_questionTableView_clicked(const QModelIndex &index)
-{
-    on_questionTableView_activated(index);
-}
-
-void MainWindow::on_questionTableView_pressed(const QModelIndex &index)
-{
-    //on_questionTableView_activated(index);
-}
-
-void MainWindow::on_questionTableView_entered(const QModelIndex &index)
-{
-    if(QGuiApplication::mouseButtons() == Qt::NoButton)
-        return;
-    if(QGuiApplication::mouseButtons() == Qt::RightButton)
-        return;
-    on_questionTableView_activated(index);
-}
-
-void MainWindow::on_questionTableView_activated(const QModelIndex &index) //题目选取功能 2024/8/11
-{
-    // 先保存当前正在编辑的内容
-    saveCurrentQuestionContent();
-    
-    setCurrentQId(index.siblingAtColumn(0).data().toInt());
-
-    //load question.html
-    QString questionHTML = questionSql->read_questionHTML(currentQId);
-    is_questionTextEdit_editable = false;
-    ui->questionTextEdit->setHtml(questionHTML);
-    is_questionTextEdit_editable = true;
-    ui->questionTableView->setCurrentIndex(index);
-    load_answer(currentQId);
-}
-
-void MainWindow::on_questionAddButton_clicked()
-{
-    int id = questionSql->get_max_id("questions") + 1;
-    QModelIndex index =ui->categoryTreeView->currentIndex();
-    int categoryId = index.siblingAtColumn(1).data().toInt();
-    QString name = ui->lineEdit->text();
-    questionSql->add_question(id,categoryId,name);
-
-    //reload_categoryTreeView();
-    update_count_categoryTreeView(); //优化添加 25/10/25
-    //ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-    //on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
-
-    //select new item
-    int row = 0;
-    for(;row < questionTableModel->rowCount();row++)
-    {
-        int _id = questionTableModel->index(row,0).data().toInt();
-        if(id == _id)
-            break;
-    }
-    ui->questionTableView->selectRow(row);
-    ui->questionTableView->scrollTo(ui->questionTableView->currentIndex());
-    on_questionTableView_clicked(ui->questionTableView->currentIndex());
-}
-
-void MainWindow::on_questionDelButton_clicked()
-{
-    int ret = QMessageBox::warning(this, "删除确认",
-                                   "即将删除该题目及其文件夹中所有内容\n"
-                                   "确定要删除吗?",
-                                   QMessageBox::Yes | QMessageBox::No);
-    if(ret == QMessageBox::No)
-        return;
-    QModelIndex index = ui->questionTableView->currentIndex();
-    int id = index.siblingAtColumn(0).data().toInt();
-    ui->questionTableView->clearSelection();
-    ui->questionTextEdit->setText("");
-    questionSql->del_question(id);
-
-    int row = ui->questionTableView->currentIndex().row();
-    int categoryId =ui->categoryTreeView->currentIndex().siblingAtColumn(1).data().toInt();
-    //reload_categoryTreeView();
-    //ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-    //on_categoryTreeView_clicked(categoryItemLists[categoryId][0]->index());
-    update_count_categoryTreeView(); //优化题目删除 25/10/25
-
-    //reset table view
-    if(questionTableModel->rowCount() > 0)
-    {
-        if(row >= questionTableModel->rowCount())
-            row = questionTableModel->rowCount() - 1;
-        ui->questionTableView->selectRow(row);
-        on_questionTableView_clicked(ui->questionTableView->currentIndex());
-    }
-}
-
-void MainWindow::on_questionMoveButton_clicked()
-{
-    QModelIndexList indexes = ui->questionTableView->selectionModel()->selectedIndexes();
-
-    //get new category id
-    questionMoveDialog->setRetId(0);
-    questionMoveDialog->setCurrentIndex(ui->categoryTreeView->currentIndex());
-    questionMoveDialog->exec();
-    int newCategoryId = questionMoveDialog->getRetId();
-    if(newCategoryId == 0)
-        return;
-    int id = 0;
-
-    for(auto index : indexes)
-    {
-        id = index.siblingAtColumn(0).data().toInt();
-        questionSql->set_value("questions",id,"categoryId",newCategoryId);
-    }
-
-    //reload_categoryTreeView();
-    update_count_categoryTreeView(); //优化题目移动效果 25/10/25
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[newCategoryId][0]->index());
-    on_categoryTreeView_clicked(categoryItemLists[newCategoryId][0]->index());
-
-    QAbstractItemModel *model = ui->questionTableView->model();
-    QModelIndex newIndex;
-    for(int i = 0;i < model->rowCount();i++)
-    {
-        newIndex = model->index(i,0);
-        if(newIndex.data().toInt() == id)
-            break;
-    }
-    ui->questionTableView->setCurrentIndex(newIndex);
-    on_questionTableView_activated(newIndex);
-}
-
-void MainWindow::on_questionTextEdit_textChanged()
-{
-    if(!is_questionTextEdit_editable)
-        return;
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    int qId = currentQId;
-    QString questionHTML,questionMd;
-    questionHTML = ui->questionTextEdit->toHtml();
-    questionSql->write_questionHTML(qId,questionHTML);
-
-    questionMd = ui->questionTextEdit->toMarkdown();
-    questionSql->write_questionMd(qId,questionMd);
-}
-
-void MainWindow::on_questionRenameButton_clicked()
-{
-    // 先保存当前编辑的内容
-    saveCurrentQuestionContent();
-    
-    QModelIndex index = ui->questionTableView->currentIndex();
-
-    questionRenameDialog.setText(index.siblingAtColumn(2).data().toString());
-    if(questionRenameDialog.exec())
-    {
-        questionTableModel->setData(index.siblingAtColumn(2),questionRenameDialog.getText());
-        questionTableModel->submitAll();
-    }
-}
-
-//learn
-void MainWindow::on_itemLearnButton_clicked()//单项学习
-{
-    // 先保存当前编辑的内容
-    saveCurrentQuestionContent();
-    
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if(!index.isValid())
-        return;
-    int id = index.siblingAtColumn(0).data().toInt();
-
-    learningDialog->clear_question_display();
-    learningDialog->set_items_table(QString("questions.id = %1").arg(id));
-    learningDialog->setOnlyToLearn(false);
-    learningDialog->exec();
-
-    //update categoryTreeView
-    int categoryId =ui->categoryTreeView->currentIndex().siblingAtColumn(1).data().toInt();
-    reload_categoryTreeView();
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-
-    questionTableModel->select();
-    if(learningDialog->getLastId() != -1)
-    {
-        select_question_by_id(learningDialog->getLastId());
-    }
-}
-
-void MainWindow::on_speedLearnButton_clicked()// 标签学习（不重复）
-{
-    // 先保存当前编辑的内容
-    saveCurrentQuestionContent();
-    
-    learningDialog->setOnlyToLearn(false);
-    learningDialog->setIsSpeedLearn(true);
-    learningDialog->set_items_table(questionTableModel->filter());
-    learningDialog->exec();
-    learningDialog->setIsSpeedLearn(false);
-
-    //update categoryTreeView
-    QModelIndex index = ui->categoryTreeView->currentIndex();
-    int categoryId = index.siblingAtColumn(1).data().toInt();
-    reload_categoryTreeView();
-    if(!index.isValid())
-        return;
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-    questionTableModel->select();
-    if(learningDialog->getLastId() != -1)
-    {
-        select_question_by_id(learningDialog->getLastId());
-    }
-}
-
-void MainWindow::on_categoryToLearnButton_clicked()//表项学习（仅待学）
-{
-    // 先保存当前编辑的内容
-    saveCurrentQuestionContent();
-    
-    learningDialog->clear_question_display();
-    learningDialog->set_items_table(questionSql->get_toLearn_condString(questionTableModel->filter()));
-    learningDialog->setOnlyToLearn(true);
-    learningDialog->exec();
-
-    //update categoryTreeView
-    QModelIndex index = ui->categoryTreeView->currentIndex();
-    int categoryId = index.siblingAtColumn(1).data().toInt();
-    update_count_categoryTreeView();  //questions学习后不会自动重置列表展开 9/1
-    //reload_categoryTreeView();
-    if(!index.isValid())
-        return;
-    //ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-
-    questionTableModel->select();
-
-    if(learningDialog->getLastId() != -1)
-    {
-        set_and_jump_to_qId(learningDialog->getLastId());
-        //select_question_by_id(learningDialog->getLastId());
-    }
-}
-
-void MainWindow::on_categoryLearnButton_clicked() //表项学习（全部）
-{
-    // 先保存当前编辑的内容
-    saveCurrentQuestionContent();
-    
-    learningDialog->set_items_table(questionTableModel->filter());
-    learningDialog->setOnlyToLearn(false);
-    learningDialog->exec();
-
-    //update categoryTreeView
-    QModelIndex index = ui->categoryTreeView->currentIndex();
-    int categoryId = index.siblingAtColumn(1).data().toInt();
-    reload_categoryTreeView();
-    if(!index.isValid())
-        return;
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[categoryId][0]->index());
-
-    questionTableModel->select();
-    if(learningDialog->getLastId() != -1)
-    {
-        select_question_by_id(learningDialog->getLastId());
-    }
-}
-
-//html edit
-void MainWindow::on_htmlImgAddButton_clicked() //插入图片功能 2024/8/7
-{
-    if(ui->questionTableView->currentIndex().isValid())
-    {
-        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        int qId = currentQId;
-
-        QString dirPath = QString("%1/data/%2/").arg(QDir::currentPath()).arg(qId);
-        QString filePath = QFileDialog::getOpenFileName(this,
-                                                        "打开图片", dirPath, tr("Image Files (*.jpg *.png *.gif)"));
-        if(filePath.isNull() || filePath.isEmpty() || filePath == "")
-            return;
-        QDir dir("./");
-        QTextCursor cursor = ui->questionTextEdit->textCursor();
-        QTextImageFormat imageFormat;
-        imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
-        imageFormat.setName(dir.relativeFilePath(filePath));
-        if(cursor.currentTable() != nullptr) //优化表格插入显示25/10/21
-        {
-            QTextBlockFormat blockFormat = cursor.blockFormat();
-            blockFormat.setAlignment(Qt::AlignCenter);
-            cursor.setBlockFormat(blockFormat);
-            cursor.insertText("\u200B");
-        }
-        cursor.insertImage(imageFormat);
-    }
-}
-
-void MainWindow::on_htmlTableAddButton_clicked()
-{
-    htmlTableAddDialog->setRetRow(0);
-    htmlTableAddDialog->setRetColumn(0);
-    htmlTableAddDialog->exec();
-    QTextTableFormat tf ;
-    tf.setBorder(1);
-    tf.setBorderStyle(QTextFrameFormat::BorderStyle_Solid);
-    //tf.setBorderBrush(QBrush(Qt::black))    ;
-    tf.setCellPadding(5);
-    tf.setBorderCollapse(false);
-    //tf.setAlignment(Qt::AlignLeft);
-    int x = ui->questionTextEdit->cursorRect(ui->questionTextEdit->textCursor()).x();
-    tf.setLeftMargin(x);
-    int row = htmlTableAddDialog->getRetRow();
-    int column = htmlTableAddDialog->getRetColumn();
-    ui->questionTextEdit->textCursor().insertTable(row,column,tf);
-}
-
-int MainWindow::autoNumberNext(QTextCursor &cursor) //自动编号下一填空9/29
-{
-    int number = ToolFunctions::get_cursor_number(&cursor);
-    bool flg = true;
-    if(number != -1)//找到下一个，第一个下划线数字文本，并修改为number+1
-    {
-        flg = false;
-        flg = !cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
-        flg = !cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
-        while(!cursor.charFormat().fontUnderline())
-        {
-            if(!cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1))
-            {
-                flg = true;
-                break;
-            }
-        }
-        if(!flg)
-        {
-            int nextNumber = ToolFunctions::get_cursor_number(&cursor);
-            if(nextNumber != -1)
-            {
-                QTextCharFormat format = cursor.charFormat();
-                format.setFontUnderline(true);
-                cursor.removeSelectedText();
-                cursor.setCharFormat(format);
-                cursor.insertText("   "+QString::number(number+1)+"   ");
-                ui->questionTextEdit->setTextCursor(cursor);
-            }
-        }
-    }
-    if(flg)
-        return -1;
-    else
-        return number + 1;
-}
-
-void MainWindow::on_autoNumberButton_clicked() //自动编号下一填空9/9
-{
-    QTextCursor cursor = ui->questionTextEdit->textCursor();
-    autoNumberNext(cursor);
-}
-
-void MainWindow::on_autoNumberAllButton_clicked() //自动编号后续所有填空9/29
-{
-    QTextCursor cursor = ui->questionTextEdit->textCursor();
-    while(autoNumberNext(cursor) != -1)
-    {
-        cursor = ui->questionTextEdit->textCursor();
-        autoNumberNext(cursor);
-    }
-}
-
-//category
-
-void MainWindow::reload_categoryTreeView()
-{
-    categoryItemLists.clear();
-    categoryItemModel->clear();
-    categoryItemModel->setHorizontalHeaderLabels({"名称","id","待学习","总数"});
-    categoryItemLists[0].append(categoryItemModel->invisibleRootItem());
-    get_categoryItemTree(categoryItemLists[0][0],0);
-    ui->categoryTreeView->setModel(categoryItemModel);
-    ui->categoryTreeView->header()->setStretchLastSection(false);
-    ui->categoryTreeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->categoryTreeView->header()->setSectionResizeMode(0,QHeaderView::Stretch);
-    ui->categoryTreeView->hideColumn(1);
-}
-
-void MainWindow::update_count_categoryTreeView()
-{
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    query.prepare("SELECT * FROM categories");
-    query.exec();
-    while(query.next())
-    {
-        int id = query.value(0).toInt();
-        if(id == 0)
-            continue;
-        int qCount = questionSql->count_total_questions(id);
-        int qtoLearnCount = questionSql->count_total_questions_to_learn(id);
-        categoryItemLists[id][2]->setText(QString::number(qtoLearnCount));
-        categoryItemLists[id][3]->setText(QString::number(qCount));
-    }
-}
-
-void MainWindow::get_categoryItemTree(QStandardItem* parent,int parentId)
-{
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    query.prepare("SELECT * FROM categories WHERE parentId = ? ORDER BY name");
-    query.bindValue(0,parentId);
-    query.exec();
-    while(query.next())
-    {
-        int id = query.value(0).toInt();
-        QString name = query.value(1).toString();
-        int qCount = questionSql->count_total_questions(id);
-        int qtoLearnCount = questionSql->count_total_questions_to_learn(id);
-        categoryItemLists[id].append(new QStandardItem(name));
-        categoryItemLists[id].append(new QStandardItem(QString::number(id)));
-        categoryItemLists[id].append(new QStandardItem(QString::number(qtoLearnCount)));
-        categoryItemLists[id].append(new QStandardItem(QString::number(qCount)));
-        parent->appendRow(categoryItemLists[id]);
-        get_categoryItemTree(categoryItemLists[id][0],id);
-    }
-}
-
-void MainWindow::on_categoryAddButton_clicked()
-{
-    int id = questionSql->get_max_id("categories") + 1;
-    QModelIndex index =ui->categoryTreeView->currentIndex();
-    QString name = ui->lineEdit->text();
-    int parentId = index.siblingAtColumn(1).data().toInt();
-    if(parentId == 1)
-        parentId = 0;
-
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    query.prepare("INSERT INTO categories VALUES(?,?,?)");
-    query.bindValue(0,id);
-    query.bindValue(1,name);
-    query.bindValue(2,parentId);
-    query.exec();
-    reload_categoryTreeView();
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
-    ui->categoryTreeView->expand(categoryItemLists[parentId][0]->index());
-}
-
-void MainWindow::on_categoryDelButton_clicked()
-{
-    int ret = QMessageBox::warning(this, "删除确认",
-                                   "即将删除该分类及其下所有子分类\n"
-                                   "确定要删除吗?",
-                                   QMessageBox::Yes | QMessageBox::No);
-    if(ret == QMessageBox::No)
-        return;
-    QModelIndex index =ui->categoryTreeView->currentIndex();
-    int id = index.siblingAtColumn(1).data().toInt();
-    if(id == 1)
-        return;
-    questionSql->del_category(id);
-    QStandardItem *parent = categoryItemLists[id][0]->parent();
-    if(!parent)
-        parent = categoryItemLists[0][0];
-    int row = categoryItemLists[id][0]->row();
-    parent->removeRow(row);
-
-    int parentId = parent->index().siblingAtColumn(1).data().toInt();
-    if(parentId == 0)
-        parentId = 1;
-    reload_categoryTreeView();
-    ui->categoryTreeView->setCurrentIndex(categoryItemLists[parentId][0]->index());
-    on_categoryTreeView_clicked(categoryItemLists[parentId][0]->index());
-}
-
-void MainWindow::on_categoryTreeView_clicked(const QModelIndex &index)
-{
-    // 先保存当前正在编辑的内容
-    saveCurrentQuestionContent();
-    
-    if(currentDate != QDate::currentDate())
-    {
-        update_count_categoryTreeView();
-        currentDate = QDate::currentDate();
-    }
-    int categoryId = index.siblingAtColumn(1).data().toInt();
-    QString condString = questionSql->get_category_condString(categoryId);
-    questionTableModel->setFilter(condString);
-    questionTableModel->select();
-    currentSection = 0;
-}
-
-void MainWindow::on_categoryEditButton_clicked()
-{
-    QModelIndex index = ui->categoryTreeView->currentIndex();
-    ui->categoryTreeView->edit(index);
-}
-
-void MainWindow::category_item_change_handler(QStandardItem *item)
-{
-    if(item->column() == 0)
-    {
-        QString newName = item->index().siblingAtColumn(0).data().toString();
-        int id = item->index().siblingAtColumn(1).data().toInt();
-        questionSql->set_value("categories",id,"name",newName);
-    }
-    on_categoryTreeView_clicked(item->index());
-}
-
-//other
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == ui->questionTableView) {
-        if (event->type() == QEvent::KeyPress) {
-            QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
-            if(keyEvent->key() == Qt::Key_Up)
-            {
-                QModelIndex index = ui->questionTableView->currentIndex();
-                if(index.row() > 0)
-                {
-                    ui->questionTableView->selectRow(index.row() - 1);
-                    ui->questionTableView->activated(ui->questionTableView->currentIndex());
-                }
-            }else if(keyEvent->key() == Qt::Key_Down)
-            {
-                QModelIndex index = ui->questionTableView->currentIndex();
-                if(index.row() < ui->questionTableView->model()->rowCount())
-                {
-                    ui->questionTableView->selectRow(index.row() + 1);
-                    ui->questionTableView->activated(ui->questionTableView->currentIndex());
-                }
-            }
+    if(watched == ui->questionTextEdit->viewport() && event->type() == QEvent::MouseButtonDblClick)
+        return editTypstImageAt(static_cast<QMouseEvent *>(event)->position().toPoint());
+    if(watched == ui->questionTableView)
+        return handleQuestionTableKeyPress(event);
+    if(event->type() == QEvent::ContextMenu) // ctrl+右键＝弹出题目预览（吞掉菜单，见 previewQuestionAt）
+    {
+        QTreeView *view = nullptr;
+        if(watched == ui->phenTreeView || watched == ui->phenTreeView->viewport())
+            view = ui->phenTreeView;
+        else if(watched == ui->phenObjTreeView || watched == ui->phenObjTreeView->viewport())
+            view = ui->phenObjTreeView;
+        const auto *menuEvent = static_cast<QContextMenuEvent *>(event);
+        if(view && (menuEvent->modifiers() & Qt::ControlModifier)
+           && previewQuestionAt(view, menuEvent->globalPos()))
             return true;
-        } else {
-            return false;
-        }
-    } else {
-        // pass the event on to the parent class
-        return QMainWindow::eventFilter(watched, event);
     }
+    if(watched == ui->phenTreeView || watched == ui->phenObjTreeView)
+    {
+        if(event->type() == QEvent::FocusIn)
+            lastFocusedPhenView = static_cast<QTreeView *>(watched); // 共用的增删改按钮以最后聚焦的知识视图为准
+        return handlePhenViewKeyPress(static_cast<QTreeView *>(watched), event);
+    }
+    if(watched == ui->phenTreeView->viewport() || watched == ui->phenObjTreeView->viewport())
+        return handlePhenViewCtrlClick(watched == ui->phenTreeView->viewport() ? ui->phenTreeView : ui->phenObjTreeView, event);
+    return QMainWindow::eventFilter(watched, event); // 其余事件交回父类处理
 }
 
-void MainWindow::on_setGoodTimeButton_clicked()
+bool MainWindow::handleQuestionTableKeyPress(QEvent *event)
 {
-    QModelIndexList indexes = ui->questionTableView->selectionModel()->selectedIndexes();
-    if(indexes.count() <= 0)
+    if(event->type() != QEvent::KeyPress)
+        return false;
+    QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+    if(keyEvent->key() == Qt::Key_Up)
+        moveQuestionSelectionBy(-1);
+    else if(keyEvent->key() == Qt::Key_Down)
+        moveQuestionSelectionBy(1);
+    return true;
+}
+
+// 严格边界：末行再按 Down / 首行再按 Up 不动作，避免 selectRow 越界产生无效行
+void MainWindow::moveQuestionSelectionBy(int delta)
+{
+    const QModelIndex index = ui->questionTableView->currentIndex();
+    if(!index.isValid())
         return;
-    int firstId = indexes.begin()->siblingAtColumn(0).data().toInt();
-    int id = firstId;
-    QTime goodTime = QTime::fromString(questionSql->get_value("questions",id,"goodTime").toString(),"mm'm':ss's'");
-    setTimeDialog->initTime(goodTime);
-    setTimeDialog->exec();
-    QTime time = setTimeDialog->getTime();
-    if(!time.isValid())
+    const int targetRow = index.row() + delta;
+    if(targetRow < 0 || targetRow >= ui->questionTableView->model()->rowCount())
         return;
+    ui->questionTableView->selectRow(targetRow);
+    const QModelIndex next = ui->questionTableView->currentIndex();
+    if(next.isValid())
+        on_questionTableView_activated(next);
+}
 
-    for(auto index : indexes)
+// 两视图共用：让 QTreeView 先原生处理按键，处理完后当前行若变化则触发与点击该行相同的载题行为
+bool MainWindow::handlePhenViewKeyPress(QTreeView *view, QEvent *event)
+{
+    if(event->type() == QEvent::KeyPress)
     {
-        id = index.siblingAtColumn(0).data().toInt();
-        QJsonArray answerArray = questionSql->read_answerJSON(id);
-        time = QTime::fromMSecsSinceStartOfDay(time.msecsSinceStartOfDay()/answerArray.count()/1000*1000);
-        for(auto a : answerArray)
-        {
-            int aId = a.toObject().value("id").toInt();
-            questionSql->set_value("constructs",aId,"goodTime",time.toString("mm'm':ss's'"));
-        }
-        time =  QTime::fromMSecsSinceStartOfDay(time.msecsSinceStartOfDay()*answerArray.count());
-        questionSql->set_value("questions",id,"goodTime",time.toString("mm'm':ss's'"));
+        const QModelIndex before = view->currentIndex();
+        QTimer::singleShot(0, this, [this, view, before]() {
+            const QModelIndex after = view->currentIndex();
+            if(after.isValid() && after != before)
+                phenRowActivated(view, after);
+        });
     }
-
-    questionTableModel->select();
-    QModelIndex newIndex = *questionTableModel->match(questionTableModel->index(0,0),Qt::DisplayRole,firstId).begin();
-    ui->questionTableView->setCurrentIndex(newIndex);
-    on_questionTableView_activated(newIndex);
+    return false;
 }
-
-//自动绑定上一答案为注入，一般适用于文章背诵场景8/11
-void MainWindow::on_questionAutoBindInjectButton_clicked()
-{
-    QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
-    int lastCId,nowCId;
-    for(int i = 1;i < answerArray.count();i++)
-    {
-        lastCId = answerArray[i-1].toObject()["id"].toInt();
-        nowCId = answerArray[i].toObject()["id"].toInt();
-        questionSql->set_value("constructs",nowCId,"inject",lastCId);
-    }
-}
-
-//按每汉字0.8s自动设置良好时间8/11
-void MainWindow::on_questionAutoGoodTimeButton_clicked()
-{
-    QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
-    QRegularExpression regex1("[a-z0-9]");
-    QRegularExpression regex2(R"([<=>\-\+,\|()\{\}\[\]"/⟂∥±∪∩⟨⟩⋅∈∉×÷⇌≈⇒→←])");
-    for(int i = 0;i < answerArray.count();i++)
-    {
-        int cId = answerArray[i].toObject()["id"].toInt();
-        QString answerContent = answerArray[i].toObject()["content"].toString();
-        double goodTimeSec = 3.5; //添加3.5s前置时间一般用于读题
-        QTime answerGoodTime;
-        goodTimeSec += 0.6*(answerContent.count(regex1));
-        goodTimeSec += 1.4*(answerContent.count(regex2));
-        goodTimeSec += 0.8*(answerContent.count() - answerContent.count(regex1) - answerContent.count(regex2));
-        answerGoodTime = QTime::fromMSecsSinceStartOfDay(qCeil(goodTimeSec)*1000); //向上取整8/14
-        questionSql->set_value("constructs",cId,"goodTime",answerGoodTime.toString("mm'm':ss's'"));
-    }
-    questionSql->update_question_state(currentQId);
-}
-
-//重置题目学习数据8/11
-void MainWindow::on_questionResetButton_clicked()
-{
-    QJsonArray answerArray = questionSql->read_answerJSON(currentQId);
-    for(int i = 0;i < answerArray.count();i++)
-    {
-        int cId = answerArray[i].toObject()["id"].toInt();
-        questionSql->resetFSRSData(cId);
-    }
-}
-
-//切换选定部分下划线(快捷键F6) 9/28
-void MainWindow::on_underlineToggleButton_clicked()
-{
-    QTextCursor cursor = ui->questionTextEdit->textCursor();
-    int originalPosition = cursor.position();
-
-    if(!cursor.hasSelection()) //若无选择
-        ToolFunctions::select_current_underline_text(&cursor);
-
-    if (cursor.hasSelection()) //若有选择
-    {
-        QTextCharFormat format;
-        if(cursor.position() < cursor.selectionEnd())
-        {
-            cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor);
-            format = cursor.charFormat();
-            cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor);
-        }else
-        {
-            format = cursor.charFormat();
-        }
-        format.setFontUnderline(!format.underlineStyle());
-        cursor.mergeCharFormat(format);
-    }
-}
-
-//添加描述条目 25/10/24
-void MainWindow::on_descAddButton_clicked()
-{
-    descAddDialog->reset();
-    QTextCursor cursor = ui->questionTextEdit->textCursor();
-    descAddDialog->setThemeBeing(cursor.block().text().split("⇒")[0]);
-    if(descAddDialog->exec())
-    {
-        int originalPosition= ui->questionTextEdit->textCursor().position();
-        auto block = cursor.block();
-        auto list = block.textList();
-        QTextListFormat format;
-        if(descAddDialog->getRetType() == "无序列表")
-        {
-            if(list == nullptr) //不是list
-            {
-                format.setStyle(QTextListFormat::ListDisc);
-            }else //是list
-            {
-                format = list->format();
-                format.setIndent(format.indent()+1);
-                format.setStyle(QTextListFormat::ListDisc);
-            }
-
-            auto nextList = block.next().textList();
-            while(nextList != nullptr && nextList->format().indent() >= format.indent())
-            {
-                block = block.next();
-                nextList = block.next().textList();
-            }
-            cursor = QTextCursor(block);
-            cursor.movePosition(QTextCursor::EndOfBlock);
-            auto bf = QTextBlockFormat();
-            bf.setTopMargin(3);
-            bf.setBottomMargin(3);
-            cursor.insertBlock(bf,QTextCharFormat());
-            cursor.createList(format);
-            if(block.textList() != nullptr &&
-                block.textList()->format().style() != QTextListFormat::ListDecimal &&
-                block.textList()->format().indent() == cursor.currentList()->format().indent())
-            {
-                block.textList()->add(cursor.block());
-            }
-            cursor.insertText(descAddDialog->getRetContent());
-        }else if(descAddDialog->getRetType() == "有序列表")
-        {
-            QTextBlock lastDecimalblock;
-            QTextBlock firstBlock = block;
-            format.setStyle(QTextListFormat::ListDecimal);
-            if(list == nullptr) //不是list
-            {
-                format.setIndent(1);
-            }else //是list
-            {
-                format.setIndent(list->format().indent()+1);
-            }
-            auto nextList = block.next().textList();
-            while(nextList != nullptr &&
-                   nextList->format().style() == QTextListFormat::ListDecimal &&
-                   nextList->format().indent() == format.indent())
-            {
-                block = block.next();
-                lastDecimalblock = block;
-                nextList = block.next().textList();
-                while(nextList != nullptr &&
-                       nextList->format().indent() > format.indent())
-                {
-                    block = block.next();
-                    nextList = block.next().textList();
-                }
-            }
-
-            cursor = QTextCursor(block);
-            cursor.movePosition(QTextCursor::EndOfBlock);
-            auto bf = QTextBlockFormat();
-            bf.setTopMargin(3);
-            bf.setBottomMargin(3);
-            cursor.insertBlock(bf,QTextCharFormat());
-            cursor.createList(format);
-            if(lastDecimalblock.textList() != nullptr &&
-                lastDecimalblock.textList()->format().style() == QTextListFormat::ListDecimal &&
-                lastDecimalblock.textList()->format().indent() == cursor.currentList()->format().indent())
-            {
-                lastDecimalblock.textList()->add(cursor.block());
-            }
-            cursor.insertText(descAddDialog->getRetContent());
-        }else if(descAddDialog->getRetType() == "标题")
-        {
-            QTextBlockFormat bf;
-            bf.setHeadingLevel(block.blockFormat().headingLevel()+1);
-
-            while(block.next().isValid() &&
-                   (block.next().blockFormat().headingLevel() == 0 ||
-                    block.next().blockFormat().headingLevel() >= bf.headingLevel()))
-            {
-                block = block.next();
-            }
-
-            cursor = QTextCursor(block);
-            cursor.movePosition(QTextCursor::EndOfBlock);
-            cursor.insertBlock(bf,QTextCharFormat());
-            cursor.insertText(descAddDialog->getRetContent());
-            ui->questionTextEdit->setHtml(ui->questionTextEdit->toHtml());
-        }
-
-        cursor.setPosition(originalPosition);
-        ui->questionTextEdit->setTextCursor(cursor);
-    }
-}
-
-void MainWindow::on_questionSearchButton_clicked()
-{
-    // 先保存当前编辑的内容
-    saveCurrentQuestionContent();
-    
-    QString condString = QString("questions.name LIKE '\%%1\%'").arg(ui->lineEdit->text());
-    questionTableModel->setFilter(condString);
-    questionTableModel->select();
-    Qt::MatchFlags type[3] = {Qt::MatchExactly,Qt::MatchStartsWith,Qt::MatchContains};
-    QModelIndexList indexList;
-    for(int i = 0;i < 3;i++)
-    {
-        indexList = questionTableModel->match(questionTableModel->index(0,2),Qt::DisplayRole,ui->lineEdit->text(),1,type[i]);
-        if(!indexList.isEmpty()){
-            QModelIndex index = *indexList.begin();
-            ui->questionTableView->setCurrentIndex(index);
-            ui->questionTableView->scrollTo(index, QAbstractItemView::EnsureVisible);
-            on_questionTableView_activated(index);
-            break;
-        }
-    }
-}
-
-//添加id跳转 25/9/29
-void MainWindow::on_idLineEdit_returnPressed()
-{
-    // 先保存当前编辑的内容
-    saveCurrentQuestionContent();
-    
-    int qId = ui->idLineEdit->text().toInt();
-    QSqlQuery query(QSqlDatabase::database("connection1"));
-    QString queryString = QString("SELECT categoryId FROM questions WHERE id = %1").arg(qId);
-    query.exec(queryString);
-    if(query.next())
-    {
-        int cId  = query.value(0).toInt();
-        ui->categoryTreeView->setCurrentIndex(categoryItemLists[cId][0]->index());
-        on_categoryTreeView_clicked(categoryItemLists[cId][0]->index());
-        select_question_by_id(qId);
-    }
-}
-
-void MainWindow::saveCurrentQuestionContent()
-{
-    if (!is_questionTextEdit_editable)
-        return;
-    QModelIndex index = ui->questionTableView->currentIndex();
-    if (!index.isValid())
-        return;
-    int qId = currentQId;
-    QString questionHTML, questionMd;
-    questionHTML = ui->questionTextEdit->toHtml();
-    questionSql->write_questionHTML(qId, questionHTML);
-
-    questionMd = ui->questionTextEdit->toMarkdown();
-    questionSql->write_questionMd(qId, questionMd);
-}
-
-void MainWindow::set_and_jump_to_qId(int qId)
-{
-    auto qIdString = QString::number(qId);
-    ui->idLineEdit->setText(qIdString);
-    on_idLineEdit_returnPressed();
-}
-
-//添加题目搜索 25/9/29
-void MainWindow::on_lineEdit_returnPressed()
-{
-    on_questionSearchButton_clicked();
-}
-
-//添加题目历史跳转功能 25/9/29
-void MainWindow::setCurrentQId(int qId)
-{
-    currentQId = qId;
-    ui->idLineEdit->setText(QString::number(qId));
-    if(qIdHistoryPos == 0 ||
-        qId != qIdHistoryQueue[qIdHistoryPos - 1])
-    {
-        qIdHistoryQueue.insert(qIdHistoryPos,qId);
-        qIdHistoryPos = qIdHistoryPos >= 100? 100 : qIdHistoryPos + 1;
-        if(qIdHistoryQueue.size() > 100)
-            qIdHistoryQueue.dequeue();
-    }
-}
-
-//添加题目历史跳转功能 向前 25/9/29
-void MainWindow::on_prevQButton_clicked()
-{
-    if(qIdHistoryPos == 0)
-        return;
-    qIdHistoryPos = qIdHistoryPos <= 1? 1 : qIdHistoryPos - 1;
-    QString prevQId = QString::number(qIdHistoryQueue[qIdHistoryPos-1]);
-    ui->idLineEdit->setText(prevQId);
-    on_idLineEdit_returnPressed();
-}
-
-//添加题目历史跳转功能 向后 25/9/29
-void MainWindow::on_nextQButton_clicked()
-{
-    if(qIdHistoryPos == 0)
-        return;
-    qIdHistoryPos = qIdHistoryPos >= qIdHistoryQueue.size()? qIdHistoryQueue.size() : qIdHistoryPos + 1;
-    QString nextQId = QString::number(qIdHistoryQueue[qIdHistoryPos-1]);
-    ui->idLineEdit->setText(nextQId);
-    on_idLineEdit_returnPressed();
-}
-
-//添加插入typst数学公式功能 25/10/1
-void MainWindow::on_htmlTypstAddButton_clicked()
-{
-    htmlTypstAddDialog->reset();
-    htmlTypstAddDialog->setQId(currentQId);
-    htmlTypstAddDialog->setText(ui->questionTextEdit->textCursor().selectedText());
-    htmlTypstAddDialog->exec();
-    QString filePath  = htmlTypstAddDialog->getRetPath();
-    if(ui->questionTableView->currentIndex().isValid() && !filePath.isEmpty())
-    {
-        QDir dir("./");
-        QTextCursor cursor = ui->questionTextEdit->textCursor();
-        QTextImageFormat imageFormat;
-        imageFormat.setName(dir.relativeFilePath(filePath));
-        imageFormat.setToolTip(QFile{filePath.replace(".png$",".typstmath")}.readAll());
-        int height = QImage{imageFormat.name()}.height();
-
-        if(cursor.currentTable() != nullptr) //优化表格插入显示25/10/2
-        {
-            QTextBlockFormat blockFormat = cursor.blockFormat();
-            blockFormat.setAlignment(Qt::AlignCenter);
-            cursor.setBlockFormat(blockFormat);
-            imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/21
-            cursor.insertText("\u200B");
-        }else if(height <= 16)
-        {
-            imageFormat.setVerticalAlignment(QTextCharFormat::AlignBaseline);
-        }else
-        {
-            imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); //居中对齐插入图片25/10/2
-        }
-
-        cursor.insertImage(imageFormat);
-    }
-    htmlTypstAddDialog->reset();
-}
-
-void MainWindow::on_answerGenAddButton_clicked()
-{
-    auto cursor = ui->questionTextEdit->textCursor();
-    QTextCharFormat format = cursor.charFormat();
-    format.setFontFamilies({"Tahoma"});
-    format.setFontUnderline(true);
-    format.setFontItalic(false);
-    if(!cursor.selectedText().isEmpty())
-    {
-        on_answerAddButton_clicked();
-        cursor = ui->questionTextEdit->textCursor();
-        cursor.removeSelectedText();
-    }
-    cursor.insertText("      ",format);
-    cursor.insertText("\u200B",{});
-    cursor.movePosition(QTextCursor::Left,QTextCursor::MoveAnchor,4);
-    ui->questionTextEdit->setTextCursor(cursor);
-
-}
-
-
-void MainWindow::on_htmlImgAddButton_2_clicked()
-{
-    if(ui->questionTableView->currentIndex().isValid())
-    {
-        //int qId = ui->questionTableView->currentIndex().siblingAtColumn(0).data().toInt();
-        int qId = currentQId;
-
-        QString dirPath = QString("%1/data/%2/").arg(QDir::currentPath()).arg(qId);
-        QString filePath = QFileDialog::getOpenFileName(this,
-                                                        "打开图片", dirPath, tr("Image Files (*.jpg *.png *.gif)"));
-        if(filePath.isNull() || filePath.isEmpty() || filePath == "")
-            return;
-        QDir dir("./");
-        QTextCursor cursor = ui->questionTextEdit->textCursor();
-        QTextImageFormat imageFormat;
-        imageFormat.setVerticalAlignment(QTextCharFormat::AlignBottom); //底部对齐插入图片25/12/7
-        imageFormat.setName(dir.relativeFilePath(filePath));
-        if(cursor.currentTable() != nullptr) //优化表格插入显示25/10/21
-        {
-            QTextBlockFormat blockFormat = cursor.blockFormat();
-            blockFormat.setAlignment(Qt::AlignCenter);
-            cursor.setBlockFormat(blockFormat);
-            cursor.insertText("\u200B");
-        }
-        cursor.insertImage(imageFormat);
-    }
-}
-

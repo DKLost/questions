@@ -19,53 +19,47 @@ class QuestionSql : public QObject
 {
     Q_OBJECT
 public:
-    explicit QuestionSql(QString fileName,QObject *parent = nullptr);
+    explicit QuestionSql(QString fileName, QObject *parent = nullptr);
 
-    //static
-    static QMap<QString,int> headerColumnMap;
+    // static
+    static QMap<QString, int> headerColumnMap; // 字段名 → questions 模型的列下标（0-based）
 
-    //category
-    void add_category(int id,QString name,int parent_id = 0);
-    void del_category(int id);
-
-    //question
-    void add_question(int id,int categoryId,QString name);
+    // question
+    void add_question(int id, QString name, QString abstractName = QString()); // abstractName：挂载的 DerivedAbs 名，空表示未关联
     void del_question(int id);
     void update_question_state(int id);
-    int count_total_questions(int categoryId);
-    int count_total_questions_to_learn(int categoryId);
-    QString get_category_condString(int categoryId);
-    QString get_toLearn_condString(int categoryId);
-    QString get_toLearn_condString(QString currentFilter);
+    QString get_toLearn_condString(QString currentFilter); // 待学习：到期 且 至少有一个空（用 avg10Rating 非空判，见实现注释）
     QTime get_question_learn_time(int qId);
 
-    //construct
-    void add_construct(int id);
-    void del_construct(int id);
-    void inc_construct_bind_count(int id);
-    void dec_construct_bind_count(int id);
-    void update_construct_state(int id, QTime myTime);
+    // clozes
+    void add_cloze(int id);
+    void del_cloze(int id);
+    void inc_cloze_bind_count(int id);
+    void dec_cloze_bind_count(int id);
+    void update_cloze_state(int id, QTime myTime);
+    // 强制评分（manual 回忆卡）：评分取自用户而非用时；新卡只估算良好时间、不排期
+    void update_cloze_state_by_rating(int id, QTime myTime, QString rating);
 
-    //other
+    // other
 
     QVariant get_value(QString table, int id, QString column);
-    template<typename T>void set_value(QString table, int id, QString column, T value);
+    template <typename T>
+    void set_value(QString table, int id, QString column, T value);
     QJsonArray read_answerJSON(int id);
     void write_answerJSON(int id, QJsonArray jsonArray);
     QString read_questionHTML(int id);
     QString read_questionMd(int id);
     void write_questionHTML(int id, QString html);
-    void write_questionMd(int id,QString markdown);
+    void write_questionMd(int id, QString markdown);
     QSqlDatabase getDb() const;
     int get_max_id(QString table);
 
 
-    void resetFSRSData(int constructId); //重置FSRS数据8/12
+    void resetFSRSData(int clozeId);
 private:
     QSqlDatabase db;
     QString dbFileName;
-    void _del_category(int id, int parentId);
-    //int tempId;
+    void writeClozeState(int id, QTime myTime, QString rating, QTime goodTime); // 两个入口共用的排期与记账实现
 signals:
 };
 
