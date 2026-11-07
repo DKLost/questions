@@ -5,7 +5,6 @@
 #include <QCryptographicHash>
 
 namespace {
-const QString kTypstCommand = QStringLiteral("typst");
 const QString kTypstCompileCommand = QStringLiteral("compile");
 const QString kTypstWatchCommand = QStringLiteral("watch");
 const QString kStoredTimeFormat = QStringLiteral("mm'm':ss's'"); // 库内 goodTime 格式
@@ -71,6 +70,13 @@ QString ToolFunctions::typstPreamble(int pointSize){
 }
 
 QString ToolFunctions::typstMathPrefix = ToolFunctions::typstPreamble(9); // 题面公式一路沿用 9pt，保持既有外观不变
+QString ToolFunctions::typstCommand = QStringLiteral("typst");
+
+void ToolFunctions::setTypstCommand(const QString &command)
+{
+    const QString trimmed = command.trimmed();
+    typstCommand = trimmed.isEmpty() ? QStringLiteral("typst") : trimmed;
+}
 
 QString ToolFunctions::ms2msz(QString timeString)
 {
@@ -125,7 +131,7 @@ void ToolFunctions::select_current_underline_text(QTextCursor *cursor) // 选中
 void ToolFunctions::compile_typst(const QString &inputFile, const QString &outputFile)
 {
     QProcess process;
-    process.start(kTypstCommand, {kTypstCompileCommand, inputFile, outputFile});
+    process.start(typstCommand, {kTypstCompileCommand, inputFile, outputFile});
     if(!process.waitForFinished()) // 阻塞等待编译进程结束
     {
         qDebug() << "typst 进程执行超时或出错";
@@ -151,7 +157,7 @@ void ToolFunctions::write_file(const QString &filePath, const QString &text)
 
 void ToolFunctions::watch_typst_start(QProcess &process, const QString &inputFile, const QString &outputFile)
 {
-    process.start(kTypstCommand, {kTypstWatchCommand, inputFile, outputFile});
+    process.start(typstCommand, {kTypstWatchCommand, inputFile, outputFile});
 }
 
 void ToolFunctions::watch_typst_stop(QProcess &process)

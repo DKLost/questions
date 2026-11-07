@@ -1,6 +1,7 @@
 #ifndef FSRS_H
 #define FSRS_H
 
+#include <QList>
 #include <QMap>
 #include <QTime>
 
@@ -8,13 +9,21 @@ class FSRS
 {
 public:
     FSRS() = delete;
+    static const double defaultW[21];
     static double w[21];
     static double requestRetention;
     static int maximumInterval;
     static double DECAY;
     static double FACTOR;
+    // 用时反推评级与新卡估时的可调系数（设置对话框写入，默认值保持既有行为）
+    static double easyFactor;        // 用时 < 良好用时 × easyFactor → easy（默认 0.5）
+    static double hardFactor;        // 用时 > 良好用时 × hardFactor → hard（默认 1.0）
+    static double newCardTimeFactor; // 新卡首次作答用时 × 该系数 = 初始良好用时（默认 2.0）
     static QMap<QString, int> rating;
     static QMap<QString, int> state;
+
+    static void setWeights(const QList<double> &weights); // 写入 21 个权重并重算 DECAY/FACTOR
+    static void resetWeights();                           // 恢复内置默认权重
 
     static double constrain_difficulty(double difficulty);
     static double init_difficulty(int rating);

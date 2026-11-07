@@ -24,6 +24,7 @@
 #include "dialogs/descadddialog.h"
 #include "dialogs/htmltypstadddialog.h"
 #include "services/answerstore.h"
+#include "services/appsettings.h"
 #include "services/questionpreview.h"
 
 QT_BEGIN_NAMESPACE
@@ -34,6 +35,9 @@ QT_END_NAMESPACE
 
 struct TreeNode; // 知识树节点（core/knowledgedb.h）
 class QTreeView;
+class QLabel;
+class QTimer;
+class QToolBar;
 
 class MainWindow : public QMainWindow
 {
@@ -188,7 +192,16 @@ private:
 
     QuestionSql *questionSql;
     AnswerStore *answerStore; // answer.json 与 cloze 生命周期的唯一出口
+    AppSettings appSettings;  // settings.ini 中的用户设置（启动加载，保存后即时应用）
     QuestionPreview::WindowPool previewWindows{this}; // 弹出式题目预览窗池（ctrl+右键 / 右键菜单「弹出题目预览」）
+    QToolBar *statisticsBar = nullptr; // 顶部统计工具栏
+    QLabel *statsDueLabel = nullptr;
+    QLabel *statsReviewLabel = nullptr;
+    QLabel *statsLearnLabel = nullptr;
+    QLabel *statsTimeLabel = nullptr;
+    QTimer *statisticsRefreshTimer = nullptr; // 防抖刷新
+    QTimer *statisticsDateTimer = nullptr;    // 跨天检测
+    QDate statisticsDay;
     QDate currentDate;
 
     int currentQuestionId = -1;
@@ -207,10 +220,16 @@ private:
     void initPhenObjTree(); // 宾词视图：默认隐藏，ctrl+左键 / 右键菜单「显示顶层宾词」才填内容并显示
     void connectKnowledgeTreeEntered();
     void initSplitter();
+    void initStatisticsBar();        // 顶部统计条：待学 / 今日复习 / 今日新学 / 今日用时
+    void refreshStatistics();        // 聚合查询并刷新四段文本与 tooltip
+    void scheduleStatisticsRefresh(); // 200ms 防抖，合并模型变化引发的连续刷新
 
     // 界面状态持久化（ui_state.ini）：检索条件/展开集/题目范围/当前题
     void saveUiState();
     void restoreUiState();
+    void exportReviewLog(); // 导出 review_log → revlog.csv，交给官方 FSRS optimizer
+    void openSettings();    // 工具 → 设置：算法参数 / typst 路径 / 导入前备份
+    bool backupDatabases(int keepCount); // 导入前备份 question.db 与 knowledge.db
 
     int findQuestionRowGlobal(int id);          // 当前范围找不到时回全表再找
     void selectQuestionRowAndActivate(int row); // 按可见列 id 定位并载题

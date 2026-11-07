@@ -56,6 +56,8 @@ public:
 public:
     static QString typstMathPrefix; // typst 数学片段编译前缀（typsium 宏包：字号/数学字体/revcases/∥→// 等）
     static QString typstPreamble(int pointSize); // 同上，但字号可指定（缓存层按视图字号编译片段用）
+    static QString typstCommand;                 // typst 可执行文件（默认 "typst"，可由设置改为绝对路径）
+    static void setTypstCommand(const QString &command);
 };
 
 #endif // TOOLFUNCTIONS_H

@@ -1,7 +1,10 @@
 #include "questionsql.h"
 #include "fsrs.h"
 #include "utils/toolfunctions.h"
+#include <QDateTime>
 #include <QFile>
+#include <QSqlError>
+#include <QTextStream>
 
 // 诊断开关（默认关）：排查 FSRS 记账错位时逐次追记 clozes 写入到 fsrs_debug.log 供复盘，平常保持关闭
 static constexpr bool kFsrsDebugTrace = false;
@@ -63,6 +66,20 @@ QuestionSql::QuestionSql(QString fileName, QObject *parent)
     // 每个概念至多一份题目；NULL 表示未关联，唯一索引下互不冲突（独立索引比建表 UNIQUE 更便于日后重建）
     query.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_questions_abstract"
                " ON questions(abstractName)");
+
+    // review_log：逐次复习的原始日志，列与取值遵循 FSRS 社区 review logs schema，供官方 fsrs-optimizer 优化参数
+    query.exec("CREATE TABLE IF NOT EXISTS review_log("
+               "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+               "card_id INTEGER NOT NULL,"       // clozes.id（一个空即一张卡）
+               "review_time INTEGER NOT NULL,"   // UTC 毫秒时间戳
+               "review_rating INTEGER NOT NULL," // 1 Again / 2 Hard / 3 Good / 4 Easy
+               "review_state INTEGER NOT NULL,"  // 复习前状态：0 New / 1 Learning / 2 Review / 3 Relearning
+               "review_duration INTEGER)");      // 本次用时（毫秒）
+    query.exec("CREATE INDEX IF NOT EXISTS idx_review_log_card"
+               " ON review_log(card_id, review_time)");
+    // 统计栏按“今天”扫 review_time；上面的联合索引最左列是 card_id，单独补一个时间索引
+    query.exec("CREATE INDEX IF NOT EXISTS idx_review_log_time"
+               " ON review_log(review_time)");
 }
 
 // question
@@ -154,6 +171,10 @@ void QuestionSql::del_cloze(int id)
         query.prepare("DELETE FROM clozes WHERE id = ?");
         query.bindValue(0, id);
         query.exec();
+        // 空被真正删除时一并清掉它的历史：id 可能被后建的空复用，混在一起会污染 optimizer 的卡片历史
+        query.prepare("DELETE FROM review_log WHERE card_id = ?");
+        query.bindValue(0, id);
+        query.exec();
     }
 }
 void QuestionSql::inc_cloze_bind_count(int aId)
@@ -175,7 +196,8 @@ void QuestionSql::update_cloze_state(int id, QTime myTime)
     {
         if(rating != "wrong")
             set_value("clozes", id, "goodTime",
-                      QTime::fromMSecsSinceStartOfDay(myTime.msecsSinceStartOfDay() * 2).toString("mm'm':ss's'"));
+                      QTime::fromMSecsSinceStartOfDay(qMax(1, qRound(myTime.msecsSinceStartOfDay() * FSRS::newCardTimeFactor)))
+                          .toString("mm'm':ss's'"));
         return; // 新卡只估算良好时间，不推进调度（既有不变量）
     }
     writeClozeState(id, myTime, rating, goodTime);
@@ -187,7 +209,7 @@ void QuestionSql::update_cloze_state_by_rating(int id, QTime myTime, QString rat
     QTime goodTime = QTime::fromString(get_value("clozes", id, "goodTime").toString(), "mm'm':ss's'");
     if(goodTime.msecsSinceStartOfDay() == 0 && rating != "wrong")
     {
-        goodTime = QTime::fromMSecsSinceStartOfDay(myTime.msecsSinceStartOfDay() * 2);
+        goodTime = QTime::fromMSecsSinceStartOfDay(qMax(1, qRound(myTime.msecsSinceStartOfDay() * FSRS::newCardTimeFactor)));
         set_value("clozes", id, "goodTime", goodTime.toString("mm'm':ss's'"));
         return;
     }
@@ -200,6 +222,7 @@ void QuestionSql::writeClozeState(int id, QTime myTime, QString rating, QTime go
     const QDate lastDate = QDate::fromString(get_value("clozes", id, "lastDate").toString(), "yyyy/MM/dd");
     const int elapsedDays = lastDate.isValid() ? lastDate.daysTo(QDate::currentDate()) : 0;
     QString state = get_value("clozes", id, "state").toString();
+    const QString stateBefore = state; // next_state 会就地改写 state，先留住复习前状态供 review_log 使用
     double d = get_value("clozes", id, "lastD").toDouble();
     double s = get_value("clozes", id, "lastS").toDouble();
 
@@ -229,6 +252,8 @@ void QuestionSql::writeClozeState(int id, QTime myTime, QString rating, QTime go
     set_value("clozes", id, "lastDate", QDate::currentDate().toString("yyyy/MM/dd"));
     set_value("clozes", id, "nextDate", QDate::currentDate().addDays(interval).toString("yyyy/MM/dd"));
 
+    appendReviewLog(id, stateBefore, rating, myTime); // 每次真实推进调度都留一条，wrong 也要（optimizer 需要失败样本）
+
     if(rating == "wrong" || myTime.msecsSinceStartOfDay() <= 0)
         return;
 
@@ -257,6 +282,20 @@ void QuestionSql::writeClozeState(int id, QTime myTime, QString rating, QTime go
     QTime newAvg10Time = QTime::fromMSecsSinceStartOfDay(tAvg);
     set_value("clozes", id, "avg10Time", newAvg10Time.toString("mm:ss.zzz").chopped(1));
     set_value("clozes", id, "avg10Rating", FSRS::time2rating(newAvg10Time, goodTime));
+}
+
+// 追加一条 FSRS 社区标准 review log（评分 1..4、状态 0..3），供官方 optimizer 重建卡片历史
+void QuestionSql::appendReviewLog(int clozeId, const QString &stateBefore, const QString &rating, QTime duration)
+{
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO review_log(card_id,review_time,review_rating,review_state,review_duration)"
+                  " VALUES(?,?,?,?,?)");
+    query.bindValue(0, clozeId);
+    query.bindValue(1, QDateTime::currentMSecsSinceEpoch()); // 社区要求 UTC 毫秒时间戳
+    query.bindValue(2, FSRS::rating.value(rating, 1));
+    query.bindValue(3, FSRS::state.value(stateBefore, 1) - 1); // 内部状态 1..3 → 社区编码 0 New / 1 Learning / 2 Review
+    query.bindValue(4, qMax(0, duration.msecsSinceStartOfDay()));
+    query.exec();
 }
 
 // other
@@ -353,6 +392,40 @@ int QuestionSql::get_max_id(QString table)
         id = query.value(0).toInt();
     }
     return id;
+}
+
+// 导出为 fsrs-optimizer 可直接读取的 revlog.csv；列名与取值严格按社区 schema
+int QuestionSql::exportReviewLog(const QString &filePath, QString *error)
+{
+    QSqlQuery query(db);
+    if(!query.exec("SELECT card_id, review_time, review_rating, review_state, review_duration"
+                   " FROM review_log ORDER BY review_time, id"))
+    {
+        if(error)
+            *error = query.lastError().text();
+        return -1;
+    }
+
+    QFile file(filePath);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+    {
+        if(error)
+            *error = file.errorString();
+        return -1;
+    }
+
+    QTextStream out(&file);
+    out << "card_id,review_time,review_rating,review_state,review_duration\n";
+    int count = 0;
+    while(query.next())
+    {
+        out << query.value(0).toInt() << ',' << query.value(1).toLongLong() << ','
+            << query.value(2).toInt() << ',' << query.value(3).toInt() << ','
+            << query.value(4).toInt() << '\n';
+        count++;
+    }
+    file.close();
+    return count;
 }
 
 
@@ -454,6 +527,12 @@ void QuestionSql::resetFSRSData(int clozeId)
     set_value("clozes", clozeId, "lastS", -1);
     for(int i = 0; i < 10; i++) // time0-9
         set_value("clozes", clozeId, QString{"time"} + QString::number(i), "");
+
+    // 重置等于放弃该空的学习历史：同步清空 review_log，避免已作废的作答进入 optimizer 数据集
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM review_log WHERE card_id = ?");
+    query.bindValue(0, clozeId);
+    query.exec();
 
     return;
 }

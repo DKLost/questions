@@ -23,6 +23,7 @@ INCLUDEPATH += $$PWD/widgets
 
 SOURCES += \
     dialogs/clozemovedialog.cpp \
+    dialogs/settingsdialog.cpp \
     main.cpp \
     mainwindow.cpp \
     mainwindow_answer.cpp \
@@ -31,13 +32,16 @@ SOURCES += \
     mainwindow_learn.cpp \
     mainwindow_preview.cpp \
     mainwindow_question.cpp \
+    mainwindow_stats.cpp \
     core/fsrs.cpp \
     core/knowledgedb.cpp \
     core/knowledgename.cpp \
     core/questionsql.cpp \
     parser/noteparser2.cpp \
     services/answerstore.cpp \
+    services/appsettings.cpp \
     services/questionpreview.cpp \
+    services/statistics.cpp \
     services/typstimagecache.cpp \
     widgets/dragqtreewidget.cpp \
     widgets/knowledgetreehelper.cpp \
@@ -64,6 +68,7 @@ SOURCES += \
 
 HEADERS += \
     dialogs/clozemovedialog.h \
+    dialogs/settingsdialog.h \
     mainwindow.h \
     mainwindow_internal.h \
     core/fsrs.h \
@@ -71,7 +76,9 @@ HEADERS += \
     core/questionsql.h \
     parser/noteparser2.h \
     services/answerstore.h \
+    services/appsettings.h \
     services/questionpreview.h \
+    services/statistics.h \
     services/typstimagecache.h \
     widgets/dragqtreewidget.h \
     widgets/knowledgetreehelper.h \

@@ -4,6 +4,7 @@
 
 #include "parser/noteparser2.h"
 #include "core/knowledgedb.h"
+#include "dialogs/settingsdialog.h"
 #include "widgets/knowledgetreehelper.h"
 #include "widgets/questiontableviewhelper.h"
 #include "dialogs/phenadddialog.h"
@@ -32,7 +33,6 @@
 #include <QJsonValue>
 #include <QKeyEvent>
 #include <QList>
-#include <QMenu>
 #include <QContextMenuEvent>
 #include <QMessageBox>
 #include <QModelIndex>
@@ -69,6 +69,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    appSettings = AppSettings::load();
+    appSettings.apply(); // 先应用设置，后续建库/复习都按用户参数走
     initFonts();
     initQuestionDatabase();
     init_questionTableView();
@@ -78,10 +80,14 @@ MainWindow::MainWindow(QWidget *parent)
     initDialogs();
     initKnowledgeTree();
     initSplitter();
+    initStatisticsBar();
+    ui->menubar->hide(); // 工具菜单已挂到统计工具栏上，隐藏空菜单栏以共用一行
+
     questionTableModel->setFilter(""); // 知识关联区显示全部题目，不按分类过滤
     questionTableModel->select();
     setQuestionAreasEnabled(false); // 启动初始无选中题：html/cloze 编辑区先置灰空态（restoreUiState 选中题后自动恢复）
     restoreUiState(); // 恢复上次退出时的检索条件/展开集/当前题（无 ini 时为无操作）
+    refreshStatistics(); // 初始统计（restoreUiState 可能改了过滤范围）
 }
 
 // 退出前落盘：正在编辑的题面 + 界面状态
@@ -131,6 +137,39 @@ void MainWindow::restoreUiState()
     const int questionId = settings.value(kUiStateCurrentQuestionKey, -1).toInt();
     if(questionId > 0)
         set_and_jump_to_qId(questionId); // 命中不了的 id 静默跳过（on_idLineEdit_returnPressed 内部先查存在性）
+}
+
+// 导出复习日志：列与取值符合 FSRS 社区 review logs schema，可直接运行 python -m fsrs_optimizer revlog.csv
+void MainWindow::exportReviewLog()
+{
+    const QString filePath = QFileDialog::getSaveFileName(this, QStringLiteral("导出复习日志"),
+                                                          QStringLiteral("revlog.csv"),
+                                                          QStringLiteral("CSV (*.csv)"));
+    if(filePath.isEmpty())
+        return;
+
+    QString error;
+    const int count = questionSql->exportReviewLog(filePath, &error);
+    if(count < 0)
+        QMessageBox::warning(this, QStringLiteral("导出复习日志"),
+                             QStringLiteral("导出失败：%1").arg(error));
+    else if(count == 0)
+        QMessageBox::information(this, QStringLiteral("导出复习日志"),
+                                 QStringLiteral("还没有复习记录（已写出表头）。optimizer 需要积累足够多的复习后才能优化参数。"));
+    else
+        QMessageBox::information(this, QStringLiteral("导出复习日志"),
+                                 QStringLiteral("已导出 %1 条复习记录：%2").arg(count).arg(filePath));
+}
+
+// 设置：确认后落盘并立即应用（FSRS 参数从下一次复习起生效）
+void MainWindow::openSettings()
+{
+    SettingsDialog dialog(appSettings, this);
+    if(dialog.exec() != QDialog::Accepted)
+        return;
+    appSettings = dialog.settings();
+    appSettings.save();
+    appSettings.apply();
 }
 
 // 全应用统一等宽字体：正文 12、小号 9

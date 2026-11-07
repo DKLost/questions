@@ -15,12 +15,14 @@
 #include <QCloseEvent>
 #include <QSettings>
 #include <QDate>
+#include <QDateTime>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
 #include <QFile>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFont>
 #include <QGuiApplication>
 #include <QHeaderView>
@@ -388,9 +390,45 @@ void MainWindow::on_parserButton_clicked()
 
     if(dlg.exec() == QDialog::Accepted)
     {
+        // parser 会先清空知识库：按设置先备份，备份失败时让用户明确决定是否继续
+        if(appSettings.backupBeforeImport && !backupDatabases(appSettings.backupKeepCount))
+        {
+            const auto choice = QMessageBox::warning(
+                this, QStringLiteral("备份失败"),
+                QStringLiteral("无法完整备份数据库。继续导入会清空当前知识库且不可恢复，是否继续？"),
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if(choice != QMessageBox::Yes)
+                return;
+        }
         NoteParser parser;
         parser.parse(edit->toPlainText());
     }
+}
+
+// 导入前备份 question.db 与 knowledge.db 到 ./backup/<时间戳>/，并按设置只保留最近 keepCount 份
+bool MainWindow::backupDatabases(int keepCount)
+{
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss-zzz"));
+    const QString dirPath = QStringLiteral("./backup/%1").arg(stamp);
+    if(!QDir().mkpath(dirPath))
+        return false;
+
+    bool ok = true;
+    const QStringList fileNames = {kDatabaseFileName, QStringLiteral("knowledge.db")};
+    for(const QString &fileName : fileNames)
+    {
+        if(!QFile::exists(fileName))
+            continue;
+        const QString target = dirPath + QLatin1Char('/') + QFileInfo(fileName).fileName();
+        if(!QFile::copy(fileName, target))
+            ok = false;
+    }
+
+    QDir backupRoot(QStringLiteral("./backup"));
+    QFileInfoList backups = backupRoot.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    while(backups.size() > qMax(1, keepCount))
+        QDir(backups.takeFirst().absoluteFilePath()).removeRecursively();
+    return ok;
 }
 
 void MainWindow::on_lineEdit_returnPressed()

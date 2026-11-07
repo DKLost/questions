@@ -1,14 +1,49 @@
 #include "core/fsrs.h"
 // v6.1.1
-double FSRS::w[21] = {0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796,
-                      1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542};
+const double FSRS::defaultW[21] = {0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796,
+                                   1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542};
+double FSRS::w[21];
+
+namespace {
+// 静态初始化时把内置默认权重复制进 w（设置读取前也保证算法可用）
+struct FsrsDefaultInitializer
+{
+    FsrsDefaultInitializer()
+    {
+        for(int i = 0; i < 21; ++i)
+            FSRS::w[i] = FSRS::defaultW[i];
+    }
+} fsrsDefaultInitializer;
+}
 
 double FSRS::requestRetention = 0.8;
 int FSRS::maximumInterval = 36500;
-double FSRS::DECAY = -w[20];
+double FSRS::DECAY = -FSRS::defaultW[20];
 double FSRS::FACTOR = qPow(0.9, (1.0 / DECAY)) - 1.0;
+double FSRS::easyFactor = 0.5;
+double FSRS::hardFactor = 1.0;
+double FSRS::newCardTimeFactor = 2.0;
 QMap<QString, int> FSRS::rating = {{"wrong", 1}, {"hard", 2}, {"good", 3}, {"easy", 4}};
 QMap<QString, int> FSRS::state = {{"new", 1}, {"learning", 2}, {"review", 3}};
+
+void FSRS::setWeights(const QList<double> &weights)
+{
+    if(weights.size() != 21 || !(weights[20] > 0.0))
+        return;
+    for(int i = 0; i < 21; ++i)
+        w[i] = weights[i];
+    DECAY = -w[20];
+    FACTOR = qPow(0.9, (1.0 / DECAY)) - 1.0;
+}
+
+void FSRS::resetWeights()
+{
+    QList<double> defaults;
+    defaults.reserve(21);
+    for(int i = 0; i < 21; ++i)
+        defaults.append(defaultW[i]);
+    setWeights(defaults);
+}
 
 double FSRS::constrain_difficulty(double difficulty)
 {
@@ -161,10 +196,10 @@ QString FSRS::time2rating(QTime myTime, QTime goodTime)
         rating = "wrong";
         return rating;
     }
-    if(myTimeMs > goodTimeMs)
+    if(myTimeMs > goodTimeMs * hardFactor)
     {
         rating = "hard";
-    } else if(myTimeMs < goodTimeMs * 0.5)
+    } else if(myTimeMs < goodTimeMs * easyFactor)
     {
         rating = "easy";
     } else

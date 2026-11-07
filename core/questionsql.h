@@ -54,12 +54,15 @@ public:
     QSqlDatabase getDb() const;
     int get_max_id(QString table);
 
+    // 导出 review_log：表头与取值遵循 FSRS 社区 review logs schema，可直接交给官方 fsrs-optimizer
+    int exportReviewLog(const QString &filePath, QString *error = nullptr); // 返回导出条数，-1 失败
 
     void resetFSRSData(int clozeId);
 private:
     QSqlDatabase db;
     QString dbFileName;
     void writeClozeState(int id, QTime myTime, QString rating, QTime goodTime); // 两个入口共用的排期与记账实现
+    void appendReviewLog(int clozeId, const QString &stateBefore, const QString &rating, QTime duration);
 signals:
 };
 
