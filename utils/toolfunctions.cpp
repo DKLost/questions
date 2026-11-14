@@ -2,6 +2,8 @@
 
 #include <QPainter>
 #include <QTextBlockFormat>
+#include <QTextDocument>
+#include <QUrl>
 #include <QCryptographicHash>
 
 namespace {
@@ -128,17 +130,23 @@ void ToolFunctions::select_current_underline_text(QTextCursor *cursor) // 选中
         cursor->movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
 }
 
-void ToolFunctions::compile_typst(const QString &inputFile, const QString &outputFile)
+bool ToolFunctions::compile_typst(const QString &inputFile, const QString &outputFile)
 {
     QProcess process;
-    process.start(typstCommand, {kTypstCompileCommand, inputFile, outputFile});
+    process.start(typstCommand, {kTypstCompileCommand, QStringLiteral("--format"), QStringLiteral("png"),
+                                 QStringLiteral("--ppi"), QString::number(typstRenderPpi()),
+                                 inputFile, outputFile});
     if(!process.waitForFinished()) // 阻塞等待编译进程结束
     {
         qDebug() << "typst 进程执行超时或出错";
-        return;
+        return false;
     }
     if(process.exitCode() != 0)
+    {
         qDebug() << "typst 编译失败：" << process.readAllStandardError();
+        return false;
+    }
+    return true;
 }
 
 void ToolFunctions::write_file(const QString &filePath, const QString &text)
@@ -157,7 +165,77 @@ void ToolFunctions::write_file(const QString &filePath, const QString &text)
 
 void ToolFunctions::watch_typst_start(QProcess &process, const QString &inputFile, const QString &outputFile)
 {
-    process.start(typstCommand, {kTypstWatchCommand, inputFile, outputFile});
+    process.start(typstCommand, {kTypstWatchCommand, QStringLiteral("--format"), QStringLiteral("png"),
+                                 QStringLiteral("--ppi"), QString::number(typstRenderPpi()),
+                                 inputFile, outputFile});
+}
+
+int ToolFunctions::typstRenderPpi()
+{
+    return kTypstSaveBasePpi * kTypstSaveSupersample; // 288：96 逻辑 PPI 的 3 倍像素
+}
+
+int ToolFunctions::typstImageScale(const QString &imagePath)
+{
+    if(imagePath.isEmpty())
+        return 1;
+    QFile marker(imagePath + QStringLiteral(".2x")); // 沿用旧文件名，内容存实际倍数
+    if(!marker.open(QIODevice::ReadOnly | QIODevice::Text))
+        return 1;
+    bool ok = false;
+    const int scale = QString::fromUtf8(marker.readAll()).trimmed().toInt(&ok);
+    return ok && scale > 1 ? scale : 2; // 兼容旧版写入的空/异常标记
+}
+
+void ToolFunctions::markTypstImageScale(const QString &imagePath)
+{
+    if(imagePath.isEmpty())
+        return;
+    QFile marker(imagePath + QStringLiteral(".2x"));
+    if(marker.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        marker.write(QByteArray::number(kTypstSaveSupersample));
+}
+
+void ToolFunctions::installScaledTypstImageResources(QTextDocument *document, const QString &html, qreal dpr)
+{
+    if(!document || html.isEmpty())
+        return;
+    const qreal scaleFactor = qMax<qreal>(1.0, dpr);
+    const QRegularExpression imgRe(QStringLiteral(R"re(<img\b[^>]*\bsrc="([^"]+)"[^>]*>)re"));
+    const QRegularExpression widthRe(QStringLiteral(R"re(\bwidth="(\d+)")re"));
+    const QRegularExpression heightRe(QStringLiteral(R"re(\bheight="(\d+)")re"));
+    auto matches = imgRe.globalMatch(html);
+    while(matches.hasNext())
+    {
+        const QRegularExpressionMatch match = matches.next();
+        const QString tag = match.captured(0);
+        const QString path = match.captured(1);
+        if(!path.endsWith(QStringLiteral(".png")))
+            continue;
+
+        QString sourcePath = path;
+        sourcePath.replace(QRegularExpression(QStringLiteral(R"re(\.png$)re")),
+                           QStringLiteral(".typmath"));
+        if(typstImageScale(path) <= 1 && !QFile::exists(sourcePath))
+            continue; // 只处理 typst 图；手工图片保持原样
+
+        const QRegularExpressionMatch widthMatch = widthRe.match(tag);
+        const QRegularExpressionMatch heightMatch = heightRe.match(tag);
+        if(!widthMatch.hasMatch() || !heightMatch.hasMatch())
+            continue;
+        const int logicalWidth = widthMatch.captured(1).toInt();
+        const int logicalHeight = heightMatch.captured(1).toInt();
+        if(logicalWidth <= 0 || logicalHeight <= 0)
+            continue;
+
+        const QImage source(path);
+        if(source.isNull())
+            continue;
+        const QSize target(qMax(1, qRound(logicalWidth * scaleFactor)),
+                           qMax(1, qRound(logicalHeight * scaleFactor)));
+        const QImage scaled = source.scaled(target, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        document->addResource(QTextDocument::ImageResource, QUrl(path), scaled);
+    }
 }
 
 void ToolFunctions::watch_typst_stop(QProcess &process)

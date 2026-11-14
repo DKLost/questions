@@ -183,7 +183,7 @@ void MainWindow::initFonts()
     // 之后再 QApplication::setFont 也推不进去（表现为树停在 9pt 而其余界面是 12pt），故与上面两处一样显式设定
     ui->phenTreeView->setFont(uiFont);
     ui->phenObjTreeView->setFont(uiFont);
-    ui->groupBox_2->setFont(QFont(kUiFontFamilies, kSmallFontSize));
+    ui->groupBox_2->setFont(uiFont); // 概念呈现区与正文同字号；9pt 在 250% 缩放下明显偏小
 }
 
 void MainWindow::initQuestionDatabase()

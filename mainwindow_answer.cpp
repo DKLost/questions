@@ -10,6 +10,9 @@
 #include "services/typstimagecache.h"
 #include "utils/toolfunctions.h"
 
+#include <QPainter>
+#include <QStyledItemDelegate>
+#include <QStyleOptionViewItem>
 #include <QAbstractItemView>
 #include <QAction>
 #include <QApplication>
@@ -72,6 +75,56 @@ constexpr double kGoodTimePerSymbolChar = 1.4;
 constexpr double kGoodTimePerOtherChar = 0.8;
 const char kLatinCharPattern[] = "[a-z0-9]";
 const char kSymbolCharPattern[] = R"([<=>\-\+,\|()\{\}\[\]"/⟂∥±∪∩⟨⟩⋅∈∉×÷⇌≈⇒→←])";
+
+// 答案树 typst 图：保留全分辨率源图，由委托直接画到逻辑尺寸矩形（QIcon 会在 250% 下先缩后放，发虚）
+constexpr int TypstAnswerPixmapRole = Qt::UserRole + 50;
+constexpr int TypstAnswerLogicalSizeRole = Qt::UserRole + 51;
+
+class TypstAnswerDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        const QVariant logical = index.data(TypstAnswerLogicalSizeRole);
+        if(logical.isValid())
+        {
+            const QSize size = logical.toSize();
+            return QSize(size.width() + 4, qMax(size.height(), option.fontMetrics.height()) + 4);
+        }
+        return QStyledItemDelegate::sizeHint(option, index);
+    }
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override
+    {
+        const QPixmap image = index.data(TypstAnswerPixmapRole).value<QPixmap>();
+        if(image.isNull())
+        {
+            QStyledItemDelegate::paint(painter, option, index);
+            return;
+        }
+
+        QStyleOptionViewItem opt(option);
+        initStyleOption(&opt, index);
+        opt.icon = QIcon();
+        opt.text.clear();
+        QStyle *style = opt.widget ? opt.widget->style() : QApplication::style();
+        style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, opt.widget);
+
+        const QSize logical = index.data(TypstAnswerLogicalSizeRole).toSize();
+        const QRect target(opt.rect.left() + 2, opt.rect.center().y() - logical.height() / 2,
+                           logical.width(), logical.height());
+        painter->save();
+        painter->setRenderHint(QPainter::SmoothPixmapTransform, true);
+        painter->drawPixmap(target, image); // 源图全分辨率，目标为 96 逻辑 PPI
+        painter->restore();
+    }
+};
+
+// typst 答案图进图标：本列表的 iconSize 只是上限，图标按“逻辑尺寸”铺开（行高不随屏幕缩放膨胀）；
+// 源图是 3x 超采样，这里缩回逻辑尺寸，清晰度由题面/答案标签/预览窗的 DPR 路径承担。
 } // namespace
 
 // answer
@@ -97,14 +150,26 @@ void MainWindow::load_answer(int questionId)
 // 第 1 列：图片/typst 用图标，链卡显示所挂 DerivedAbs 末段名（链卡(typst) 再把公式渲染成图）
 void MainWindow::applyAnswerTypeDisplay(QTreeWidgetItem *item, int questionId, const QString &type, int answerId, const QString &content)
 {
+    item->setData(1, TypstAnswerPixmapRole, QVariant());
+    item->setData(1, TypstAnswerLogicalSizeRole, QVariant());
+    item->setIcon(1, QIcon());
+    item->setText(1, "");
     if(type == AnswerStore::TypeManualImage)
     {
         item->setIcon(1, QIcon{content});
-        item->setText(1, "");
     } else if(type == AnswerStore::TypeAutoTypst)
     {
-        item->setIcon(1, QIcon{kTypstImagePathTemplate.arg(questionId).arg(answerId)});
-        item->setText(1, "");
+        const QString path = kTypstImagePathTemplate.arg(questionId).arg(answerId);
+        const QPixmap image{path};
+        if(image.isNull())
+        {
+            item->setText(1, QStringLiteral("…"));
+            return;
+        }
+        const int scale = ToolFunctions::typstImageScale(path);
+        const QSize logical(qMax(1, image.width() / scale), qMax(1, image.height() / scale));
+        item->setData(1, TypstAnswerPixmapRole, QVariant::fromValue(image));
+        item->setData(1, TypstAnswerLogicalSizeRole, logical);
     } else if(AnswerStore::isChainCardType(type))
     {
         const QString derivedAbs = questionSql->get_value(kQuestionsTable, questionId, kAbstractNameField).toString();
@@ -120,15 +185,12 @@ void MainWindow::applyAnswerTypeDisplay(QTreeWidgetItem *item, int questionId, c
         const QPixmap image = TypstImageCache::instance()->pixmap(objectText, TypstImageCache::pointSizeOf(ui->answerTreeWidget->font()), ppi);
         if(image.isNull()) // 图未就绪（首次遇到/typst 不可用）：先显示公式体，落盘后由 refreshChainTypstAnswerIcons 换成图
         {
-            item->setIcon(1, QIcon());
             item->setText(1, body);
             return;
         }
-        // 本列表的图标按像素原样铺开（iconSize 只是上限），故先缩到"逻辑尺寸 × 屏幕缩放"，
-        // 否则编译用的 2x 超采样会让公式图比同排文字大一倍
-        const QSize shown = TypstImageCache::displaySizeOf(image, ppi) * ui->answerTreeWidget->devicePixelRatioF();
-        item->setIcon(1, QIcon{image.scaled(shown, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)});
-        item->setText(1, "");
+        // 保留全分辨率源图，委托按逻辑尺寸直接绘制（QIcon 在 250% 下会先缩后放，发虚）
+        item->setData(1, TypstAnswerPixmapRole, QVariant::fromValue(image));
+        item->setData(1, TypstAnswerLogicalSizeRole, TypstImageCache::displaySizeOf(image, ppi));
     } else
     {
         item->setText(1, content);
@@ -170,6 +232,7 @@ void MainWindow::init_answerTreeWidget()
     ui->answerTreeWidget->headerItem()->setHidden(false);
     ui->answerTreeWidget->setIndentation(0);
     ui->answerTreeWidget->setHeaderLabels({"num", "content", "pool"});
+    ui->answerTreeWidget->setItemDelegateForColumn(1, new TypstAnswerDelegate(ui->answerTreeWidget));
     ui->answerTreeWidget->header()->setStretchLastSection(false);
     ui->answerTreeWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->answerTreeWidget->header()->setSectionResizeMode(1, QHeaderView::Stretch);

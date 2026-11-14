@@ -55,6 +55,7 @@ const int kTextWidthPadding = 20;
 const int kLineEditMinWidth = 180;
 const int kDialogWidthPadding = 50;
 const int kPreviewImagePadding = 20;
+const int kTypstPreviewPointSize = 18; // 预览独立字号：行内 9pt 在对话框里过小
 const int kChainPoolDisabled = 0;
 } // namespace
 
@@ -68,6 +69,7 @@ AnswerEditDialog::AnswerEditDialog(BindAnswerDialog *mainBindAnswerDialog, QWidg
     retPool = 0;
     retInjectBId = kInvalidAnswerId;
     ui->displayLabel->hide();
+    ui->displayLabel->setAlignment(Qt::AlignCenter);
     typstWatchProcess.setProcessChannelMode(QProcess::MergedChannels);
     connect(&typstWatchProcess, &QProcess::readyReadStandardOutput, this, &AnswerEditDialog::onTypstWatcher_standard_output);
 }
@@ -215,7 +217,9 @@ void AnswerEditDialog::on_goodTimeEdit_userTimeChanged(const QTime &time)
 void AnswerEditDialog::updateLineEditWidth(const QString &text)
 {
     const int textWidth = qMax(ui->lineEdit->fontMetrics().horizontalAdvance(text) + kTextWidthPadding, kLineEditMinWidth);
-    const int imageWidth = ui->displayLabel->isHidden() ? 0 : ui->displayLabel->pixmap().width();
+    const int imageWidth = ui->displayLabel->isHidden()
+                               ? 0
+                               : qRound(ui->displayLabel->pixmap().deviceIndependentSize().width());
     ui->lineEdit->setFixedWidth(textWidth);
     setFixedWidth(qMax(imageWidth, textWidth) + kDialogWidthPadding);
 }
@@ -240,7 +244,8 @@ void AnswerEditDialog::updateTypstPreview()
         stopTypstPreview();
         return;
     }
-    const QString typstSource = ToolFunctions::typstMathPrefix + "$ " + ui->lineEdit->text() + " $";
+    const QString typstSource = ToolFunctions::typstPreamble(kTypstPreviewPointSize)
+                                + QStringLiteral("$ ") + ui->lineEdit->text() + QStringLiteral(" $");
     if(typstWatchProcess.state() == QProcess::NotRunning)
         ToolFunctions::watch_typst_start(typstWatchProcess, kTypstTempInput, kTypstTempOutput);
     ToolFunctions::write_file(kTypstTempInput, typstSource); // 写 temp.typ，预览 temp.png 由 watcher 回显
@@ -248,16 +253,17 @@ void AnswerEditDialog::updateTypstPreview()
 
 void AnswerEditDialog::refreshTypstPreviewImage()
 {
-    ui->displayLabel->setPixmap(QPixmap{kTypstTempOutput});
-    ui->displayLabel->setFixedHeight(ui->displayLabel->pixmap().height());
-    ui->displayLabel->setFixedWidth(ui->displayLabel->pixmap().width());
+    QPixmap image{kTypstTempOutput};
+    image.setDevicePixelRatio(ToolFunctions::kTypstSaveSupersample); // 288 PPI 渲染，按实际倍数缩回 96 逻辑 PPI
+    ui->displayLabel->setPixmap(image);
+    // 不固定尺寸：让标签在对话框顶部按 Expanding 区域居中显示，避免小图缩在左上角
 }
 
 void AnswerEditDialog::onTypstWatcher_standard_output()
 {
     refreshTypstPreviewImage();
     const int textWidth = qMax(ui->lineEdit->fontMetrics().horizontalAdvance(ui->lineEdit->text()) + kTextWidthPadding, kLineEditMinWidth);
-    const int imageWidth = ui->displayLabel->pixmap().width();
+    const int imageWidth = ui->displayLabel->pixmap().deviceIndependentSize().width();
     ui->lineEdit->setFixedWidth(textWidth);
     setFixedWidth(qMax(imageWidth + kPreviewImagePadding, textWidth + kDialogWidthPadding));
 }
@@ -308,7 +314,15 @@ void AnswerEditDialog::on_buttonBox_accepted()
 {
     stopTypstPreview();
     if(ui->comboBox->currentText() == kDisplayTypst)
-        ToolFunctions::compile_typst(kTypstTempInput, kAnswerImagePathFormat.arg(questionId).arg(retAId));
+    {
+        const QString imagePath = kAnswerImagePathFormat.arg(questionId).arg(retAId);
+        // 预览用 18pt，落盘仍按行内 9pt，保持答案图既有尺寸
+        ToolFunctions::write_file(kTypstTempInput,
+                                  ToolFunctions::typstMathPrefix + QStringLiteral("$ ")
+                                      + ui->lineEdit->text() + QStringLiteral(" $"));
+        if(ToolFunctions::compile_typst(kTypstTempInput, imagePath))
+            ToolFunctions::markTypstImageScale(imagePath); // 2x 渲染标记：显示端据此缩回逻辑尺寸
+    }
 }
 
 bool AnswerEditDialog::hasOtherChainCard() const

@@ -9,6 +9,7 @@
 #include "services/questionpreview.h"
 #include "services/typstimagecache.h"
 #include <QSet>
+#include <QImage>
 #include <QStandardItemModel>
 #include <QStandardItem>
 #include <QMessageBox>
@@ -39,6 +40,29 @@ const QString kManualInputStyle = QStringLiteral("QLineEdit {border: 1px solid b
 const QString kImageInputStyle = QStringLiteral("QLineEdit {border: 1px solid red;}");
 const QString kTypstInputStyle = QStringLiteral("QLineEdit {border: 1px solid green;}");
 const QString kChainInputStyle = QStringLiteral("QLineEdit {border: 1px solid orange;}");
+
+// typst 答案图：2x 渲染的图设 DPR 后按逻辑尺寸显示；旧图无标记时保持原尺寸
+QPixmap typstAnswerPixmap(const QString &path)
+{
+    QPixmap image{path};
+    if(image.isNull())
+        return image;
+    const int scale = ToolFunctions::typstImageScale(path);
+    if(scale > 1)
+        image.setDevicePixelRatio(scale);
+    return image;
+}
+
+// QIcon 的 actualSize 不认 DPR（实测仍返回源像素），下拉框图标改存“逻辑尺寸”角色，
+// 图标本身加载全分辨率源图，由 QIcon 在绘制时缩到逻辑尺寸；250% 下也能用满源像素。
+QSize typstAnswerIconLogicalSize(const QString &path)
+{
+    QImage image{path};
+    if(image.isNull())
+        return {};
+    const int scale = ToolFunctions::typstImageScale(path);
+    return QSize(qMax(1, image.width() / scale), qMax(1, image.height() / scale));
+}
 
 const QString kClozesTable = QStringLiteral("clozes");
 const QString kNextDateField = QStringLiteral("nextDate");
@@ -162,7 +186,10 @@ QString LearningDialog::answerImagePath(int answerId, int questionId) const
 void LearningDialog::rebuildAnswerGrid()
 {
     clear_question_display();
-    ui->textBrowser->setHtml(questionSql->read_questionHTML(currentQuestionId));
+    const QString questionHtml = questionSql->read_questionHTML(currentQuestionId);
+    ToolFunctions::installScaledTypstImageResources(ui->textBrowser->document(), questionHtml,
+                                                    ui->textBrowser->devicePixelRatioF());
+    ui->textBrowser->setHtml(questionHtml);
     currentAnswers = answerStore->answers(currentQuestionId);
 
     answerRowCount = currentAnswers.count();
@@ -236,7 +263,7 @@ void LearningDialog::applyAnswerStyle(const AnswerRowControls &controls, int row
     } else if(type == AnswerStore::TypeAutoTypst)
     {
         controls.input->setStyleSheet(kTypstInputStyle);
-        controls.answerLabel->setPixmap(QPixmap{QuestionPreview::answerImagePath(currentQuestionId, answerId)});
+        controls.answerLabel->setPixmap(typstAnswerPixmap(QuestionPreview::answerImagePath(currentQuestionId, answerId)));
         controls.answerLabel->setToolTip(content);
         controls.answerLabel->setToolTipDuration(INT_MAX);
         // 原文摆在输入框正下方：与自己的输入逐字对照；渲染答案图则落到实时预览下方
@@ -427,7 +454,9 @@ void LearningDialog::addPoolComboBoxItem(QComboBox *comboBox, const QJsonObject 
         comboBox->addItem(QIcon{content}, QString(), poolRow);
     } else if(type == AnswerStore::TypeAutoTypst)
     {
-        comboBox->addItem(QIcon{QuestionPreview::answerImagePath(currentQuestionId, poolAnswer.value(AnswerStore::FieldId).toInt())}, QString(), poolRow);
+        const QString path = QuestionPreview::answerImagePath(currentQuestionId, poolAnswer.value(AnswerStore::FieldId).toInt());
+        comboBox->addItem(QIcon{path}, QString(), poolRow);
+        comboBox->setItemData(comboBox->count() - 1, typstAnswerIconLogicalSize(path), IconLogicalSizeRole);
         comboBox->setItemData(comboBox->count() - 1, content, Qt::ToolTipRole);
     } else
     {

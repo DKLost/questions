@@ -85,12 +85,14 @@ void LearningDialog::resizePoolComboBox(QComboBox *comboBox, int poolIndex)
         comboBox->setFixedSize(width, kComboBoxHeight);
         return;
     }
-    QSize size = icon.actualSize(kIconLookupSize);
-    size.setWidth(kComboBoxWidthPadding + size.width());
-    size.setHeight(kComboBoxHeightPadding + size.height());
+    const QVariant logicalSize = comboBox->itemData(poolIndex, IconLogicalSizeRole);
+    const QSize iconSize = logicalSize.isValid() ? logicalSize.toSize() : icon.actualSize(kIconLookupSize);
+    QSize size = iconSize;
+    size.setWidth(kComboBoxWidthPadding + iconSize.width());
+    size.setHeight(kComboBoxHeightPadding + iconSize.height());
     comboBox->setFixedSize(size);
-    comboBox->setIconSize(icon.actualSize(kIconLookupSize));
-    comboBox->view()->setIconSize(kIconLookupSize);
+    comboBox->setIconSize(iconSize);
+    comboBox->view()->setIconSize(iconSize);
 }
 
 // 同池去重：把"被两个选框同时选中"的答案让给空闲答案（其它选框换成池内还没被占用的行号）
@@ -152,7 +154,11 @@ void LearningDialog::onTypstWatcher_standard_output()
         return;
     QLabel *previewLabel = answerRowAt(currentLineEdit->toolTip().toInt()).typstPreview;
     if(previewLabel)
-        previewLabel->setPixmap(QPixmap{kTypstPreviewFile});
+    {
+        QPixmap image{kTypstPreviewFile};
+        image.setDevicePixelRatio(ToolFunctions::kTypstSaveSupersample); // 288 PPI 渲染，按 96 逻辑 PPI 预览
+        previewLabel->setPixmap(image);
+    }
 }
 
 void LearningDialog::updateAccuracyLabel(int batchCorrect, int batchTotal)

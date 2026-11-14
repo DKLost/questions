@@ -229,6 +229,7 @@ private:
     void saveUiState();
     void restoreUiState();
     void exportReviewLog(); // 导出 review_log → revlog.csv，交给官方 FSRS optimizer
+    void rerenderTypstImages(); // 一次性把旧 72 PPI 题面/答案 typst 图按 .typmath / 答案内容重编译
     void openSettings();    // 工具 → 设置：算法参数 / typst 路径 / 导入前备份
     bool backupDatabases(int keepCount); // 导入前备份 question.db 与 knowledge.db
 

@@ -59,6 +59,9 @@ void MainWindow::initStatisticsBar()
     QAction *settingsAct = toolMenu->addAction(QStringLiteral("设置…"));
     connect(settingsAct, &QAction::triggered, this, &MainWindow::openSettings);
     toolMenu->addSeparator();
+    QAction *rerenderAct = toolMenu->addAction(QStringLiteral("重新渲染 typst 图片"));
+    connect(rerenderAct, &QAction::triggered, this, &MainWindow::rerenderTypstImages);
+    toolMenu->addSeparator();
     QAction *exportRevlogAct = toolMenu->addAction(QStringLiteral("导出复习日志（FSRS optimizer）"));
     connect(exportRevlogAct, &QAction::triggered, this, &MainWindow::exportReviewLog);
 

@@ -9,6 +9,13 @@
 #include "dialogs/phenadddialog.h"
 #include "utils/toolfunctions.h"
 #include "services/questionpreview.h"
+#include "services/answerstore.h"
+
+#include <QJsonDocument>
+#include <QMessageBox>
+#include <QRegularExpression>
+#include <QTextDocument>
+#include <QUrl>
 
 #include <QAbstractItemView>
 #include <QAction>
@@ -344,7 +351,10 @@ void MainWindow::insertHeadingDescription(QTextCursor cursor, const QString &con
     cursor.insertText(content);
     // 自我往返仅用于规整文档结构，内容未变：屏蔽信号避免触发一次多余落盘
     const QSignalBlocker blocker(ui->questionTextEdit);
-    ui->questionTextEdit->setHtml(ui->questionTextEdit->toHtml());
+    const QString html = ui->questionTextEdit->toHtml();
+    ToolFunctions::installScaledTypstImageResources(ui->questionTextEdit->document(), html,
+                                                    ui->questionTextEdit->devicePixelRatioF());
+    ui->questionTextEdit->setHtml(html);
 }
 
 void MainWindow::on_htmlTypstAddButton_clicked()
@@ -367,13 +377,17 @@ void MainWindow::insertTypstImage(const QString &filePath)
     QTextImageFormat imageFormat;
     imageFormat.setName(dir.relativeFilePath(filePath));
     imageFormat.setToolTip(readTextFile(typstSourcePathOf(imageFormat))); // 公式源码（同目录 .typmath）作 tooltip，便于双击回改
-    const int height = QImage{imageFormat.name()}.height();
+    const QImage image{imageFormat.name()};
+    const int scale = ToolFunctions::typstImageScale(filePath); // 2x 渲染的图按逻辑尺寸写入文档；旧图 scale=1
+    const int logicalHeight = image.height() / qMax(1, scale);
+    imageFormat.setWidth(qMax(1, image.width() / qMax(1, scale)));
+    imageFormat.setHeight(qMax(1, logicalHeight));
 
     if(cursor.currentTable() != nullptr) // 表格内插入：居中并插零宽字符
     {
         ToolFunctions::centerCurrentBlockInTable(cursor);
         imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle);
-    } else if(height <= kTypstSmallImageHeight)
+    } else if(logicalHeight <= kTypstSmallImageHeight)
     {
         imageFormat.setVerticalAlignment(QTextCharFormat::AlignBaseline);
     } else
@@ -381,6 +395,16 @@ void MainWindow::insertTypstImage(const QString &filePath)
         imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle);
     }
 
+    // 新插入/替换的 typst 图也先按 DPR 预缩成文档资源，避免 QTextEdit 非平滑缩放源图
+    if(!image.isNull())
+    {
+        const qreal dpr = ui->questionTextEdit->devicePixelRatioF();
+        const QSize target(qMax(1, qRound(imageFormat.width() * dpr)),
+                           qMax(1, qRound(imageFormat.height() * dpr)));
+        ui->questionTextEdit->document()->addResource(
+            QTextDocument::ImageResource, QUrl(imageFormat.name()),
+            image.scaled(target, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+    }
     cursor.insertImage(imageFormat);
 }
 
@@ -401,4 +425,192 @@ void MainWindow::on_answerGenAddButton_clicked()
     cursor.insertText("\u200B", {});
     cursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, kAnswerGenBackSteps);
     ui->questionTextEdit->setTextCursor(cursor);
+}
+
+namespace {
+
+QString readUtf8FileForRerender(const QString &path)
+{
+    QFile file(path);
+    if(!file.open(QIODevice::ReadOnly))
+        return {};
+    return QString::fromUtf8(file.readAll());
+}
+
+// 用 typst 源码重编译到目标路径；先写临时文件，成功后再替换，避免失败时丢掉旧图
+bool compileTypstBodyTo(const QString &body, const QString &target)
+{
+    QString source = body.trimmed();
+    if(source.isEmpty())
+        return false;
+    if(!(source.startsWith(QChar('$')) && source.endsWith(QChar('$'))))
+        source = QStringLiteral("$ ") + source + QStringLiteral(" $");
+
+    const QString inputPath = QStringLiteral("./data/.rerender.typ");
+    const QString outputPath = QStringLiteral("./data/.rerender.png");
+    const QString backupPath = target + QStringLiteral(".old");
+    ToolFunctions::write_file(inputPath, ToolFunctions::typstMathPrefix + source);
+    QFile::remove(outputPath);
+    if(!ToolFunctions::compile_typst(inputPath, outputPath))
+        return false;
+
+    QFile::remove(backupPath);
+    if(QFile::exists(target) && !QFile::rename(target, backupPath))
+        return false;
+    if(!QFile::rename(outputPath, target))
+    {
+        if(QFile::exists(backupPath))
+            QFile::rename(backupPath, target);
+        return false;
+    }
+    QFile::remove(backupPath);
+    ToolFunctions::markTypstImageScale(target);
+    return true;
+}
+
+QString withTypstImageSize(QString tag, const QSize &size)
+{
+    tag.remove(QRegularExpression(QStringLiteral(R"re(\s+width="[^"]*")re")));
+    tag.remove(QRegularExpression(QStringLiteral(R"re(\s+height="[^"]*")re")));
+    tag.replace(QRegularExpression(QStringLiteral(R"re(^<img\b)re")),
+                QStringLiteral("<img width=\"%1\" height=\"%2\"").arg(size.width()).arg(size.height()));
+    return tag;
+}
+
+} // namespace
+
+void MainWindow::rerenderTypstImages()
+{
+    if(currentQuestionId > 0)
+        saveCurrentQuestionContent(); // 先落盘当前编辑内容，避免重渲染时被磁盘旧 HTML 覆盖
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    int questionImages = 0;
+    int answerImages = 0;
+    int failed = 0;
+    int skipped = 0;
+
+    const QRegularExpression imgRe(QStringLiteral(R"re(<img\b[^>]*\bsrc="([^"]+)"[^>]*>)re"));
+    const QRegularExpression pngSuffix(QStringLiteral(R"re(\.png$)re"));
+    QDir dataDir(QStringLiteral("./data"));
+    const QStringList dirs = dataDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for(const QString &dirName : dirs)
+    {
+        bool idOk = false;
+        const int questionId = dirName.toInt(&idOk);
+        if(!idOk)
+            continue;
+
+        // 题面公式：有 .typmath 源的旧图按原逻辑尺寸重渲染，并回写 width/height
+        const QString htmlPath = QStringLiteral("./data/%1/question.html").arg(dirName);
+        if(QFile::exists(htmlPath))
+        {
+            const QString html = readUtf8FileForRerender(htmlPath);
+            QString rebuilt;
+            int last = 0;
+            bool changed = false;
+            auto matches = imgRe.globalMatch(html);
+            while(matches.hasNext())
+            {
+                const QRegularExpressionMatch match = matches.next();
+                rebuilt += html.mid(last, match.capturedStart() - last);
+                last = match.capturedEnd();
+
+                QString tag = match.captured(0);
+                const QString path = match.captured(1);
+                if(!path.endsWith(QStringLiteral(".png")))
+                {
+                    rebuilt += tag;
+                    continue;
+                }
+
+                QString sourcePath = path;
+                sourcePath.replace(pngSuffix, QStringLiteral(".typmath"));
+                if(!QFile::exists(sourcePath))
+                {
+                    ++skipped; // 无源码的旧图（如早期手工/生成图）无法恢复细节
+                    rebuilt += tag;
+                    continue;
+                }
+
+                const QImage oldImage(path);
+                if(oldImage.isNull())
+                {
+                    ++skipped;
+                    rebuilt += tag;
+                    continue;
+                }
+
+                const int scale = ToolFunctions::typstImageScale(path);
+                if(scale < ToolFunctions::kTypstSaveSupersample)
+                {
+                    const QString body = readUtf8FileForRerender(sourcePath);
+                    if(compileTypstBodyTo(body, path))
+                    {
+                        // 题面保持旧的逻辑尺寸，只提升像素密度，避免布局跳动
+                        tag = withTypstImageSize(tag, oldImage.size());
+                        ++questionImages;
+                        changed = true;
+                    } else
+                    {
+                        ++failed;
+                    }
+                } else if(!tag.contains(QStringLiteral("width=")))
+                {
+                    tag = withTypstImageSize(tag, QSize(qMax(1, oldImage.width() / scale),
+                                                        qMax(1, oldImage.height() / scale)));
+                    changed = true;
+                }
+                rebuilt += tag;
+            }
+            rebuilt += html.mid(last);
+
+            if(changed)
+            {
+                const QString backupPath = htmlPath + QStringLiteral(".bak");
+                if(!QFile::exists(backupPath))
+                    QFile::copy(htmlPath, backupPath);
+                questionSql->write_questionHTML(questionId, rebuilt);
+            }
+        }
+
+        // 答案图：auto(typst) 的 content 就是源码，直接重编译；显示端按 96 逻辑 PPI 放大到与 UI 一致
+        const QString answerPath = QStringLiteral("./data/%1/answer.json").arg(dirName);
+        const QString answerJson = readUtf8FileForRerender(answerPath);
+        if(answerJson.isEmpty())
+            continue;
+        const QJsonArray answers = QJsonDocument::fromJson(answerJson.toUtf8()).array();
+        for(const QJsonValue &value : answers)
+        {
+            const QJsonObject answer = value.toObject();
+            if(answer.value(AnswerStore::FieldType).toString() != AnswerStore::TypeAutoTypst)
+                continue;
+            const QString content = answer.value(AnswerStore::FieldContent).toString();
+            if(content.isEmpty())
+                continue;
+            const int answerId = answer.value(AnswerStore::FieldId).toInt();
+            const QString imagePath = QStringLiteral("./data/%1/%2.png").arg(dirName).arg(answerId);
+            if(ToolFunctions::typstImageScale(imagePath) >= ToolFunctions::kTypstSaveSupersample)
+                continue;
+            if(compileTypstBodyTo(content, imagePath))
+                ++answerImages;
+            else
+                ++failed;
+        }
+    }
+
+    QFile::remove(QStringLiteral("./data/.rerender.typ"));
+    QFile::remove(QStringLiteral("./data/.rerender.png"));
+    QApplication::restoreOverrideCursor();
+
+    if(currentQuestionId > 0)
+    {
+        loadQuestionIntoEditor(currentQuestionId);
+        load_answer(currentQuestionId);
+    }
+
+    QString message = QStringLiteral("题面公式：%1 张\n答案图：%2 张\n失败：%3 张\n无源码跳过：%4 张")
+                          .arg(questionImages).arg(answerImages).arg(failed).arg(skipped);
+    if(questionImages + answerImages + failed == 0)
+        message += QStringLiteral("\n\n没有需要重渲染的旧图（或 typst 不可用）。");
+    QMessageBox::information(this, QStringLiteral("重新渲染 typst 图片"), message);
 }

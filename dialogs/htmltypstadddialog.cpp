@@ -73,12 +73,15 @@ void HtmlTypstAddDialog::on_buttonBox_accepted()
     stopWatcher();
     retPath = kPngPathFormat.arg(questionId).arg(hash);
     ToolFunctions::write_file(kTypstSourcePathFormat.arg(questionId).arg(hash), ui->lineEdit->text()); // 同步保留 typst 源码，便于二次编辑
-    ToolFunctions::compile_typst(kTempTypstPath, retPath);
+    if(ToolFunctions::compile_typst(kTempTypstPath, retPath))
+        ToolFunctions::markTypstImageScale(retPath); // 2x 渲染标记：插入题面时按逻辑尺寸写入宽高
 }
 
 void HtmlTypstAddDialog::onTypstWatcher_standard_output()
 {
-    ui->label->setPixmap(QPixmap{kTempPngPath});
+    QPixmap image{kTempPngPath};
+    image.setDevicePixelRatio(ToolFunctions::kTypstSaveSupersample);
+    ui->label->setPixmap(image);
 }
 
 QString HtmlTypstAddDialog::getRetPath() const

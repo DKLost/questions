@@ -1,5 +1,6 @@
 #include "bindanswerdialog.h"
 #include "ui_bindanswerdialog.h"
+#include "utils/toolfunctions.h"
 
 #include <QGuiApplication>
 #include <QHeaderView>
@@ -162,7 +163,10 @@ void BindAnswerDialog::on_questionTableView_activated(const QModelIndex &index)
     const int questionId = index.siblingAtColumn(QuestionIdColumn).data().toInt();
     if(questionId <= 0)
         return;
-    ui->questionTextEdit->setHtml(questionSql->read_questionHTML(questionId));
+    const QString questionHtml = questionSql->read_questionHTML(questionId);
+    ToolFunctions::installScaledTypstImageResources(ui->questionTextEdit->document(), questionHtml,
+                                                    ui->questionTextEdit->devicePixelRatioF());
+    ui->questionTextEdit->setHtml(questionHtml);
     populateAnswerList(ui->answerListWidget, questionSql->read_answerJSON(questionId));
 }
 

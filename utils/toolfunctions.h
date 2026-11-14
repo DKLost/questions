@@ -16,6 +16,8 @@
 #include <QImage>
 #include <QTextCursor>
 
+class QTextDocument;
+
 // 跨模块通用小工具（全为静态函数，只依赖 Qt、不含项目自定义类型）：时间格式互转、typst 编译/监听、填空定位、模型取全量、SQL 过滤拼装、DerivedAbs 名段边界判断、图片缩放加边框等
 class ToolFunctions
 {
@@ -45,13 +47,26 @@ public:
 
     static QLineEdit *get_active_LineEdit();
     static void select_current_underline_text(QTextCursor *cursor);
-    static void compile_typst(const QString &inputFile, const QString &outputFile);
+    static bool compile_typst(const QString &inputFile, const QString &outputFile); // true=编译成功
     static void watch_typst_start(QProcess &process, const QString &inputFile, const QString &outputFile);
     static void watch_typst_stop(QProcess &process);
     static int get_cursor_number(QTextCursor *cursor);      // 光标所在填空编号（-1 无填空、0 无编号填空）
     static QTextCursor find_blank_by_number(int number, QTextCursor &_cursor);
     static QList<QTextCursor> find_blanks_by_number(int number, QTextCursor &_cursor);
     static void write_file(const QString &filePath, const QString &text);
+
+    // typst 统一超采样：落盘图按 Qt 逻辑 96 PPI × 3 = 288 渲染，显示端按标记倍数缩回；
+    // 与现象树 TypstImageCache 的 96 逻辑 PPI 同口径，9pt 公式在树/题面/答案里都是 12 逻辑 px。
+    static constexpr int kTypstBasePpi = 96;
+    static constexpr int kTypstSaveBasePpi = 96;
+    static constexpr int kTypstSupersample = 2;     // 树内缓存相对 dpr 的倍数
+    static constexpr int kTypstSaveSupersample = 3; // 落盘图相对 96 逻辑 PPI 的倍数
+    static int typstRenderPpi();
+    static int typstImageScale(const QString &imagePath); // 读 <path>.2x 内容；无标记 1，旧空标记 2
+    static void markTypstImageScale(const QString &imagePath);
+    // QTextEdit/QTextBrowser 绘制图片默认不开平滑缩放：按屏幕 DPR 预缩到设备像素并注入文档资源，
+    // 让文档按 width/height 逻辑尺寸 1:1 绘制，避免 250% 下先缩后放发虚。
+    static void installScaledTypstImageResources(QTextDocument *document, const QString &html, qreal dpr);
 
 public:
     static QString typstMathPrefix; // typst 数学片段编译前缀（typsium 宏包：字号/数学字体/revcases/∥→// 等）

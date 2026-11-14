@@ -53,6 +53,7 @@ inline constexpr int OrigDisplayRole = Qt::UserRole + 22;
 inline constexpr int OrigBaseRole = Qt::UserRole + 23;
 inline constexpr int OrigFullRole = Qt::UserRole + 24;
 inline constexpr int ChainDrillStateRole = Qt::UserRole + 25; // 门控演练：0=无 / 1=已回填 / 2=正确揭示 / 3=错误揭示
+inline constexpr int IconLogicalSizeRole = Qt::UserRole + 40; // 池选框：图标的逻辑尺寸（QIcon::actualSize 不认 DPR）
 
 }
 

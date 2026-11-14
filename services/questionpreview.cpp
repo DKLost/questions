@@ -50,7 +50,8 @@ QTextCharFormat greenAnswerFormat() // 预览答案的绿色强调文本格式
 QString compileChainTypstPreview(const QString &body)
 {
     ToolFunctions::write_file(kChainTypstInputPath, ToolFunctions::typstMathPrefix + body);
-    ToolFunctions::compile_typst(kChainTypstInputPath, kChainTypstOutputPath);
+    if(ToolFunctions::compile_typst(kChainTypstInputPath, kChainTypstOutputPath))
+        ToolFunctions::markTypstImageScale(kChainTypstOutputPath); // 与落盘答案图同口径：2x 渲染
     return kChainTypstOutputPath;
 }
 
@@ -94,20 +95,27 @@ void QuestionPreview::insertAnswerAtBlank(QTextCursor &blankCursor, const QJsonO
         content = KnowledgeDB::lastObjectOfDerivedAbs(derivedAbs); // 链卡：以挂载的 DerivedAbs 末段名显示（链卡(typst) 即 `$ … $` 公式源）
 
     QString imagePath; // 需要内联成图的三种类型；其余走绿色文本
+    int imageScale = 1; // 2x 渲染的 typst 图：显示尺寸按逻辑尺寸缩回
     if(type == AnswerStore::TypeManualImage)
         imagePath = content;
     else if(type == AnswerStore::TypeAutoTypst)
+    {
         imagePath = answerImagePath(questionId, answerId);
-    else if(type == AnswerStore::TypeAutoChainTypst && KnowledgeDB::isChainTypstName(content))
+        imageScale = ToolFunctions::typstImageScale(imagePath);
+    } else if(type == AnswerStore::TypeAutoChainTypst && KnowledgeDB::isChainTypstName(content))
+    {
         imagePath = compileChainTypstPreview(content); // 宾词名是 `$ … $`：就地编译成图（`$ … $ 混排`暂不支持，退回文本）
-    else
+        imageScale = ToolFunctions::typstImageScale(imagePath);
+    } else
     {
         blankCursor.insertText(content, greenAnswerFormat());
         return;
     }
 
-    const QImage image = ToolFunctions::scaledWithBorder(QImage(imagePath), kMaxInlineImageWidth,
-                                                         kInlineImageBorderWidth, QColor(kGreenAnswerColor));
+    const QImage image = ToolFunctions::scaledWithBorder(QImage(imagePath),
+                                                         kMaxInlineImageWidth * imageScale,
+                                                         kInlineImageBorderWidth * imageScale,
+                                                         QColor(kGreenAnswerColor));
     if(image.isNull()) // 图片加载失败：文本占位
     {
         blankCursor.insertText(type == AnswerStore::TypeManualImage ? kImagePlaceholderText : content, greenAnswerFormat());
@@ -117,8 +125,8 @@ void QuestionPreview::insertAnswerAtBlank(QTextCursor &blankCursor, const QJsonO
     document->addResource(QTextDocument::ImageResource, QUrl(resourceName), image);
     QTextImageFormat imageFormat;
     imageFormat.setName(resourceName);
-    imageFormat.setWidth(image.width());
-    imageFormat.setHeight(image.height());
+    imageFormat.setWidth(qMax(1, image.width() / imageScale));
+    imageFormat.setHeight(qMax(1, image.height() / imageScale));
     imageFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle);
     blankCursor.insertImage(imageFormat);
 }
@@ -157,7 +165,10 @@ QWidget *QuestionPreview::WindowPool::showIn(QWidget *window, QuestionSql *quest
     windows.insert(questionId, window);
 
     auto *browser = window->findChild<QTextBrowser *>();
-    browser->setHtml(questionSql->read_questionHTML(questionId));
+    const QString html = questionSql->read_questionHTML(questionId);
+    ToolFunctions::installScaledTypstImageResources(browser->document(), html,
+                                                    browser->devicePixelRatioF());
+    browser->setHtml(html);
     QuestionPreview::fillNotDueAnswers(questionSql, questionId, derivedAbs, browser->document());
     browser->moveCursor(QTextCursor::Start); // 每次预览都从题首看起
     window->setWindowTitle(QStringLiteral("%1 · id %2")

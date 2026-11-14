@@ -147,6 +147,9 @@ void MainWindow::loadQuestionIntoEditor(int questionId)
     const QString questionHTML = questionSql->read_questionHTML(questionId);
     const QSignalBlocker blocker(ui->questionTextEdit);
     editorQuestionId = questionId;
+    // QTextEdit 默认不平滑缩放图片：先按屏幕 DPR 预缩并注入资源，文档按 width/height 1:1 绘制
+    ToolFunctions::installScaledTypstImageResources(ui->questionTextEdit->document(), questionHTML,
+                                                    ui->questionTextEdit->devicePixelRatioF());
     ui->questionTextEdit->setHtml(questionHTML);
 }
 

@@ -16,8 +16,8 @@
 
 namespace {
 constexpr int kKeyHexLength = 32;   // 键取 sha256 前 32 位十六进制，够用且文件名短
-constexpr double kLogicalDpi = 96.0; // Qt 逻辑像素口径：字号 pt→逻辑 px 用 96dpi
-constexpr int kSupersample = 2;      // 编译超采样倍数（缩小绘制，保证清晰）
+constexpr double kLogicalDpi = ToolFunctions::kTypstBasePpi; // Qt 逻辑像素口径：字号 pt→逻辑 px 用 96dpi
+constexpr int kSupersample = ToolFunctions::kTypstSupersample; // 编译超采样倍数（缩小绘制，保证清晰）
 const QString kTempDirName = QStringLiteral(".tmp");
 } // namespace
 
