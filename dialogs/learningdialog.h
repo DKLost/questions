@@ -229,6 +229,7 @@ private:
     // 载题（set_question）
     void resetForNewQuestion(int questionId);
     void selectQuestionDerivedAbsInTree(int questionId);
+    void refreshCurrentQuestionHighlight(); // 两个知识树里，当前题所挂现象行加特殊高亮（独立于选中态）
     void rebuildAnswerGrid();
     AnswerRowControls createAnswerRowWidgets(int rowIndex);
     void applyAnswerStyle(const AnswerRowControls &row, int rowIndex, const QJsonObject &answer, const QString &derivedAbs);

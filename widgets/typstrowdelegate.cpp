@@ -1,8 +1,10 @@
 #include "typstrowdelegate.h"
 
 #include "services/typstimagecache.h"
+#include "widgets/knowledgetreehelper.h"
 
 #include <QApplication>
+#include <QColor>
 #include <QFontMetrics>
 #include <QPainter>
 #include <QStyle>
@@ -39,6 +41,19 @@ void TypstRowDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
     if(text.isEmpty())
         return;
 
+    // 复习窗当前题所在现象行：在选中态之上再叠一层强调（左侧竖条 + 淡橙底），点别的行也不会丢
+    const bool currentReview = index.data(CurrentReviewRole).toBool();
+    int left = opt.rect.left();
+    if(currentReview)
+    {
+        painter->save();
+        painter->fillRect(opt.rect, QColor(255, 160, 0, 36));
+        painter->fillRect(QRect(opt.rect.left(), opt.rect.top(), 3, opt.rect.height()),
+                          QColor(240, 120, 0));
+        painter->restore();
+        left += 5; // 给竖条让位，避免压住第一个字
+    }
+
     const int ppi = TypstImageCache::ppiOf(opt.widget);
     const QList<Segment> segments = segmentsOf(text, TypstImageCache::pointSizeOf(opt.font), ppi);
     const QFontMetrics fm(opt.font);
@@ -51,7 +66,7 @@ void TypstRowDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
     painter->setClipRect(opt.rect);                                // 行宽不足时截断，不越出本行
     painter->setFont(opt.font);
     painter->setPen(textColor);
-    int x = opt.rect.left(); // 无内边距：内容从行矩形左缘起画
+    int x = left; // 无内边距：内容从行矩形左缘起画（当前题行再右移 5px 给强调竖条让位）
     for(const Segment &segment : segments)
     {
         if(segment.image.isNull())

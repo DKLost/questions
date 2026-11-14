@@ -65,6 +65,7 @@ public:
 
     // 题目表范围过滤：scopeDerivedAbs 为 DerivedAbs 集合（空=全部）；题目属于范围 ⇔ abstractName 等于某条名或以“该名→”开头，rebuildQuestionFilter 再与名称搜索做 AND
     QStringList scopeDerivedAbs;
+    QStringList findObjsExtraScope; // 检索命中落在 @ 行：树中不显示镜像行，但其题目仍并入题目范围
     void setQuestionScope(const QStringList &derivedAbsList);
     void rebuildQuestionFilter();
     int findQuestionRowById(int id);                        // 当前（已取全量的）模型中按 id 找行，-1 未命中

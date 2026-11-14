@@ -13,7 +13,15 @@ KnowledgeDB* KnowledgeDB::instance() {
 
 void KnowledgeDB::init(const QString &fileName)
 {
-    instance()->dbFileName = fileName;
+    KnowledgeDB *self = instance();
+    self->dbFileName = fileName;
+    if(self->db.isOpen())
+        self->db.close();
+    for(auto it = self->treeCache.begin(); it != self->treeCache.end(); ++it)
+        delete it.value();
+    self->treeCache.clear();
+    self->treeCacheVersion.clear();
+    ++self->dataVersion; // 换库：旧库的原型树一律作废
 }
 
 int KnowledgeDB::predicateDepth(const Abstract &pred){
@@ -79,6 +87,8 @@ int KnowledgeDB::ensureAbstract(const Abstract &a)
     query.bindValue(2,a.unfold_C_Idea);
     query.bindValue(3,a.unfold_R_Predicate);
     query.exec();
+    if(query.numRowsAffected() > 0)
+        ++dataVersion; // 新增抽象可能进入树，缓存作废
 
     
     query.prepare("SELECT id FROM abstracts WHERE name = ?");
@@ -107,6 +117,8 @@ void KnowledgeDB::insertPhenomenon(int predId, int subjId, int objId)
     query.bindValue(1,subjId);
     query.bindValue(2,objId);
     query.exec();
+    if(query.numRowsAffected() > 0)
+        ++dataVersion; // 新增现象改变树，缓存作废
 }
 
 void KnowledgeDB::insertPhenIntension(int condId, int preId)
@@ -209,6 +221,7 @@ QList<int> KnowledgeDB::getDerivedAbsIds(const Abstract& a)
 
 void KnowledgeDB::delPhenomenon(const Phenomenon& p){
     ensureOpen();
+    ++dataVersion; // 删除会连带逆现象/派生抽象/锚点对，保守失效建树缓存
 
     // 是 : / @ 行主现象则级联删除：它派生的 DerivedAbs 是子行/锚点对的依附主体，缺了它那些现象无意义（正逆归同一 DerivedAbs）
     const bool isLine = isRExistAbsPred(p.predicate) || isLExistAbsPred(p.predicate);
@@ -916,6 +929,11 @@ void KnowledgeDB::clear()
     QSqlQuery query(db);
     query.exec("DELETE FROM phenomena");
     query.exec("DELETE FROM abstracts");
+    ++dataVersion;
+    for(auto it = treeCache.begin(); it != treeCache.end(); ++it)
+        delete it.value();
+    treeCache.clear();
+    treeCacheVersion.clear();
 }
 
 QList<Phenomenon> KnowledgeDB::queryPhenomena(const QString &where, const QList<QVariant> &binds)
@@ -1114,9 +1132,36 @@ TreeNode *KnowledgeDB::buildTree(int rootSubject_id)
     return buildTree(QList<int>{rootSubject_id});
 }
 
+TreeNode *KnowledgeDB::cloneTree(const TreeNode *node)
+{
+    if(!node)
+        return nullptr;
+    auto *copy = new TreeNode(node->phenId);
+    copy->atFlag = node->atFlag;
+    copy->subjectName = node->subjectName;
+    copy->objectName = node->objectName;
+    copy->unfoldedPred = node->unfoldedPred;
+    copy->revUnfoldedPred = node->revUnfoldedPred;
+    copy->derivedAbs = node->derivedAbs;
+    for(TreeNode *child : node->children)
+        copy->children.append(cloneTree(child));
+    return copy;
+}
+
 TreeNode *KnowledgeDB::buildTree(const QList<int>& rootSubjectIds)
 {
     ensureOpen();
+
+    // 树形只随库内容变化：命中缓存时只克隆原型树，避免每次检索都全量读库、建节点与排序。
+    // 写库路径（ensureAbstract/insertPhenomenon/delPhenomenon/clear）都会递增 dataVersion。
+    QStringList keyParts;
+    for(int id : rootSubjectIds)
+        keyParts.append(QString::number(id));
+    const QString cacheKey = keyParts.join(QLatin1Char(','));
+
+    auto cached = treeCache.constFind(cacheKey);
+    if(cached != treeCache.constEnd() && treeCacheVersion.value(cacheKey) == dataVersion)
+        return cloneTree(cached.value());
 
     // 1) 全量 abstracts：名→id（递归定位下一层主体）、名→unfold 三元组（纯内存 rev）
     QHash<QString, int> idByName;
@@ -1199,7 +1244,13 @@ TreeNode *KnowledgeDB::buildTree(const QList<int>& rootSubjectIds)
     TreeBuilder builder{edges, bySubject, idByName, revNamer};
     for(int rid : rootSubjectIds)
         builder.build(rid, root, path);
-    return root;
+
+    // 缓存原型树；调用方拿到克隆，仍按原 API 负责 delete
+    if(TreeNode *old = treeCache.value(cacheKey, nullptr))
+        delete old;
+    treeCache.insert(cacheKey, root);
+    treeCacheVersion.insert(cacheKey, dataVersion);
+    return cloneTree(root);
 }
 
 QList<int> KnowledgeDB::queryDirectPrerequisites(int phenId){

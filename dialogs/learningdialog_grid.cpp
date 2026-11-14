@@ -109,7 +109,36 @@ void LearningDialog::selectQuestionDerivedAbsInTree(int questionId)
     const QString derivedAbs = questionSql->get_value(kQuestionsTable, questionId, kAbstractNameField).toString();
     if(!selectKnowledgeRowByDerivedAbs(ui->phenTreeView, derivedAbs))
         showObjectWordTreeFor(derivedAbs);
+    refreshCurrentQuestionHighlight(); // 先定高亮，再做遮罩（遮罩只改文本，不动行对象）
     refreshAnswerMasks(); // 遮罩集合不变，仅确保当前题对应行处于遮罩
+}
+
+// 当前题所挂现象行：两个模型全量对账，只保留与当前题 DerivedAbs 全等的那一行；
+// 模型重建（检索/反选兜底）后也靠它恢复，当前行不在新模型里则自然全部清除
+void LearningDialog::refreshCurrentQuestionHighlight()
+{
+    const QString derivedAbs = currentQuestionId > 0
+                                   ? questionSql->get_value(kQuestionsTable, currentQuestionId, kAbstractNameField).toString()
+                                   : QString();
+
+    auto apply = [&derivedAbs](QStandardItemModel *model) {
+        if(!model)
+            return;
+        std::function<void(QStandardItem *)> walk = [&](QStandardItem *item) {
+            if(!item)
+                return;
+            const bool current = !derivedAbs.isEmpty()
+                                 && item->data(DerivedAbsRole).toString() == derivedAbs;
+            if(item->data(CurrentReviewRole).toBool() != current)
+                item->setData(current, CurrentReviewRole);
+            for(int i = 0; i < item->rowCount(); ++i)
+                walk(item->child(i));
+        };
+        for(int i = 0; i < model->rowCount(); ++i)
+            walk(model->item(i));
+    };
+    apply(knowledgeModel);
+    apply(phenObjModel);
 }
 
 // 反选兜底：逻辑上等价于 ctrl+左键该行的顶层宾词行——填好本窗的宾词视图并在其中选中该现象行

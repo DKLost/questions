@@ -16,15 +16,18 @@ constexpr int MergeFullRole = Qt::UserRole + 12;       // 折叠态文本（关�
 constexpr int DerivedAbsRole = Qt::UserRole + 13;       // 本行承载现象派生的抽象 = DerivedAbs（createLine 的 rootSubject，见 docs/01 定义 1.14b）
 constexpr int RelationPrefixRole = Qt::UserRole + 14;  // 行文本中宾词前的关系段（"is : "/"@ "/""，复习遮罩时保留它）
 constexpr int PhenIdRole = Qt::UserRole + 15;          // 现象 id（第 3 列显示到期天数，id 只存角色供展开集持久化）
+constexpr int CurrentReviewRole = Qt::UserRole + 26;   // 复习窗：当前正在作答的题目所挂的现象行（独立于选中态的特殊高亮）
 
 // 清空并用 world 全树填充 model（world 根不入模，其孩子直接挂到模型根）；返回新建的 world 根 TreeNode，调用方负责 delete
 TreeNode *fillKnowledgeModel(QStandardItemModel *model);
 
 // 知识检索（tag 视图）：主词空按 world、谓词空按 has，非 world 主体 qualify 且谓词取 rEAbs（只命中 : 行）；
 // obj 非空时按**显示名**过滤（objExactMatch=true 取精确相等，否则 LIKE '%obj%' 子串、大小写不敏感）；
-// 命中概念按其树中位置保留（祖先补父行、命中处以下整棵展开、其余剪枝）；返回 world 根，调用方删除
+// 命中概念按其树中位置保留（祖先补父行、命中处以下整棵展开、其余剪枝）；返回 world 根，调用方删除。
+// extraScopeDerivedAbs 非空时，收集"命中落在 @ 行、因镜像假分支不显示"的 DerivedAbs，供题目范围使用
 TreeNode *fillFindObjsModel(QStandardItemModel *model, const QString &subj, const QString &pred,
-                            const QString &obj = QString(), bool objExactMatch = false);
+                            const QString &obj = QString(), bool objExactMatch = false,
+                            QStringList *extraScopeDerivedAbs = nullptr);
 
 // 递归渲染单个 TreeNode 到 parent 行下（行文本规则、⇒ 合并、DerivedAbsRole 均在此写入）；
 // kept 非空时只渲染集合内的子行（检索剪枝用，见 fillFindObjsModel）

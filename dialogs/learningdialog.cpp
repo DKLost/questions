@@ -464,6 +464,7 @@ void LearningDialog::on_findObjsPushButton_clicked()
     ui->phenTreeView->collapseAll();
     refreshAnswerMasks();   // 模型重建后按当前复习集合重新遮罩
     reapplyGateDrillView(); // 演练现场（回填/红绿揭示）按快照恢复
+    refreshCurrentQuestionHighlight(); // 检索重建模型后恢复当前题高亮；当前行不在结果里则自然清除
 }
 
 // 知识树行点击：按 DerivedAbs 在题目表中定位并跳转；未关联题目（或不在复习集内）的概念行不打断当前复习

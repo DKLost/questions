@@ -395,6 +395,7 @@ void MainWindow::showNoQuestionForConcept()
 void MainWindow::reload_knowledgeTreeView(bool collapseAll)
 {
     findObjsActive = false; // 全树重建即退出检索结果视图
+    findObjsExtraScope.clear();
 
     delete knowledgeRoot;
     knowledgeRoot = nullptr;
@@ -762,9 +763,10 @@ void MainWindow::repointQuestionsUnderRenamedConcept(const QString &oldDerivedAb
 void MainWindow::applyFindObjs()
 {
     delete knowledgeRoot;
+    findObjsExtraScope.clear();
     knowledgeRoot = fillFindObjsModel(knowledgeItemModel,
                                       ui->subjLineEdit->text(), ui->predLineEdit->text(),
-                                      ui->objLineEdit->text());
+                                      ui->objLineEdit->text(), false, &findObjsExtraScope);
     setupKnowledgeTreeView(ui->phenTreeView);
     ui->phenTreeView->collapseAll(); // 检索结果默认折叠
     findObjsActive = true;
@@ -779,6 +781,7 @@ void MainWindow::setQuestionScopeFromFindResults()
                             && ui->objLineEdit->text().trimmed().isEmpty();
     if(emptyQuery)
     {
+        findObjsExtraScope.clear();
         setQuestionScope({});
         return;
     }
@@ -790,6 +793,10 @@ void MainWindow::setQuestionScopeFromFindResults()
         if(!derivedAbs.isEmpty())
             roots.append(derivedAbs);
     }
+    // 命中落在 @ 行时该行不入树（镜像假分支），但挂在它下面的题目仍属于本次检索结果
+    for(const QString &extra : findObjsExtraScope)
+        if(!roots.contains(extra))
+            roots.append(extra);
     setQuestionScope(roots);
 }
 
@@ -827,22 +834,26 @@ QStringList MainWindow::expandedScopeDerivedAbs() const
     for(const QString &entry : expanded)
         seen.insert(entry);
 
-    std::function<void(const QModelIndex &)> walk = [&](const QModelIndex &parent) {
+    std::function<void(const QModelIndex &, bool)> walk = [&](const QModelIndex &parent, bool parentInScope) {
         for(int row = 0; row < model->rowCount(parent); ++row)
         {
             const QModelIndex index = model->index(row, 0, parent);
             const QString derivedAbs = index.data(DerivedAbsRole).toString();
-            if(!derivedAbs.isEmpty() && isInScopeSubtree(derivedAbs, scopeDerivedAbs))
+            // 父行在范围内 ⇒ 本行及其整棵显示子树都在范围内。检索结果里的 @ 镜像行 DerivedAbs
+            // 可能落在别的顶层根下（如 大学→高等数学 的镜像），只按名字判会把它和它引用的支整棵漏掉。
+            const bool inScope = parentInScope
+                                 || (!derivedAbs.isEmpty() && isInScopeSubtree(derivedAbs, scopeDerivedAbs));
+            if(inScope)
                 for(const QString &topDerivedAbs : topByWord.value(objectWordOfIndex(index)))
                     if(!seen.contains(topDerivedAbs))
                     {
                         seen.insert(topDerivedAbs);
                         expanded.append(topDerivedAbs);
                     }
-            walk(index);
+            walk(index, inScope);
         }
     };
-    walk(QModelIndex());
+    walk(QModelIndex(), false);
     return expanded;
 }
 

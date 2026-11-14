@@ -4,6 +4,7 @@
 #include <QString>
 #include <QList>
 #include <QVariant>
+#include <QHash>
 #include <QSqlDatabase>
 
 struct Phenomenon;
@@ -113,6 +114,13 @@ private:
 
     QSqlDatabase db;
     QString dbFileName = "knowledge.db";
+
+    // 建树缓存：键＝rootSubjectIds 串，值＝原型树。任何写库操作递增 dataVersion 使其失效；
+    // buildTree 对外仍返回调用方拥有的克隆，避免改各调用方的 delete 语义。
+    QHash<QString, TreeNode *> treeCache;
+    QHash<QString, quint64> treeCacheVersion;
+    quint64 dataVersion = 1;
+    static TreeNode *cloneTree(const TreeNode *node);
 
 public: //数据库
     static KnowledgeDB* instance();

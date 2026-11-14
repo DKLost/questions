@@ -172,7 +172,7 @@ static void markWholeSubtree(const TreeNode *node, QSet<const TreeNode *> *kept)
 // 只呈现检索命中的概念：命中名自身编码了"到它为止的身份链"，按链逐级补出父行（未命中的兄弟剪掉），
 // 命中行以下照常整棵展开；多个命中共用同一前缀时自然合并到同一父行
 void fillMatchedNodes(TreeNode *root, const QList<Abstract> &hits, const QString &obj, bool objExactMatch,
-                      QStandardItem *modelRoot)
+                      QStandardItem *modelRoot, QStringList *extraScopeDerivedAbs)
 {
     KnowledgeDB *db = KnowledgeDB::instance();
     QSet<const TreeNode *> kept;
@@ -192,7 +192,13 @@ void fillMatchedNodes(TreeNode *root, const QList<Abstract> &hits, const QString
             continue;
         const TreeNode *hitNode = path.last();
         if(hitNode->atFlag) // @ 行不是 : 行宾语在树中的落点（互为正反陈述的两条线可同派生名，撞上会多出假分支）
+        {
+            // 行不显示，但挂在它下面的题目仍属于本次检索结果：交给题目范围，避免 @ 行题目被整体排除
+            if(extraScopeDerivedAbs && !hitNode->derivedAbs.isEmpty()
+               && !extraScopeDerivedAbs->contains(hitNode->derivedAbs))
+                extraScopeDerivedAbs->append(hitNode->derivedAbs);
             continue;
+        }
         for(const TreeNode *ancestor : path)
             kept.insert(ancestor);
         markWholeSubtree(hitNode, &kept);
@@ -203,8 +209,10 @@ void fillMatchedNodes(TreeNode *root, const QList<Abstract> &hits, const QString
 }
 
 TreeNode *fillFindObjsModel(QStandardItemModel *model, const QString &subjectInput, const QString &predicateInput,
-                            const QString &objectInput, bool objExactMatch)
+                            const QString &objectInput, bool objExactMatch, QStringList *extraScopeDerivedAbs)
 {
+    if(extraScopeDerivedAbs)
+        extraScopeDerivedAbs->clear();
     const QString subject = KnowledgeDB::encodeName(subjectInput.trimmed().isEmpty() ? kWorldName : subjectInput.trimmed()); // 主词与谓词按名字层转义后匹配库内名（空输入取默认 world/has）
     const QString predicate = KnowledgeDB::encodeName(predicateInput.trimmed().isEmpty() ? kHasPredicate : predicateInput.trimmed());
     const QString object = objectInput.trimmed(); // 宾词与显示名同处一侧，不转义（见 fillMatchedNodes）
@@ -214,12 +222,14 @@ TreeNode *fillFindObjsModel(QStandardItemModel *model, const QString &subjectInp
     resolveFindTargets(subject, predicate, &querySubj, &queryPred);
     const QList<Abstract> hits = KnowledgeDB::instance()->findObjects(queryPred, querySubj);
 
+    clearModelForKnowledge(model);
+    if(hits.isEmpty())
+        return new TreeNode(-1); // 无命中：不建全树、不查到期待办
+
     const int worldId = KnowledgeDB::instance()->ensureAbstract(Abstract{kWorldName}); // 统一建 world 全树再筛选
     TreeNode *root = KnowledgeDB::instance()->buildTree(worldId);
-    clearModelForKnowledge(model);
     refreshQuestionDueDates();
-    if(!hits.isEmpty())
-        fillMatchedNodes(root, hits, object, objExactMatch, model->invisibleRootItem());
+    fillMatchedNodes(root, hits, object, objExactMatch, model->invisibleRootItem(), extraScopeDerivedAbs);
     return root;
 }
 
