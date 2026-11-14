@@ -56,17 +56,25 @@ public:
     static void write_file(const QString &filePath, const QString &text);
 
     // typst 统一超采样：落盘图按 Qt 逻辑 96 PPI × 3 = 288 渲染，显示端按标记倍数缩回；
-    // 与现象树 TypstImageCache 的 96 逻辑 PPI 同口径，9pt 公式在树/题面/答案里都是 12 逻辑 px。
+    // 与现象树 TypstImageCache 的 96 逻辑 PPI 同口径：编译字号跟随正文字号（12pt），
+    // 288÷3 即 96 逻辑 PPI，公式与周围 12pt 文字等大。
     static constexpr int kTypstBasePpi = 96;
     static constexpr int kTypstSaveBasePpi = 96;
     static constexpr int kTypstSupersample = 2;     // 树内缓存相对 dpr 的倍数
     static constexpr int kTypstSaveSupersample = 3; // 落盘图相对 96 逻辑 PPI 的倍数
+    static constexpr int kTypstPointSize = 12;      // 与 UI 正文字号一致（mainwindow_internal.h kUiFontSize）
     static int typstRenderPpi();
-    static int typstImageScale(const QString &imagePath); // 读 <path>.2x 内容；无标记 1，旧空标记 2
+    static int typstImageScale(const QString &imagePath); // 读 <path>.2x 的倍数段；无标记 1，旧空标记 2
+    static int typstImagePointSize(const QString &imagePath); // 读 <path>.2x 的字号段；旧标记无字号 → 0
     static void markTypstImageScale(const QString &imagePath);
     // QTextEdit/QTextBrowser 绘制图片默认不开平滑缩放：按屏幕 DPR 预缩到设备像素并注入文档资源，
     // 让文档按 width/height 逻辑尺寸 1:1 绘制，避免 250% 下先缩后放发虚。
     static void installScaledTypstImageResources(QTextDocument *document, const QString &html, qreal dpr);
+    // typst 图按当前正文字号（12pt）在 96 逻辑 PPI 下的显示尺寸：
+    // 新图 = 像素 ÷3；旧 9pt 图自动放大 4/3；旧 144/72 图再按各自源 PPI 还原
+    static QSize typstDisplaySize(const QString &imagePath);
+    // 把 HTML 内 typst <img> 的 width/height 统一成自然尺寸，修掉历史/手工缩小导致的过小
+    static QString normalizedTypstImageSizes(const QString &html);
 
 public:
     static QString typstMathPrefix; // typst 数学片段编译前缀（typsium 宏包：字号/数学字体/revcases/∥→// 等）

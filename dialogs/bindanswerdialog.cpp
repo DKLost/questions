@@ -163,7 +163,7 @@ void BindAnswerDialog::on_questionTableView_activated(const QModelIndex &index)
     const int questionId = index.siblingAtColumn(QuestionIdColumn).data().toInt();
     if(questionId <= 0)
         return;
-    const QString questionHtml = questionSql->read_questionHTML(questionId);
+    const QString questionHtml = ToolFunctions::normalizedTypstImageSizes(questionSql->read_questionHTML(questionId));
     ToolFunctions::installScaledTypstImageResources(ui->questionTextEdit->document(), questionHtml,
                                                     ui->questionTextEdit->devicePixelRatioF());
     ui->questionTextEdit->setHtml(questionHtml);

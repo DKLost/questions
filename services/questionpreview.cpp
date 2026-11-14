@@ -51,7 +51,7 @@ QString compileChainTypstPreview(const QString &body)
 {
     ToolFunctions::write_file(kChainTypstInputPath, ToolFunctions::typstMathPrefix + body);
     if(ToolFunctions::compile_typst(kChainTypstInputPath, kChainTypstOutputPath))
-        ToolFunctions::markTypstImageScale(kChainTypstOutputPath); // 与落盘答案图同口径：2x 渲染
+        ToolFunctions::markTypstImageScale(kChainTypstOutputPath); // 与落盘答案图同口径：288 PPI 超采样
     return kChainTypstOutputPath;
 }
 
@@ -95,7 +95,7 @@ void QuestionPreview::insertAnswerAtBlank(QTextCursor &blankCursor, const QJsonO
         content = KnowledgeDB::lastObjectOfDerivedAbs(derivedAbs); // 链卡：以挂载的 DerivedAbs 末段名显示（链卡(typst) 即 `$ … $` 公式源）
 
     QString imagePath; // 需要内联成图的三种类型；其余走绿色文本
-    int imageScale = 1; // 2x 渲染的 typst 图：显示尺寸按逻辑尺寸缩回
+    int imageScale = 1; // 超采样的 typst 图：显示尺寸按逻辑尺寸缩回
     if(type == AnswerStore::TypeManualImage)
         imagePath = content;
     else if(type == AnswerStore::TypeAutoTypst)
@@ -165,7 +165,7 @@ QWidget *QuestionPreview::WindowPool::showIn(QWidget *window, QuestionSql *quest
     windows.insert(questionId, window);
 
     auto *browser = window->findChild<QTextBrowser *>();
-    const QString html = questionSql->read_questionHTML(questionId);
+    const QString html = ToolFunctions::normalizedTypstImageSizes(questionSql->read_questionHTML(questionId));
     ToolFunctions::installScaledTypstImageResources(browser->document(), html,
                                                     browser->devicePixelRatioF());
     browser->setHtml(html);

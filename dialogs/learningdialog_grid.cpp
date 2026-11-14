@@ -41,7 +41,7 @@ const QString kImageInputStyle = QStringLiteral("QLineEdit {border: 1px solid re
 const QString kTypstInputStyle = QStringLiteral("QLineEdit {border: 1px solid green;}");
 const QString kChainInputStyle = QStringLiteral("QLineEdit {border: 1px solid orange;}");
 
-// typst 答案图：2x 渲染的图设 DPR 后按逻辑尺寸显示；旧图无标记时保持原尺寸
+// typst 答案图：按标记倍数设 DPR 后显示为 96 逻辑 PPI；旧图无标记时保持原尺寸
 QPixmap typstAnswerPixmap(const QString &path)
 {
     QPixmap image{path};
@@ -186,7 +186,7 @@ QString LearningDialog::answerImagePath(int answerId, int questionId) const
 void LearningDialog::rebuildAnswerGrid()
 {
     clear_question_display();
-    const QString questionHtml = questionSql->read_questionHTML(currentQuestionId);
+    const QString questionHtml = ToolFunctions::normalizedTypstImageSizes(questionSql->read_questionHTML(currentQuestionId));
     ToolFunctions::installScaledTypstImageResources(ui->textBrowser->document(), questionHtml,
                                                     ui->textBrowser->devicePixelRatioF());
     ui->textBrowser->setHtml(questionHtml);

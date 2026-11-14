@@ -246,7 +246,7 @@ private:
     void reloadAnswersSelectingNeighbor(int questionId, int row);
     int takeClozeMoveSource(int &row); // 校验移动源（源题目 id + 行号），不合法返回 -1
     void applyAnswerTypeDisplay(QTreeWidgetItem *item, int questionId, const QString &type, int answerId, const QString &content);
-    void refreshChainTypstAnswerIcons(); // typst 图落盘后：把链卡(typst)答案从文本换成公式图
+    void refreshTypstAnswerImages(); // typst 图落盘后：自动/链卡(typst)答案换成高分辨率缓存图
     void setClozeDueToday(int answerId);
     void refreshDueDatesAfterChange();                                            // 到期日改动后刷新题目表/知识树到期列/当前空排期表
     void openAnswerEditDialog(int questionId, int oldAnswerId, const QJsonObject &answer, const QJsonArray &siblings);

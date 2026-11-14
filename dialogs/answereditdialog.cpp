@@ -316,12 +316,12 @@ void AnswerEditDialog::on_buttonBox_accepted()
     if(ui->comboBox->currentText() == kDisplayTypst)
     {
         const QString imagePath = kAnswerImagePathFormat.arg(questionId).arg(retAId);
-        // 预览用 18pt，落盘仍按行内 9pt，保持答案图既有尺寸
+        // 预览用 18pt；落盘按正文字号 12pt，与答案树/现象树同口径
         ToolFunctions::write_file(kTypstTempInput,
                                   ToolFunctions::typstMathPrefix + QStringLiteral("$ ")
                                       + ui->lineEdit->text() + QStringLiteral(" $"));
         if(ToolFunctions::compile_typst(kTypstTempInput, imagePath))
-            ToolFunctions::markTypstImageScale(imagePath); // 2x 渲染标记：显示端据此缩回逻辑尺寸
+            ToolFunctions::markTypstImageScale(imagePath); // 超采样标记：显示端据此缩回 96 逻辑 PPI
     }
 }
 

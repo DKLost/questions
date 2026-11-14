@@ -79,6 +79,15 @@ const char kSymbolCharPattern[] = R"([<=>\-\+,\|()\{\}\[\]"/⟂∥±∪∩⟨⟩
 // 答案树 typst 图：保留全分辨率源图，由委托直接画到逻辑尺寸矩形（QIcon 会在 250% 下先缩后放，发虚）
 constexpr int TypstAnswerPixmapRole = Qt::UserRole + 50;
 constexpr int TypstAnswerLogicalSizeRole = Qt::UserRole + 51;
+constexpr int kTypstAnswerPadding = 2; // 公式四周留出的边框
+
+// 公式按可用高度整体缩放（保持宽高比）
+QSize typstAnswerPaintedSize(const QSize &logical, int rowHeight)
+{
+    if(!logical.isValid() || logical.height() <= 0 || rowHeight <= 0)
+        return logical;
+    return QSize(qMax(1, qRound(qreal(logical.width()) * rowHeight / logical.height())), rowHeight);
+}
 
 class TypstAnswerDelegate : public QStyledItemDelegate
 {
@@ -91,7 +100,8 @@ public:
         if(logical.isValid())
         {
             const QSize size = logical.toSize();
-            return QSize(size.width() + 4, qMax(size.height(), option.fontMetrics.height()) + 4);
+            const int rowHeight = qMax(size.height(), option.fontMetrics.height()) + 2 * kTypstAnswerPadding;
+            return typstAnswerPaintedSize(size, rowHeight);
         }
         return QStyledItemDelegate::sizeHint(option, index);
     }
@@ -114,10 +124,13 @@ public:
         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, opt.widget);
 
         const QSize logical = index.data(TypstAnswerLogicalSizeRole).toSize();
-        const QRect target(opt.rect.left() + 2, opt.rect.center().y() - logical.height() / 2,
-                           logical.width(), logical.height());
+        const QRect contentRect = opt.rect.adjusted(kTypstAnswerPadding, kTypstAnswerPadding,
+                                                    -kTypstAnswerPadding, -kTypstAnswerPadding);
+        const QSize painted = typstAnswerPaintedSize(logical, contentRect.height());
+        const QRect target(contentRect.left(), contentRect.top(), painted.width(), contentRect.height());
         painter->save();
         painter->setRenderHint(QPainter::SmoothPixmapTransform, true);
+        painter->setClipRect(contentRect); // 公式过宽时截在本列内，不压到下一列
         painter->drawPixmap(target, image); // 源图全分辨率，目标为 96 逻辑 PPI
         painter->restore();
     }
@@ -159,6 +172,21 @@ void MainWindow::applyAnswerTypeDisplay(QTreeWidgetItem *item, int questionId, c
         item->setIcon(1, QIcon{content});
     } else if(type == AnswerStore::TypeAutoTypst)
     {
+        // 与现象树同口径：按当前字号 + 屏幕 DPR 的超采样缓存取图，避免把旧落盘图放大后发虚
+        if(!content.isEmpty())
+        {
+            const int ppi = TypstImageCache::ppiOf(ui->answerTreeWidget);
+            const int pointSize = TypstImageCache::pointSizeOf(ui->answerTreeWidget->font());
+            const QPixmap cached = TypstImageCache::instance()->pixmap(
+                QStringLiteral("$ %1 $").arg(content), pointSize, ppi);
+            if(!cached.isNull())
+            {
+                item->setData(1, TypstAnswerPixmapRole, QVariant::fromValue(cached));
+                item->setData(1, TypstAnswerLogicalSizeRole, TypstImageCache::displaySizeOf(cached, ppi));
+                return;
+            }
+        }
+        // 缓存未就绪（首次编译中）或 typst 不可用：先显示落盘图，imageReady 后再刷新
         const QString path = kTypstImagePathTemplate.arg(questionId).arg(answerId);
         const QPixmap image{path};
         if(image.isNull())
@@ -166,8 +194,12 @@ void MainWindow::applyAnswerTypeDisplay(QTreeWidgetItem *item, int questionId, c
             item->setText(1, QStringLiteral("…"));
             return;
         }
-        const int scale = ToolFunctions::typstImageScale(path);
-        const QSize logical(qMax(1, image.width() / scale), qMax(1, image.height() / scale));
+        const QSize logical = ToolFunctions::typstDisplaySize(path); // 旧图也折算到 12pt 口径
+        if(!logical.isValid())
+        {
+            item->setText(1, QStringLiteral("…"));
+            return;
+        }
         item->setData(1, TypstAnswerPixmapRole, QVariant::fromValue(image));
         item->setData(1, TypstAnswerLogicalSizeRole, logical);
     } else if(AnswerStore::isChainCardType(type))
@@ -197,8 +229,8 @@ void MainWindow::applyAnswerTypeDisplay(QTreeWidgetItem *item, int questionId, c
     }
 }
 
-// typst 图异步落盘后触发：当前题的链卡(typst)答案从公式体文本换成渲染图
-void MainWindow::refreshChainTypstAnswerIcons()
+// typst 图异步落盘后触发：当前题的自动/链卡(typst)答案换成高分辨率缓存图
+void MainWindow::refreshTypstAnswerImages()
 {
     if(currentQuestionId < 0)
         return;
@@ -206,10 +238,11 @@ void MainWindow::refreshChainTypstAnswerIcons()
     for(int row = 0; row < answers.count(); ++row)
     {
         const QJsonObject answer = answers[row].toObject();
-        if(answer.value(AnswerStore::FieldType).toString() != AnswerStore::TypeAutoChainTypst)
+        const QString type = answer.value(AnswerStore::FieldType).toString();
+        if(type != AnswerStore::TypeAutoTypst && type != AnswerStore::TypeAutoChainTypst)
             continue;
         if(QTreeWidgetItem *item = answerRowItem(row))
-            applyAnswerTypeDisplay(item, currentQuestionId, AnswerStore::TypeAutoChainTypst,
+            applyAnswerTypeDisplay(item, currentQuestionId, type,
                                    answer.value(AnswerStore::FieldId).toInt(), answer.value(AnswerStore::FieldContent).toString());
     }
 }
@@ -239,8 +272,8 @@ void MainWindow::init_answerTreeWidget()
 
     connect(ui->answerTreeWidget, &DragQTreeWidget::signalRowsMoved,
             this, &MainWindow::answerItemRowsMoved);
-    // 链卡(typst)的答案图是异步编译的：落盘后把公式体文本换成图
-    connect(TypstImageCache::instance(), &TypstImageCache::imageReady, this, &MainWindow::refreshChainTypstAnswerIcons);
+    // typst 答案图是异步编译的：落盘后换成高分辨率缓存图
+    connect(TypstImageCache::instance(), &TypstImageCache::imageReady, this, &MainWindow::refreshTypstAnswerImages);
 }
 
 QTreeWidgetItem *MainWindow::answerRowItem(int row) const

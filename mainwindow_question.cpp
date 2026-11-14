@@ -144,7 +144,7 @@ void MainWindow::on_questionTableView_entered(const QModelIndex &index)
 void MainWindow::loadQuestionIntoEditor(int questionId)
 {
     leaveQuestionPreview(); // 换题前退出预览：先还原旧题真实题面（随即被新题覆盖）
-    const QString questionHTML = questionSql->read_questionHTML(questionId);
+    const QString questionHTML = ToolFunctions::normalizedTypstImageSizes(questionSql->read_questionHTML(questionId));
     const QSignalBlocker blocker(ui->questionTextEdit);
     editorQuestionId = questionId;
     // QTextEdit 默认不平滑缩放图片：先按屏幕 DPR 预缩并注入资源，文档按 width/height 1:1 绘制

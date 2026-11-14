@@ -71,7 +71,7 @@ QString ToolFunctions::typstPreamble(int pointSize){
     return QString(kTypstPreambleTemplate).arg(pointSize);
 }
 
-QString ToolFunctions::typstMathPrefix = ToolFunctions::typstPreamble(9); // 题面公式一路沿用 9pt，保持既有外观不变
+QString ToolFunctions::typstMathPrefix = ToolFunctions::typstPreamble(kTypstPointSize); // 与正文字号一致，避免公式比周围文字小
 QString ToolFunctions::typstCommand = QStringLiteral("typst");
 
 void ToolFunctions::setTypstCommand(const QString &command)
@@ -179,12 +179,30 @@ int ToolFunctions::typstImageScale(const QString &imagePath)
 {
     if(imagePath.isEmpty())
         return 1;
-    QFile marker(imagePath + QStringLiteral(".2x")); // 沿用旧文件名，内容存实际倍数
+    QFile marker(imagePath + QStringLiteral(".2x")); // 沿用旧文件名，内容为 "倍数[:字号]"
     if(!marker.open(QIODevice::ReadOnly | QIODevice::Text))
         return 1;
+    const QString text = QString::fromUtf8(marker.readAll()).trimmed();
+    if(text.isEmpty())
+        return 2; // 旧版空标记：2 倍渲染
     bool ok = false;
-    const int scale = QString::fromUtf8(marker.readAll()).trimmed().toInt(&ok);
-    return ok && scale > 1 ? scale : 2; // 兼容旧版写入的空/异常标记
+    const int scale = text.section(QLatin1Char(':'), 0, 0).toInt(&ok);
+    return ok && scale > 1 ? scale : 2; // 兼容旧版写入的异常标记
+}
+
+int ToolFunctions::typstImagePointSize(const QString &imagePath)
+{
+    if(imagePath.isEmpty())
+        return 0;
+    QFile marker(imagePath + QStringLiteral(".2x"));
+    if(!marker.open(QIODevice::ReadOnly | QIODevice::Text))
+        return 0;
+    const QStringList parts = QString::fromUtf8(marker.readAll()).trimmed().split(QLatin1Char(':'));
+    if(parts.size() < 2)
+        return 0; // 旧标记只记倍数，字号未知
+    bool ok = false;
+    const int pointSize = parts.at(1).toInt(&ok);
+    return ok ? pointSize : 0;
 }
 
 void ToolFunctions::markTypstImageScale(const QString &imagePath)
@@ -193,7 +211,7 @@ void ToolFunctions::markTypstImageScale(const QString &imagePath)
         return;
     QFile marker(imagePath + QStringLiteral(".2x"));
     if(marker.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        marker.write(QByteArray::number(kTypstSaveSupersample));
+        marker.write(QByteArray::number(kTypstSaveSupersample) + ':' + QByteArray::number(kTypstPointSize));
 }
 
 void ToolFunctions::installScaledTypstImageResources(QTextDocument *document, const QString &html, qreal dpr)
@@ -236,6 +254,63 @@ void ToolFunctions::installScaledTypstImageResources(QTextDocument *document, co
         const QImage scaled = source.scaled(target, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         document->addResource(QTextDocument::ImageResource, QUrl(path), scaled);
     }
+}
+
+QSize ToolFunctions::typstDisplaySize(const QString &imagePath)
+{
+    const QImage image(imagePath);
+    if(image.isNull())
+        return {};
+    const int scale = typstImageScale(imagePath);
+    // 源分辨率：新版 96×倍数；旧版 72×倍数。统一折算到 96 逻辑 PPI。
+    const int sourcePpi = (scale >= kTypstSaveSupersample ? kTypstSaveBasePpi : 72) * scale;
+    // 源字号：标记里有就用；旧图统一按 9pt。统一折算到当前正文字号（12pt）。
+    const int storedPointSize = typstImagePointSize(imagePath);
+    const int sourcePointSize = storedPointSize > 0 ? storedPointSize : 9;
+    const qreal factor = qreal(kTypstBasePpi) / sourcePpi * qreal(kTypstPointSize) / sourcePointSize;
+    return QSize(qMax(1, qRound(image.width() * factor)),
+                 qMax(1, qRound(image.height() * factor)));
+}
+
+QString ToolFunctions::normalizedTypstImageSizes(const QString &html)
+{
+    const QRegularExpression imgRe(QStringLiteral(R"re(<img\b[^>]*\bsrc="([^"]+)"[^>]*>)re"));
+    const QRegularExpression widthRe(QStringLiteral(R"re(\s+width="[^"]*")re"));
+    const QRegularExpression heightRe(QStringLiteral(R"re(\s+height="[^"]*")re"));
+    const QRegularExpression imgStart(QStringLiteral(R"re(^<img\b)re"));
+
+    QString rebuilt;
+    int last = 0;
+    auto matches = imgRe.globalMatch(html);
+    while(matches.hasNext())
+    {
+        const QRegularExpressionMatch match = matches.next();
+        rebuilt += html.mid(last, match.capturedStart() - last);
+        last = match.capturedEnd();
+
+        QString tag = match.captured(0);
+        const QString path = match.captured(1);
+        if(path.endsWith(QStringLiteral(".png")))
+        {
+            QString sourcePath = path;
+            sourcePath.replace(QRegularExpression(QStringLiteral(R"re(\.png$)re")),
+                               QStringLiteral(".typmath"));
+            if(typstImageScale(path) > 1 || QFile::exists(sourcePath))
+            {
+                const QSize size = typstDisplaySize(path);
+                if(size.isValid())
+                {
+                    tag.remove(widthRe);
+                    tag.remove(heightRe);
+                    tag.replace(imgStart, QStringLiteral("<img width=\"%1\" height=\"%2\"")
+                                               .arg(size.width()).arg(size.height()));
+                }
+            }
+        }
+        rebuilt += tag;
+    }
+    rebuilt += html.mid(last);
+    return rebuilt;
 }
 
 void ToolFunctions::watch_typst_stop(QProcess &process)

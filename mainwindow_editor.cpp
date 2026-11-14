@@ -378,10 +378,15 @@ void MainWindow::insertTypstImage(const QString &filePath)
     imageFormat.setName(dir.relativeFilePath(filePath));
     imageFormat.setToolTip(readTextFile(typstSourcePathOf(imageFormat))); // 公式源码（同目录 .typmath）作 tooltip，便于双击回改
     const QImage image{imageFormat.name()};
-    const int scale = ToolFunctions::typstImageScale(filePath); // 2x 渲染的图按逻辑尺寸写入文档；旧图 scale=1
-    const int logicalHeight = image.height() / qMax(1, scale);
-    imageFormat.setWidth(qMax(1, image.width() / qMax(1, scale)));
-    imageFormat.setHeight(qMax(1, logicalHeight));
+    QSize displaySize = ToolFunctions::typstDisplaySize(filePath); // 题面图统一按 96 逻辑 PPI 自然尺寸显示
+    if(!displaySize.isValid())
+    {
+        const int scale = qMax(1, ToolFunctions::typstImageScale(filePath));
+        displaySize = QSize(qMax(1, image.width() / scale), qMax(1, image.height() / scale));
+    }
+    const int logicalHeight = displaySize.height();
+    imageFormat.setWidth(displaySize.width());
+    imageFormat.setHeight(displaySize.height());
 
     if(cursor.currentTable() != nullptr) // 表格内插入：居中并插零宽字符
     {
@@ -500,7 +505,7 @@ void MainWindow::rerenderTypstImages()
         if(!idOk)
             continue;
 
-        // 题面公式：有 .typmath 源的旧图按原逻辑尺寸重渲染，并回写 width/height
+        // 题面公式：有 .typmath 源的图重编译到当前字号/288 PPI，并按 96 逻辑 PPI 回写 width/height
         const QString htmlPath = QStringLiteral("./data/%1/question.html").arg(dirName);
         if(QFile::exists(htmlPath))
         {
@@ -541,24 +546,27 @@ void MainWindow::rerenderTypstImages()
                 }
 
                 const int scale = ToolFunctions::typstImageScale(path);
-                if(scale < ToolFunctions::kTypstSaveSupersample)
+                const bool needsRerender = scale < ToolFunctions::kTypstSaveSupersample
+                                           || ToolFunctions::typstImagePointSize(path) < ToolFunctions::kTypstPointSize;
+                if(needsRerender)
                 {
                     const QString body = readUtf8FileForRerender(sourcePath);
                     if(compileTypstBodyTo(body, path))
-                    {
-                        // 题面保持旧的逻辑尺寸，只提升像素密度，避免布局跳动
-                        tag = withTypstImageSize(tag, oldImage.size());
                         ++questionImages;
-                        changed = true;
-                    } else
-                    {
+                    else
                         ++failed;
-                    }
-                } else if(!tag.contains(QStringLiteral("width=")))
+                }
+
+                // 显示尺寸始终按“像素 ÷ 落盘倍数”现算（与现象树同口径），不沿用历史冻结值
+                const QSize displaySize = ToolFunctions::typstDisplaySize(path);
+                if(displaySize.isValid())
                 {
-                    tag = withTypstImageSize(tag, QSize(qMax(1, oldImage.width() / scale),
-                                                        qMax(1, oldImage.height() / scale)));
-                    changed = true;
+                    const QString resized = withTypstImageSize(tag, displaySize);
+                    if(resized != tag)
+                    {
+                        tag = resized;
+                        changed = true;
+                    }
                 }
                 rebuilt += tag;
             }
@@ -589,8 +597,9 @@ void MainWindow::rerenderTypstImages()
                 continue;
             const int answerId = answer.value(AnswerStore::FieldId).toInt();
             const QString imagePath = QStringLiteral("./data/%1/%2.png").arg(dirName).arg(answerId);
-            if(ToolFunctions::typstImageScale(imagePath) >= ToolFunctions::kTypstSaveSupersample)
-                continue;
+            if(ToolFunctions::typstImageScale(imagePath) >= ToolFunctions::kTypstSaveSupersample
+               && ToolFunctions::typstImagePointSize(imagePath) >= ToolFunctions::kTypstPointSize)
+                continue; // 已是当前字号/分辨率的图，无需重编译
             if(compileTypstBodyTo(content, imagePath))
                 ++answerImages;
             else
